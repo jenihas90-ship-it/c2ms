@@ -1,0 +1,117 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="Chat | Justice Connect Court Case Management">
+    <title>Chat | Justice Connect</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link
+        href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Outfit:wght@400;500;600;700;800&display=swap"
+        rel="stylesheet">
+    <link rel="stylesheet" href="/css/styles.css">
+</head>
+
+<body>
+    <div class="glow-bg">
+        <div class="blob-1"></div>
+        <div class="blob-2"></div>
+    </div>
+
+    <div class="dashboard-layout chat-page-layout">
+        <aside class="dashboard-sidebar">
+            <div class="sidebar-header">
+                <div class="logo">
+                    <span class="logo-icon">⚖️</span>
+                    <span class="logo-text" style="font-size: 1.8rem;">Justice Connect</span>
+                </div>
+            </div>
+
+            <div class="sidebar-user">
+                <div id="sidebar-avatar" class="user-avatar">👤</div>
+                <div class="user-details">
+                    <span id="sidebar-username" class="user-name">Loading...</span>
+                    <span id="sidebar-role" class="user-role-badge">Member</span>
+                </div>
+            </div>
+
+            <nav class="sidebar-nav">
+                <button class="nav-item" onclick="window.location.href='/dashboard.html'">
+                    <span>📊</span> Dashboard
+                </button>
+                <button class="nav-item active">
+                    <span>💬</span> Chat
+                </button>
+                <button class="nav-item complainant-only" onclick="window.location.href='/dashboard.html'">
+                    <span>📁</span> Complaints
+                </button>
+            </nav>
+
+            <div class="sidebar-footer">
+                <button class="logout-btn" onclick="handleLogout()">
+                    <span>🚪</span> Log Out
+                </button>
+            </div>
+        </aside>
+
+        <main class="dashboard-main chat-main">
+            <header class="dashboard-topbar">
+                <div class="topbar-title">
+                    <h2 id="workspace-title">Live Support Chat</h2>
+                </div>
+                <div class="mobile-header-menu">
+                    <button class="logout-btn-mobile" onclick="handleLogout()">Logout</button>
+                </div>
+            </header>
+
+            <section class="chat-hero">
+                <div class="hero-copy">
+                    <span class="hero-badge">Premium Support</span>
+                    <h1>Chat directly with your case experts in real time.</h1>
+                    <p>Every conversation is secured, prioritized, and attached to the right ticket so your case stays on track.</p>
+                </div>
+                <div class="hero-actions">
+                    <button class="hero-btn" onclick="window.location.href='/dashboard.html'">Return to dashboard</button>
+                </div>
+            </section>
+
+            <section class="chat-container">
+                <aside class="chat-sidebar">
+                    <div class="chat-sidebar-header">
+                        <h3>My Tickets</h3>
+                        <p class="chat-subtitle">Select a ticket to open the conversation.</p>
+                    </div>
+                    <div id="chat-ticket-list" class="chat-ticket-list">
+                        <div class="empty-list-msg">Loading tickets...</div>
+                    </div>
+                </aside>
+
+                <section class="chat-panel">
+                    <div class="chat-panel-header">
+                        <div>
+                            <h3 id="chat-title">No ticket selected</h3>
+                            <p id="chat-subtitle" class="chat-subtitle">Pick a ticket from the list.</p>
+                        </div>
+                        <div id="chat-status-pill" class="status-badge status-pending-badge hidden">Open</div>
+                    </div>
+
+                    <div id="chat-messages" class="chat-messages">
+                        <div class="empty-list-msg">Choose a ticket to start chatting.</div>
+                    </div>
+
+                    <form id="chat-form" class="chat-input-form" onsubmit="handleChatSubmit(event)">
+                        <textarea id="chat-message-input" placeholder="Write a message..." required></textarea>
+                        <button type="submit" class="remark-send-btn">Send</button>
+                    </form>
+                </section>
+            </section>
+        </main>
+    </div>
+
+    <script src="/js/utils.js"></script>
+    <script src="/js/chat.js"></script>
+</body>
+
+</html>

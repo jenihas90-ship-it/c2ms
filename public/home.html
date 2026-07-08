@@ -1,0 +1,72 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Home | Justice Connect</title>
+  <link rel="stylesheet" href="/css/styles.css">
+</head>
+
+<body>
+  <div class="glow-bg">
+    <div class="blob-1"></div>
+    <div class="blob-2"></div>
+  </div>
+
+  <header class="simple-header">
+    <div class="logo" style="margin:1rem;">
+      <span class="logo-icon">⚖️</span>
+      <span class="logo-text">Justice Connect</span>
+    </div>
+    <nav class="simple-nav" style="margin:1rem;">
+      <a href="/">Sign In</a>
+      <a href="/dashboard.html">Dashboard</a>
+      <a href="/about.html">About</a>
+    </nav>
+  </header>
+
+  <main style="padding:3rem; max-width:1000px; margin:0 auto; color:var(--text-main);">
+    <h1 style="font-family:var(--font-display);">Welcome to Justice Connect</h1>
+    <p style="color:var(--text-muted); font-size:1.05rem;">Justice Connect is an e-Filing platform to file court
+      complaints, track cases and manage legal documents.</p>
+
+    <section style="margin-top:2rem; display:grid; grid-template-columns:repeat(auto-fit,minmax(240px,1fr)); gap:1rem;">
+      <div class="glass-card">
+        <h3>File Complaints</h3>
+        <p class="muted">Complainants can file new tickets with attachments and track progress.</p>
+        <p><a href="/dashboard.html">Go to Dashboard →</a></p>
+      </div>
+
+      <div class="glass-card">
+        <h3>Admin Tools</h3>
+        <p class="muted">Admins can review, comment, update status, or remove complaints.</p>
+        <p><a href="/dashboard.html">Open Admin Dashboard →</a></p>
+      </div>
+
+      <div class="glass-card">
+        <h3>Security</h3>
+        <p class="muted">Sessions and authentication are handled server-side; passwords are hashed with bcrypt.</p>
+      </div>
+    </section>
+  </main>
+
+  <footer style="padding:2rem; text-align:center; color:var(--text-muted);">
+    <small>© Justice Connect · Court Management</small>
+  </footer>
+
+  <!-- About Modal -->
+  <div id="about-modal" class="modal hidden">
+    <div class="modal-content">
+      <button class="modal-close" onclick="document.getElementById('about-modal').classList.remove('open')">×</button>
+      <h2>About Justice Connect</h2>
+      <p>Justice Connect is a Court Complaint management system demo. It supports e-Filing, case tracking, and admin
+        workflows.</p>
+      <p><strong>Demo accounts:</strong> admin / admin123, user / user123</p>
+    </div>
+  </div>
+
+  <script src="/js/home.js"></script>
+</body>
+
+</html>

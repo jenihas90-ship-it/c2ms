@@ -1,0 +1,142 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="description"
+    content="Justice Connect - Court Complaint Management System. E-Filing platform, case tracking, and case management.">
+  <title>Justice Connect | Court Complaint Management</title>
+  <!-- Google Fonts Outfit and Inter -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link
+    href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600&family=Outfit:wght@400;500;700;800&display=swap"
+    rel="stylesheet">
+  <!-- Stylesheets -->
+  <link rel="stylesheet" href="/css/styles.css">
+</head>
+
+<body class="auth-page">
+  <div class="glow-bg">
+    <div class="blob-1"></div>
+    <div class="blob-2"></div>
+  </div>
+
+  <main class="auth-container">
+    <!-- Header Section -->
+    <header class="auth-header">
+      <div class="logo">
+        <span class="logo-icon">⚖️</span>
+        <span class="logo-text">Justice Connect</span>
+      </div>
+      <h1 class="auth-tagline">E-Filing Court Case Management</h1>
+      <p class="auth-desc">File legal complaints, track case progress, and manage court documents with transparency and
+        speed.</p>
+      <nav style="margin-top:10px;">
+        <a href="/home.html" style="color:var(--text-muted); margin-right:12px;">Home</a>
+        <a href="/about.html" style="color:var(--text-muted);">About</a>
+      </nav>
+    </header>
+
+    <!-- Glassmorphic Login / Signup Card -->
+    <section class="auth-card">
+      <div class="tab-buttons">
+        <button id="tab-login" class="tab-btn active" onclick="switchTab('login')">Sign In</button>
+        <button id="tab-register" class="tab-btn" onclick="switchTab('register')">Register</button>
+      </div>
+
+      <!-- Toast Notification Container -->
+      <div id="toast" class="toast hidden"></div>
+
+      <!-- Login Form -->
+      <form id="login-form" class="auth-form" onsubmit="handleLogin(event)">
+        <div class="form-group">
+          <label for="login-identifier">Username or Email</label>
+          <div class="input-wrapper">
+            <input type="text" id="login-identifier" required placeholder="name@company.com or username">
+          </div>
+        </div>
+
+        <div class="form-group">
+          <label for="login-password">Password</label>
+          <div class="input-wrapper">
+            <input type="password" id="login-password" required placeholder="Enter password (e.g. user123/admin123)">
+          </div>
+        </div>
+
+        <button type="submit" class="submit-btn">
+          <span>Sign In to Dashboard</span>
+          <span class="btn-arrow">→</span>
+        </button>
+
+        <!-- Prepopulated Helper Creds -->
+        <div class="helper-creds">
+          <p><strong>Demo Logins:</strong></p>
+          <div class="helper-chips">
+            <span class="chip" onclick="fillCreds('user', 'user123')">🧑 Complainant: <b>user</b> / user123</span>
+            <span class="chip" onclick="fillCreds('admin', 'admin123')">🛠️ Administrator: <b>admin</b> /
+              admin123</span>
+          </div>
+        </div>
+      </form>
+
+      <!-- Registration Form -->
+      <form id="register-form" class="auth-form hidden" onsubmit="handleRegister(event)">
+        <div class="form-group">
+          <label for="reg-username">Username</label>
+          <div class="input-wrapper">
+            <input type="text" id="reg-username" required placeholder="Choose username">
+          </div>
+        </div>
+
+        <div class="form-group">
+          <label for="reg-email">Email Address</label>
+          <div class="input-wrapper">
+            <input type="email" id="reg-email" required placeholder="name@company.com">
+          </div>
+        </div>
+
+        <div class="form-group">
+          <label for="reg-password">Password</label>
+          <div class="input-wrapper">
+            <input type="password" id="reg-password" required placeholder="Create password (min 6 characters)">
+          </div>
+        </div>
+
+        <div class="form-group">
+          <label>Account Role</label>
+          <div class="role-selector">
+            <label class="role-option">
+              <input type="radio" name="reg-role" value="complainant" checked>
+              <div class="role-card">
+                <span class="role-icon">🧑</span>
+                <span class="role-title">Complainant</span>
+                <span class="role-subtitle">File and track tickets</span>
+              </div>
+            </label>
+            <label class="role-option">
+              <input type="radio" name="reg-role" value="admin">
+              <div class="role-card">
+                <span class="role-icon">🛠️</span>
+                <span class="role-title">Staff / Admin</span>
+                <span class="role-subtitle">Manage ticket resolution</span>
+              </div>
+            </label>
+          </div>
+        </div>
+
+        <button type="submit" class="submit-btn btn-secondary">
+          <span>Create Account</span>
+          <span class="btn-arrow">→</span>
+        </button>
+      </form>
+    </section>
+  </main>
+
+  <!-- JS Handlers -->
+  <script src="/js/utils.js"></script>
+  <script src="/js/auth.js"></script>
+</body>
+
+</html>

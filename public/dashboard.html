@@ -1,0 +1,397 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="Dashboard | Justice Connect Court Case Management">
+    <title>Dashboard | Justice Connect</title>
+    <!-- Google Fonts Outfit and Inter -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link
+        href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Outfit:wght@400;500;600;700;800&display=swap"
+        rel="stylesheet">
+    <!-- Stylesheets -->
+    <link rel="stylesheet" href="/css/styles.css">
+</head>
+
+<body>
+    <div class="glow-bg">
+        <div class="blob-1"></div>
+        <div class="blob-2"></div>
+    </div>
+
+    <!-- Toast Notification Container -->
+    <div id="toast" class="toast hidden"></div>
+
+    <div class="dashboard-layout">
+        <!-- 1. LEFT SIDEBAR -->
+        <aside class="dashboard-sidebar">
+            <div class="sidebar-header">
+                <div class="logo">
+                    <span class="logo-icon">⚖️</span>
+                    <span class="logo-text" style="font-size: 1.8rem;">Justice Connect</span>
+                </div>
+            </div>
+
+            <!-- Current User Profile Card -->
+            <div class="sidebar-user">
+                <div id="sidebar-avatar" class="user-avatar">👤</div>
+                <div class="user-details">
+                    <span id="sidebar-username" class="user-name">Loading...</span>
+                    <span id="sidebar-role" class="user-role-badge">Member</span>
+                </div>
+            </div>
+
+            <!-- Navigation links (dynamic filters/views) -->
+            <nav class="sidebar-nav">
+                <button id="nav-dashboard" class="nav-item active" onclick="switchNav('dashboard')">
+                    <span>📊</span> Dashboard
+                </button>
+                <button id="nav-all-complaints" class="nav-item" onclick="switchNav('complaints')">
+                    <span>📁</span> View Complaints
+                </button>
+                <button id="nav-new-complaint" class="nav-item complainant-only hidden" onclick="switchNav('new')">
+                    <span>➕</span> New Complaint
+                </button>
+                <button id="nav-chat" class="nav-item" onclick="window.location.href='/chat.html'">
+                    <span>💬</span> Support Chat
+                </button>
+            </nav>
+
+            <div class="sidebar-footer">
+                <button class="logout-btn" onclick="handleLogout()">
+                    <span>🚪</span> Log Out
+                </button>
+            </div>
+        </aside>
+
+        <!-- 2. MAIN CLIENT WORKSPACE -->
+        <main class="dashboard-main">
+            <!-- Top header bar -->
+            <header class="dashboard-topbar">
+                <div class="topbar-title">
+                    <h2 id="workspace-title">Overview</h2>
+                </div>
+                <div class="mobile-header-menu">
+                    <button class="logout-btn-mobile" onclick="handleLogout()">Logout</button>
+                </div>
+            </header>
+
+            <!-- Main container content -->
+            <div class="dashboard-content">
+                <!-- 2A. OVERVIEW METRICS GRID PANEL -->
+                <section id="metrics-panel" class="dashboard-metrics-grid">
+                    <div class="metric-card total-mt" id="total-filed-card" onclick="switchNav('complaints')">
+                        <div class="metric-icon-box">📂</div>
+                        <div class="metric-info">
+                            <span id="metric-total-val" class="metric-value">0</span>
+                            <span class="metric-name">Total filed</span>
+                        </div>
+                    </div>
+                    <div class="metric-card pending-mt">
+                        <div class="metric-icon-box">⏳</div>
+                        <div class="metric-info">
+                            <span id="metric-pending-val" class="metric-value">0</span>
+                            <span class="metric-name">Pending</span>
+                        </div>
+                    </div>
+                    <div class="metric-card progress-mt">
+                        <div class="metric-icon-box">⚙️</div>
+                        <div class="metric-info">
+                            <span id="metric-progress-val" class="metric-value">0</span>
+                            <span class="metric-name">In Progress</span>
+                        </div>
+                    </div>
+                    <div class="metric-card resolved-mt">
+                        <div class="metric-icon-box">✅</div>
+                        <div class="metric-info">
+                            <span id="metric-resolved-val" class="metric-value">0</span>
+                            <span class="metric-name">Resolved</span>
+                        </div>
+                    </div>
+                </section>
+
+                <!-- 2B. ADMIN ANALYTICS CHARTS (Hidden for Standard Complainant) -->
+                <section id="admin-charts-section" class="analytics-section hidden">
+                    <!-- Category Breakdown Bar Chart -->
+                    <div class="chart-card">
+                        <h3 class="chart-card-title">Category Distribution</h3>
+                        <div id="category-chart-list" class="v-chart-container">
+                            <!-- Dynamically populated bars -->
+                            <span style="color:var(--text-muted); font-size: 0.9rem;">No category data available.</span>
+                        </div>
+                    </div>
+
+                    <!-- Priority metrics -->
+                    <div class="chart-card">
+                        <h3 class="chart-card-title">Impact Priority Representation</h3>
+                        <div id="priority-chart-list" style="display: flex; flex-direction: column; gap:0.25rem;">
+                            <!-- Dynamically populated list -->
+                            <span style="color:var(--text-muted); font-size: 0.9rem;">No priority data available.</span>
+                        </div>
+                    </div>
+                </section>
+
+                <!-- 2C. CORE COMPLAINTS / ACTIONS GRID -->
+                <section class="complaints-workspace">
+                    <!-- LEFT SIDE: Listing complaints with filtering options -->
+                    <div class="list-section">
+                        <div class="filter-search-box" style="margin-bottom: 1.5rem;">
+                            <div class="search-wrapper-fs">
+                                <input type="text" id="search-input" placeholder="Search by title or content..."
+                                    oninput="triggerSearch()">
+                            </div>
+                            <div class="filters-wrapper-fs">
+                                <select id="filter-category" onchange="loadComplaintsList()">
+                                    <option value="">All Categories</option>
+                                    <option value="Civil">Civil</option>
+                                    <option value="Criminal">Criminal</option>
+                                    <option value="Family">Family</option>
+                                    <option value="Administrative">Administrative</option>
+                                    <option value="Other">Other</option>
+                                </select>
+                                <select id="filter-status" onchange="loadComplaintsList()">
+                                    <option value="">All Statuses</option>
+                                    <option value="Pending">Pending</option>
+                                    <option value="In Progress">In Progress</option>
+                                    <option value="Resolved">Resolved</option>
+                                </select>
+                            </div>
+                        </div>
+
+                        <!-- List box -->
+                        <div id="complaints-list" class="complaints-list-container">
+                            <div class="no-complaints">Loading your complaints dataset...</div>
+                        </div>
+                    </div>
+
+                    <!-- RIGHT SIDE: Complainant filing tools (Hidden for admin) -->
+                    <div id="file-complaint-section" class="file-ticket-card glass-card complainant-only">
+                        <h3 class="chart-card-title" style="margin-bottom: 1.5rem;">Submit Court Complaint</h3>
+                        <form id="complaint-form" class="file-ticket-form" onsubmit="handleFileComplaint(event)">
+                            <div class="form-group">
+                                <label for="comp-title">Complaint Title</label>
+                                <input type="text" id="comp-title" required placeholder="Brief summary of the issue">
+                            </div>
+
+                            <div class="inspector-row-grid">
+                                <div class="form-group">
+                                    <label for="comp-category">Category</label>
+                                    <select id="comp-category" required>
+                                        <option value="" disabled selected>Select Category</option>
+                                        <option value="Civil">Civil</option>
+                                        <option value="Criminal">Criminal</option>
+                                        <option value="Family">Family</option>
+                                        <option value="Administrative">Administrative</option>
+                                        <option value="Other">Other</option>
+                                    </select>
+                                </div>
+
+                                <div class="form-group">
+                                    <label for="comp-priority">Priority Level</label>
+                                    <select id="comp-priority" required>
+                                        <option value="Low">Low (General query)</option>
+                                        <option value="Medium" selected>Medium (Standard request)</option>
+                                        <option value="High">High (Service blocking/critical)</option>
+                                    </select>
+                                </div>
+                            </div>
+
+                            <div class="inspector-row-grid">
+                                <div class="form-group">
+                                    <label for="comp-court-name">Court Name</label>
+                                    <input type="text" id="comp-court-name" required
+                                        placeholder="Name of Court (e.g. Superior Court)">
+                                </div>
+                                <div class="form-group">
+                                    <label for="comp-case-number">Case Number</label>
+                                    <input type="text" id="comp-case-number" required placeholder="Case # or N/A">
+                                </div>
+                            </div>
+
+                            <div class="inspector-row-grid">
+                                <div class="form-group">
+                                    <label for="comp-parties">Parties Involved</label>
+                                    <input type="text" id="comp-parties" placeholder="Smith v. Jones">
+                                </div>
+                                <div class="form-group">
+                                    <label for="comp-hearing-date">Hearing Date</label>
+                                    <input type="date" id="comp-hearing-date">
+                                </div>
+                            </div>
+
+                            <div class="form-group">
+                                <label for="comp-description">Detailed Description</label>
+                                <textarea id="comp-description" required
+                                    placeholder="Describe the circumstance, what happened, and any details required to troubleshoot..."></textarea>
+                            </div>
+
+                            <div class="form-group">
+                                <label>Attachment (Optional)</label>
+                                <div class="file-upload-wrapper">
+                                    <input type="file" id="comp-attachment" onchange="fileSelectedNotify(this)">
+                                    <div class="file-upload-text">
+                                        <span class="file-upload-icon">📁</span>
+                                        <span id="upload-instruction">Drop files here or click to upload</span>
+                                        <span style="font-size: 11px; opacity:0.7;">Allowed: JPG, PNG, PDF, DOCX (Max
+                                            10MB)</span>
+                                    </div>
+                                </div>
+                                <div id="file-name-info" class="file-name-chosen hidden"></div>
+                            </div>
+
+                            <button type="submit" class="submit-btn" style="margin-top: 0.5rem;">
+                                <span>File Live Ticket</span>
+                                <span class="btn-arrow">→</span>
+                            </button>
+                        </form>
+                    </div>
+                </section>
+            </div>
+        </main>
+
+        <!-- 3. SLIDING DETAIL INSPECTOR DRAWER -->
+        <div id="details-pane" class="details-pane-modal">
+            <div class="details-modal-header">
+                <h3 id="inspect-title">Ticket Details</h3>
+                <button class="btn-close-modal" onclick="closeDetailsInspector()">×</button>
+            </div>
+
+            <div class="details-modal-body">
+                <!-- Ticket Information -->
+                <article class="inspector-details-card">
+                    <div class="inspector-label">Subject Title</div>
+                    <div id="inspect-title-text" class="inspector-val title-lg">Network disruption on floor 3</div>
+
+                    <div class="inspector-row-grid">
+                        <div>
+                            <div class="inspector-label">Reference ID</div>
+                            <div id="inspect-ref-id" class="inspector-val">#1029</div>
+                        </div>
+                        <div>
+                            <div class="inspector-label font-bold">Ticket Status</div>
+                            <div style="margin-top: 2px;"><span id="inspect-status-badge"
+                                    class="status-badge status-progress-badge">In Progress</span></div>
+                        </div>
+                    </div>
+
+                    <div class="inspector-row-grid">
+                        <div>
+                            <div class="inspector-label">Category</div>
+                            <div id="inspect-category" class="inspector-val">Technical</div>
+                        </div>
+                        <div>
+                            <div class="inspector-label">Priority</div>
+                            <div style="margin-top: 2px;"><span id="inspect-priority-pill"
+                                    class="priority-pill prio-med-badge">Medium</span></div>
+                        </div>
+                    </div>
+
+                    <div class="inspector-row-grid">
+                        <div>
+                            <div class="inspector-label">Court</div>
+                            <div id="inspect-court-name" class="inspector-val"></div>
+                        </div>
+                        <div>
+                            <div class="inspector-label">Case No.</div>
+                            <div id="inspect-case-number" class="inspector-val"></div>
+                        </div>
+                    </div>
+
+                    <div class="inspector-row-grid">
+                        <div>
+                            <div class="inspector-label">Parties</div>
+                            <div id="inspect-parties" class="inspector-val"></div>
+                        </div>
+                        <div>
+                            <div class="inspector-label">Hearing Date</div>
+                            <div id="inspect-hearing-date" class="inspector-val"></div>
+                        </div>
+                    </div>
+
+                    <div class="inspector-row-grid">
+                        <div>
+                            <div class="inspector-label">Submitted By</div>
+                            <div id="inspect-complainant" class="inspector-val">user123 (user@cms.com)</div>
+                        </div>
+                        <div>
+                            <div class="inspector-label">Date Submitted</div>
+                            <div id="inspect-date" class="inspector-val">Jul 06, 2026</div>
+                        </div>
+                    </div>
+
+                    <div>
+                        <div class="inspector-label">Problem description</div>
+                        <div id="inspect-desc-text" class="inspector-val"
+                            style="white-space: pre-wrap; font-size: 0.88rem; color: var(--text-muted); margin-top: 0.15rem;">
+                            Long text details...</div>
+                    </div>
+
+                    <!-- Attachment section -->
+                    <div id="inspect-attachment-container" class="hidden">
+                        <div class="inspector-label">Attached Document / Capture</div>
+                        <a href="#" id="inspect-attachment-link" target="_blank" class="attachment-link-btn">
+                            <span>📎</span> View Attachment File
+                        </a>
+                    </div>
+                </article>
+
+                <!-- Administrative Controls (Hidden for complainant) -->
+                <section id="admin-actions-controls" class="admin-actions-box hidden">
+                    <h4>🛠️ Staff Resolution Console</h4>
+                    <div
+                        style="display: flex; gap: 0.8rem; margin-top: 0.5rem; justify-content: flex-start; align-items: center;">
+                        <span class="inspector-label" style="margin-right: 0.5rem;">Modify Status:</span>
+                        <button class="status-badge status-pending-badge" style="cursor: pointer;"
+                            onclick="updateStatusAPI('Pending')">Pending</button>
+                        <button class="status-badge status-progress-badge" style="cursor: pointer;"
+                            onclick="updateStatusAPI('In Progress')">In Progress</button>
+                        <button class="status-badge status-resolved-badge" style="cursor: pointer;"
+                            onclick="updateStatusAPI('Resolved')">Resolved</button>
+                        <button class="status-badge status-reject-badge"
+                            style="cursor: pointer; background:#ff6b6b; color:#fff;"
+                            onclick="updateStatusAPI('Rejected')">Reject</button>
+                        <button class="status-badge status-edit-badge"
+                            style="cursor: pointer; background:#ffd166; color:#000;"
+                            onclick="openEditComplaint()">Edit</button>
+                        <button class="status-badge status-delete-badge"
+                            style="cursor: pointer; background:#ff4d4f; color:#fff;"
+                            onclick="deleteComplaintAPI()">Delete</button>
+                    </div>
+                </section>
+
+                <!-- Interactive timeline details -->
+                <section class="timeline-section">
+                    <div class="timeline-title">
+                        <span>💬</span> Live Chat & Remarks
+                    </div>
+                    <div class="chat-status-note">This chat updates automatically while the ticket is open.</div>
+
+                    <div id="remarks-timeline" class="timeline-list">
+                        <!-- Timeline Bubbles -->
+                        <div class="timeline-empty">No remarks posted on this ticket yet.</div>
+                    </div>
+
+                    <!-- Post remark form -->
+                    <div class="remark-form-box">
+                        <form id="remark-form" onsubmit="handlePostRemark(event)">
+                            <div class="remark-input-group">
+                                <textarea id="remark-textarea" required
+                                    placeholder="Type a message to the support team..."></textarea>
+                                <button type="submit" class="remark-send-btn">Send</button>
+                            </div>
+                        </form>
+                    </div>
+                </section>
+            </div>
+        </div>
+    </div>
+
+    <!-- JavaScript Scripts -->
+    <script src="/js/utils.js"></script>
+    <script src="/js/dashboard.js"></script>
+</body>
+
+</html>
