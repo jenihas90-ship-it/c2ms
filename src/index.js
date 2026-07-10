@@ -17,6 +17,9 @@ if (!fs.existsSync(uploadDir)) {
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
+// Trust proxy for session cookies
+app.set('trust proxy', 1);
+
 // Session middleware configuration
 app.use(
     session({
