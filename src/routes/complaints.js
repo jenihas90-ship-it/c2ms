@@ -7,16 +7,8 @@ const db = require('../db');
 const notifications = require('../notifications');
 const { requireLogin, requireAdmin } = require('../middleware/auth');
 
-// Multer storage configuration
-const storage = multer.diskStorage({
-    destination: function (req, file, cb) {
-        cb(null, path.resolve(__dirname, '../../public/uploads'));
-    },
-    filename: function (req, file, cb) {
-        const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1e9);
-        cb(null, uniqueSuffix + path.extname(file.originalname));
-    }
-});
+// Multer storage configuration (memory storage for serverless)
+const storage = multer.memoryStorage();
 
 const upload = multer({
     storage: storage,

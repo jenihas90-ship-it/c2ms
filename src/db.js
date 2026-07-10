@@ -1,44 +1,70 @@
-const path = require('path');
-const sqlite3 = require('sqlite3').verbose();
 const bcrypt = require('bcryptjs');
 
-const dbPath = path.resolve(__dirname, '../cms.db');
-const db = new sqlite3.Database(dbPath, (err) => {
-  if (err) {
-    console.error('Error connecting to SQLite database:', err);
-  } else {
-    console.log('Connected to SQLite database at', dbPath);
-  }
-});
+let db = null;
+let SQL = null;
 
-// Run query wrapped in Promise
-function run(sql, params = []) {
-  return new Promise((resolve, reject) => {
-    db.run(sql, params, function (err) {
-      if (err) return reject(err);
-      resolve({ id: this.lastID, changes: this.changes });
-    });
-  });
+// Initialize sql.js and create in-memory database
+async function getDb() {
+  if (db) return db;
+
+  if (!SQL) {
+    const initSqlJs = require('sql.js');
+    SQL = await initSqlJs();
+  }
+
+  db = new SQL.Database();
+  return db;
+}
+
+// Run query (INSERT, UPDATE, DELETE, CREATE)
+async function run(sql, params = []) {
+  const database = await getDb();
+  try {
+    database.run(sql, params);
+    const result = database.exec("SELECT last_insert_rowid() as id, changes() as changes");
+    const id = result.length > 0 ? result[0].values[0][0] : 0;
+    const changes = result.length > 0 ? result[0].values[0][1] : 0;
+    return { id, changes };
+  } catch (err) {
+    throw err;
+  }
 }
 
 // Get single row
-function get(sql, params = []) {
-  return new Promise((resolve, reject) => {
-    db.get(sql, params, (err, row) => {
-      if (err) return reject(err);
-      resolve(row);
+async function get(sql, params = []) {
+  const database = await getDb();
+  const stmt = database.prepare(sql);
+  stmt.bind(params);
+  let row = null;
+  if (stmt.step()) {
+    const columns = stmt.getColumnNames();
+    const values = stmt.get();
+    row = {};
+    columns.forEach((col, i) => {
+      row[col] = values[i];
     });
-  });
+  }
+  stmt.free();
+  return row;
 }
 
 // Get all rows
-function all(sql, params = []) {
-  return new Promise((resolve, reject) => {
-    db.all(sql, params, (err, rows) => {
-      if (err) return reject(err);
-      resolve(rows);
+async function all(sql, params = []) {
+  const database = await getDb();
+  const stmt = database.prepare(sql);
+  stmt.bind(params);
+  const rows = [];
+  while (stmt.step()) {
+    const columns = stmt.getColumnNames();
+    const values = stmt.get();
+    const row = {};
+    columns.forEach((col, i) => {
+      row[col] = values[i];
     });
-  });
+    rows.push(row);
+  }
+  stmt.free();
+  return rows;
 }
 
 // Initialize tables
@@ -131,7 +157,7 @@ async function initDatabase() {
     )
   `);
 
-  // Insert default administrator if none exists
+  // Insert default administrator
   const adminExists = await get("SELECT * FROM users WHERE role = 'admin' LIMIT 1");
   if (!adminExists) {
     const hashedPassword = bcrypt.hashSync('admin123', 10);
@@ -142,7 +168,7 @@ async function initDatabase() {
     console.log('Default Admin user created: admin / admin123');
   }
 
-  // Insert a default complainant user if none exists (for quick login/testing)
+  // Insert a default complainant user
   const userExists = await get("SELECT * FROM users WHERE role = 'complainant' LIMIT 1");
   if (!userExists) {
     const hashedPassword = bcrypt.hashSync('user123', 10);
@@ -153,71 +179,11 @@ async function initDatabase() {
     console.log('Default Complainant user created: user / user123');
   }
 
-  // Ensure complaints table includes full court case schema and additional status values.
-  try {
-    const row = await get("SELECT sql FROM sqlite_master WHERE type='table' AND name='complaints'");
-    const complaintsSql = row && row.sql ? row.sql : '';
-    const needsMigration = complaintsSql && (
-      !complaintsSql.includes('Rejected') ||
-      !complaintsSql.includes('case_number') ||
-      !complaintsSql.includes('court_name') ||
-      !complaintsSql.includes('hearing_date') ||
-      !complaintsSql.includes('Filed') ||
-      !complaintsSql.includes('Under Review') ||
-      !complaintsSql.includes('Scheduled') ||
-      !complaintsSql.includes('Closed') ||
-      complaintsSql.includes("CHECK(category IN ('Billing', 'Technical', 'Facility', 'HR', 'Other'))")
-    );
-
-    if (needsMigration) {
-      console.log('Migrating complaints table to court case schema...');
-
-      await run('PRAGMA foreign_keys = OFF');
-
-      await run(`
-        CREATE TABLE IF NOT EXISTS complaints_new (
-          id INTEGER PRIMARY KEY AUTOINCREMENT,
-          user_id INTEGER NOT NULL,
-          title TEXT NOT NULL,
-          category TEXT CHECK(category IN ('Civil', 'Criminal', 'Family', 'Administrative', 'Other')) NOT NULL,
-          court_name TEXT NOT NULL DEFAULT '',
-          case_number TEXT NOT NULL DEFAULT '',
-          parties TEXT,
-          hearing_date TEXT,
-          description TEXT NOT NULL,
-          priority TEXT CHECK(priority IN ('Low', 'Medium', 'High')) NOT NULL,
-          status TEXT CHECK(status IN ('Pending', 'In Progress', 'Resolved', 'Rejected', 'Filed', 'Under Review', 'Scheduled', 'Closed')) DEFAULT 'Filed',
-          attachment_path TEXT,
-          created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-          updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-          FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
-        )
-      `);
-
-      await run(`
-        INSERT INTO complaints_new (id, user_id, title, category, description, priority, status, attachment_path, created_at, updated_at)
-        SELECT id, user_id, title, 
-               CASE WHEN category IN ('Civil', 'Criminal', 'Family', 'Administrative', 'Other') THEN category ELSE 'Other' END, 
-               description, 
-               CASE WHEN priority IN ('Low', 'Medium', 'High') THEN priority ELSE 'Medium' END, 
-               CASE WHEN status IN ('Pending', 'In Progress', 'Resolved', 'Rejected', 'Filed', 'Under Review', 'Scheduled', 'Closed') THEN status ELSE 'Filed' END, 
-               attachment_path, created_at, updated_at 
-        FROM complaints
-      `);
-
-      await run('DROP TABLE complaints');
-      await run("ALTER TABLE complaints_new RENAME TO complaints");
-      await run('PRAGMA foreign_keys = ON');
-
-      console.log('Complaints table migration complete.');
-    }
-  } catch (err) {
-    console.error('Complaints migration check failed:', err);
-  }
+  console.log('Database initialized successfully (in-memory).');
 }
 
 module.exports = {
-  db,
+  getDb,
   run,
   get,
   all,
