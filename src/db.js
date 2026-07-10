@@ -8,7 +8,8 @@ async function getDb() {
   if (db) return db;
 
   if (!SQL) {
-    const initSqlJs = require('sql.js');
+    // Use the ASM.js build (pure JavaScript, no WASM file needed)
+    const initSqlJs = require('sql.js/dist/sql-asm.js');
     SQL = await initSqlJs();
   }
 
