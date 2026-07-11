@@ -78,10 +78,14 @@ router.get('/', requireLogin, async (req, res) => {
   `;
     const params = [];
 
-    // Filter by user role (Complainant sees only their own, Admin sees all)
-    if (role !== 'admin') {
+    // Filter by user role (Complainant sees only their own, Staff sees all - Judges could see assigned)
+    const isStaff = ['admin', 'ADMIN', 'CLERK', 'JUDGE'].includes(role);
+    if (!isStaff) {
         query += ' AND c.user_id = ?';
         params.push(userId);
+    } else if (role === 'JUDGE') {
+        // Optional: filter by judge if assigned, otherwise let judge see all for demo purposes
+        // query += ' AND c.assignment_status != "Unassigned"';
     }
 
     // Optional status filter
@@ -135,8 +139,9 @@ router.get('/:id', requireLogin, async (req, res) => {
             return res.status(404).json({ error: 'Complaint not found.' });
         }
 
-        // Authorization: User must be either admin or creator of the complaint
-        if (role !== 'admin' && complaint.user_id !== userId) {
+        // Authorization: User must be either staff or creator of the complaint
+        const isStaff = ['admin', 'ADMIN', 'CLERK', 'JUDGE'].includes(role);
+        if (!isStaff && complaint.user_id !== userId) {
             return res.status(403).json({ error: 'Forbidden. You do not have permission to view this complaint.' });
         }
 
@@ -176,7 +181,8 @@ router.get('/:id/attachment', requireLogin, async (req, res) => {
             return res.status(404).json({ error: 'No attachment available for this complaint.' });
         }
 
-        if (role !== 'admin' && complaint.user_id !== userId) {
+        const isStaff = ['admin', 'ADMIN', 'CLERK', 'JUDGE'].includes(role);
+        if (!isStaff && complaint.user_id !== userId) {
             return res.status(403).json({ error: 'Forbidden. You do not have permission to access this attachment.' });
         }
 
@@ -210,7 +216,8 @@ router.post('/:id/remarks', requireLogin, async (req, res) => {
             return res.status(404).json({ error: 'Complaint not found.' });
         }
 
-        if (role !== 'admin' && complaint.user_id !== userId) {
+        const isStaff = ['admin', 'ADMIN', 'CLERK', 'JUDGE'].includes(role);
+        if (!isStaff && complaint.user_id !== userId) {
             return res.status(403).json({ error: 'Forbidden. You do not have permission to remark on this complaint.' });
         }
 
@@ -248,8 +255,9 @@ router.patch('/:id/status', requireLogin, async (req, res) => {
     const { status, priority } = req.body;
     const role = req.session.role;
 
-    if (role !== 'admin') {
-        return res.status(403).json({ error: 'Forbidden. Admin permission required.' });
+    const isStaff = ['admin', 'ADMIN', 'CLERK', 'JUDGE'].includes(role);
+    if (!isStaff) {
+        return res.status(403).json({ error: 'Forbidden. Staff permission required.' });
     }
 
     try {

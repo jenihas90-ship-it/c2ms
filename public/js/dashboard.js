@@ -16,20 +16,43 @@ document.addEventListener('DOMContentLoaded', async () => {
 function setupDashboardView() {
     // Update sidebar info
     document.getElementById('sidebar-username').textContent = currentUser.username;
-    document.getElementById('sidebar-role').textContent = currentUser.role === 'admin' ? 'Staff / Admin' : 'Customer';
 
+    let roleText = 'Citizen';
+    let icon = '🧑';
+    const activeRole = currentUser.role || '';
+
+    if (activeRole === 'ADMIN' || activeRole === 'admin') {
+        roleText = 'Staff / Admin';
+        icon = '🛠️';
+    } else if (activeRole === 'CLERK') {
+        roleText = 'Registry Clerk';
+        icon = '📝';
+    } else if (activeRole === 'JUDGE') {
+        roleText = 'Honorable Judge';
+        icon = '⚖️';
+    }
+
+    document.getElementById('sidebar-role').textContent = roleText;
     const avatar = document.getElementById('sidebar-avatar');
-    if (currentUser.role === 'admin') {
-        avatar.classList.add('admin-user');
-        avatar.textContent = '🛠️';
+    avatar.textContent = icon;
 
-        // Toggle Admin specific views
+    const isStaff = ['ADMIN', 'admin', 'CLERK', 'JUDGE'].includes(activeRole);
+    if (isStaff) {
+        avatar.classList.add('admin-user');
+
+        // Toggle Staff specific views
         document.getElementById('file-complaint-section').classList.add('hidden');
         document.getElementById('admin-charts-section').classList.remove('hidden');
         document.getElementById('admin-actions-controls').classList.remove('hidden');
-    } else {
-        avatar.textContent = '🧑';
 
+        if (activeRole === 'CLERK') {
+            document.getElementById('nav-all-complaints').innerHTML = '<span>📁</span> Registry Intake';
+            document.getElementById('workspace-title').textContent = 'Registry Overview';
+        } else if (activeRole === 'JUDGE') {
+            document.getElementById('nav-all-complaints').innerHTML = '<span>⚖️</span> My Caseload';
+            document.getElementById('workspace-title').textContent = 'Judicial Overview';
+        }
+    } else {
         // Toggle Complainant specific views
         document.getElementById('file-complaint-section').classList.remove('hidden');
         document.getElementById('admin-charts-section').classList.add('hidden');
@@ -45,7 +68,8 @@ function setupDashboardView() {
 
 // Fetch stats and lists
 async function refreshDashboardData() {
-    if (currentUser.role === 'admin') {
+    const isStaff = ['ADMIN', 'admin', 'CLERK', 'JUDGE'].includes(currentUser?.role);
+    if (isStaff) {
         await loadAdminStats();
     } else {
         // Complainants compile metrics locally from their specific tickets list return
@@ -203,7 +227,8 @@ async function loadComplaintsList() {
             card.onclick = () => openDetailsInspector(item.id);
 
             // Admin controls visible per-card for quick actions
-            const adminControls = (currentUser && currentUser.role === 'admin') ? `
+            const isStaff = ['ADMIN', 'admin', 'CLERK', 'JUDGE'].includes(currentUser?.role);
+            const adminControls = (isStaff) ? `
                             <div class="card-admin-actions">
                                 <button class="tiny-btn" onclick="event.stopPropagation(); adminReject(${item.id})">Reject</button>
                                 <button class="tiny-btn" onclick="event.stopPropagation(); adminEdit(${item.id})">Edit</button>
@@ -574,8 +599,14 @@ function switchNav(tab) {
     } else if (tab === 'complaints') {
         document.getElementById('nav-all-complaints').classList.add('active');
         statusFilter.value = '';
-        titleEl.textContent = 'Total Active Complaints';
-    } else if (tab === 'new' && currentUser.role === 'complainant') {
+
+        let headerText = 'Total Active Complaints';
+        const activeRole = currentUser?.role || '';
+        if (activeRole === 'CLERK') headerText = 'Registry Intake Queue';
+        else if (activeRole === 'JUDGE') headerText = 'Judicial Caseload';
+
+        titleEl.textContent = headerText;
+    } else if (tab === 'new' && (!['ADMIN', 'admin', 'CLERK', 'JUDGE'].includes(currentUser?.role))) {
         document.getElementById('nav-new-complaint').classList.add('active');
         titleEl.textContent = 'Submit New Ticket';
         // Scroll directly to the form
