@@ -26,31 +26,29 @@ const upload = multer({
 
 // File Complaint
 router.post('/', requireLogin, upload.single('attachment'), async (req, res) => {
-    const { title, category, court_name, case_number, parties, hearing_date, description, priority } = req.body;
+    const { title, category, court_name, complainant_name, respondent_name, complainant_address, description } = req.body;
 
-    if (!title || !category || !court_name || !case_number || !description || !priority) {
-        return res.status(400).json({ error: 'Title, category, court name, case number, description, and priority are required fields.' });
+    if (!title || !category || !court_name || !description) {
+        return res.status(400).json({ error: 'Title, category, court name, and description are required fields.' });
     }
 
     // Validate fields
     const validCategories = ['Civil', 'Criminal', 'Family', 'Administrative', 'Other'];
-    const validPriorities = ['Low', 'Medium', 'High'];
+    const priority = 'Medium'; // Default priority for citizen-filed complaints
 
     if (!validCategories.includes(category)) {
         return res.status(400).json({ error: 'Invalid category. Allowed: ' + validCategories.join(', ') });
     }
-    if (!validPriorities.includes(priority)) {
-        return res.status(400).json({ error: 'Invalid priority. Allowed: ' + validPriorities.join(', ') });
-    }
 
     const userId = req.session.userId;
     const attachmentPath = req.file ? `/uploads/${req.file.filename}` : null;
+    const parties = `Complainant: ${complainant_name || 'N/A'}, Respondent: ${respondent_name || 'N/A'}`;
 
     try {
         const result = await db.run(
-            `INSERT INTO complaints (user_id, title, category, court_name, case_number, parties, hearing_date, description, priority, status, attachment_path) 
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 'Filed', ?)`,
-            [userId, title, category, court_name, case_number, parties || '', hearing_date || '', description, priority, attachmentPath]
+            `INSERT INTO complaints (user_id, title, category, court_name, case_number, plaintiff_name, defendant_name, parties, description, priority, status, attachment_path) 
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'Filed', ?)`,
+            [userId, title, category, court_name, 'Pending Assignment', complainant_name, respondent_name, parties, description, priority, attachmentPath]
         );
 
         // Fire-and-forget notification (do not block response)

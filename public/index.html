@@ -73,10 +73,11 @@
         <!-- Prepopulated Helper Creds -->
         <div class="helper-creds">
           <p><strong>Demo Logins:</strong></p>
-          <div class="helper-chips">
-            <span class="chip" onclick="fillCreds('user', 'user123')">🧑 Complainant: <b>user</b> / user123</span>
-            <span class="chip" onclick="fillCreds('admin', 'admin123')">🛠️ Administrator: <b>admin</b> /
-              admin123</span>
+          <div class="helper-chips" style="display: grid; grid-template-columns: 1fr 1fr; gap: 0.5rem;">
+            <span class="chip" onclick="fillCreds('user', 'user123')">👤 Citizen: <b>user</b></span>
+            <span class="chip" onclick="fillCreds('clerk', 'clerk123')">📝 Clerk: <b>clerk</b></span>
+            <span class="chip" onclick="fillCreds('judge', 'judge123')">⚖️ Judge: <b>judge</b></span>
+            <span class="chip" onclick="fillCreds('admin', 'admin123')">🛠️ Admin: <b>admin</b></span>
           </div>
         </div>
       </form>
@@ -106,21 +107,38 @@
 
         <div class="form-group">
           <label>Account Role</label>
-          <div class="role-selector">
+          <div class="role-selector"
+            style="display: grid; grid-template-columns: 1fr 1fr; gap: 0.8rem; margin-top: 0.4rem;">
             <label class="role-option">
-              <input type="radio" name="reg-role" value="complainant" checked>
+              <input type="radio" name="reg-role" value="CITIZEN" checked>
               <div class="role-card">
-                <span class="role-icon">🧑</span>
-                <span class="role-title">Complainant</span>
-                <span class="role-subtitle">File and track tickets</span>
+                <span class="role-icon">👤</span>
+                <span class="role-title">Citizen</span>
+                <span class="role-subtitle">File complaints</span>
               </div>
             </label>
             <label class="role-option">
-              <input type="radio" name="reg-role" value="admin">
+              <input type="radio" name="reg-role" value="CLERK">
+              <div class="role-card">
+                <span class="role-icon">📝</span>
+                <span class="role-title">Registry Clerk</span>
+                <span class="role-subtitle">Intake & setup</span>
+              </div>
+            </label>
+            <label class="role-option">
+              <input type="radio" name="reg-role" value="JUDGE">
+              <div class="role-card">
+                <span class="role-icon">⚖️</span>
+                <span class="role-title">Judge</span>
+                <span class="role-subtitle">Adjudication</span>
+              </div>
+            </label>
+            <label class="role-option">
+              <input type="radio" name="reg-role" value="ADMIN">
               <div class="role-card">
                 <span class="role-icon">🛠️</span>
-                <span class="role-title">Staff / Admin</span>
-                <span class="role-subtitle">Manage ticket resolution</span>
+                <span class="role-title">Admin</span>
+                <span class="role-subtitle">System management</span>
               </div>
             </label>
           </div>

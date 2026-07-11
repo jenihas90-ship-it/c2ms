@@ -12,7 +12,8 @@ router.post('/register', async (req, res) => {
     }
 
     // Validate role
-    const userRole = role === 'admin' ? 'admin' : 'complainant';
+    const validRoles = ['CITIZEN', 'CLERK', 'JUDGE', 'ADMIN'];
+    const userRole = validRoles.includes(role?.toUpperCase()) ? role.toUpperCase() : 'CITIZEN';
 
     try {
         // Check if user exists

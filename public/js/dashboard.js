@@ -463,30 +463,50 @@ async function openEditComplaint() {
     }
 }
 
+// Step Wizard Logic
+function nextWizardStep(step) {
+    for (let i = 1; i <= 4; i++) {
+        const stepEl = document.getElementById(`wizard-step-${i}`);
+        if (stepEl) stepEl.classList.add('hidden');
+
+        const prog = document.getElementById(`prog-${i}`);
+        if (prog) {
+            if (i === step) {
+                prog.style.fontWeight = 'bold';
+                prog.style.color = 'var(--color-primary)';
+            } else {
+                prog.style.fontWeight = 'normal';
+                prog.style.color = 'var(--text-muted)';
+            }
+        }
+    }
+    const targetStep = document.getElementById(`wizard-step-${step}`);
+    if (targetStep) targetStep.classList.remove('hidden');
+}
+
 // File Ticket submission using FormData for attachments handling
 async function handleFileComplaint(event) {
     event.preventDefault();
 
     const title = document.getElementById('comp-title').value;
     const category = document.getElementById('comp-category').value;
-    const priority = document.getElementById('comp-priority').value;
-    const description = document.getElementById('comp-description').value;
     const courtName = document.getElementById('comp-court-name').value;
-    const caseNumber = document.getElementById('comp-case-number').value;
-    const parties = document.getElementById('comp-parties').value;
-    const hearingDate = document.getElementById('comp-hearing-date').value;
+    const complainantName = document.getElementById('comp-complainant-name').value;
+    const respondentName = document.getElementById('comp-respondent-name').value;
+    const complainantAddress = document.getElementById('comp-complainant-address').value;
+    const description = document.getElementById('comp-description').value;
+
     const fileInput = document.getElementById('comp-attachment');
     const submitBtn = event.target.querySelector('button[type="submit"]');
 
     const formData = new FormData();
     formData.append('title', title);
     formData.append('category', category);
-    formData.append('priority', priority);
-    formData.append('description', description);
     formData.append('court_name', courtName);
-    formData.append('case_number', caseNumber);
-    formData.append('parties', parties);
-    formData.append('hearing_date', hearingDate);
+    formData.append('complainant_name', complainantName);
+    formData.append('respondent_name', respondentName);
+    formData.append('complainant_address', complainantAddress);
+    formData.append('description', description);
 
     if (fileInput.files.length > 0) {
         formData.append('attachment', fileInput.files[0]);
@@ -507,6 +527,9 @@ async function handleFileComplaint(event) {
         event.target.reset();
         document.getElementById('file-name-info').classList.add('hidden');
         document.getElementById('upload-instruction').textContent = 'Drop files here or click to upload';
+
+        // Return to wizard step 1
+        nextWizardStep(1);
 
         // Reload list and counters
         await refreshDashboardData();
