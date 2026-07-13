@@ -528,6 +528,8 @@ async function handleFileComplaint(event) {
     const title = document.getElementById('comp-title').value;
     const category = document.getElementById('comp-category').value;
     const courtName = document.getElementById('comp-court-name').value;
+    const caseNumber = document.getElementById('comp-case-number').value;
+    const hearingDate = document.getElementById('comp-hearing-date').value;
     const complainantName = document.getElementById('comp-complainant-name').value;
     const respondentName = document.getElementById('comp-respondent-name').value;
     const complainantAddress = document.getElementById('comp-complainant-address').value;
@@ -540,6 +542,8 @@ async function handleFileComplaint(event) {
     formData.append('title', title);
     formData.append('category', category);
     formData.append('court_name', courtName);
+    formData.append('case_number', caseNumber);
+    formData.append('hearing_date', hearingDate);
     formData.append('complainant_name', complainantName);
     formData.append('respondent_name', respondentName);
     formData.append('complainant_address', complainantAddress);
