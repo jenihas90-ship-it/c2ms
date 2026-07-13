@@ -489,7 +489,19 @@ async function openEditComplaint() {
 }
 
 // Step Wizard Logic
-function nextWizardStep(step) {
+function nextWizardStep(step, currentStepToValidate = null) {
+    if (currentStepToValidate !== null) {
+        const currentStepEl = document.getElementById(`wizard-step-${currentStepToValidate}`);
+        if (currentStepEl) {
+            const inputs = currentStepEl.querySelectorAll('input, select, textarea');
+            for (let input of inputs) {
+                if (!input.checkValidity()) {
+                    input.reportValidity();
+                    return; // Stop advancing if validation fails
+                }
+            }
+        }
+    }
     for (let i = 1; i <= 4; i++) {
         const stepEl = document.getElementById(`wizard-step-${i}`);
         if (stepEl) stepEl.classList.add('hidden');

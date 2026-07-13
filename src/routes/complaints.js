@@ -14,10 +14,12 @@ const upload = multer({
     storage: storage,
     limits: { fileSize: 10 * 1024 * 1024 }, // 10MB limit
     fileFilter: function (req, file, cb) {
-        const allowedTypes = /jpeg|jpg|png|gif|pdf|docx|txt/;
-        const extname = allowedTypes.test(path.extname(file.originalname).toLowerCase());
-        const mimetype = allowedTypes.test(file.mimetype);
-        if (mimetype && extname) {
+        const allowedExts = /\.(jpeg|jpg|png|gif|pdf|docx|txt)$/i;
+        const allowedMimes = /jpeg|jpg|png|gif|pdf|officedocument|msword|plain|octet-stream/;
+        const extOk = allowedExts.test(file.originalname);
+        const mimeOk = allowedMimes.test(file.mimetype);
+        // Accept if extension is valid (browsers sometimes send generic mime types)
+        if (extOk || mimeOk) {
             return cb(null, true);
         }
         cb(new Error('Only JPEG, PNG, GIF, PDF, DOCX, and TXT files are allowed.'));
@@ -41,7 +43,10 @@ router.post('/', requireLogin, upload.single('attachment'), async (req, res) => 
     }
 
     const userId = req.session.userId;
-    const attachmentPath = req.file ? `/uploads/${req.file.filename}` : null;
+    // memoryStorage (used on Vercel) provides .buffer and .originalname but NOT .filename.
+    // Disk storage provides .filename. We store null on serverless environments since
+    // there is no persistent file system to serve files from.
+    const attachmentPath = req.file && req.file.filename ? `/uploads/${req.file.filename}` : null;
     const parties = `Complainant: ${complainant_name || 'N/A'}, Respondent: ${respondent_name || 'N/A'}`;
 
     try {
