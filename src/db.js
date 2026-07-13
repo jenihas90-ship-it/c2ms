@@ -109,7 +109,7 @@ async function initDatabase() {
     )
   `);
 
-  // Create Remarks Table (Discussion timeline)
+  // Create Remarks Table
   await run(`
     CREATE TABLE IF NOT EXISTS remarks (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -166,43 +166,27 @@ async function initDatabase() {
       "INSERT INTO users (username, email, password, role) VALUES (?, ?, ?, ?)",
       ['admin', 'admin@cms.com', hashedPassword, 'ADMIN']
     );
-    console.log('Default Admin user created: admin / admin123');
+    console.log('Default Admin user seeded.');
   }
 
-  // Insert a default complainant user
+  // Insert default users
   const userExists = await get("SELECT * FROM users WHERE role = 'CITIZEN' LIMIT 1");
   if (!userExists) {
     const hashedPassword = bcrypt.hashSync('user123', 10);
-    await run(
-      "INSERT INTO users (username, email, password, role) VALUES (?, ?, ?, ?)",
-      ['user', 'user@cms.com', hashedPassword, 'CITIZEN']
-    );
-    console.log('Default Complainant user created: user / user123');
+    await run("INSERT INTO users (username, email, password, role) VALUES (?, ?, ?, ?)", ['user', 'user@cms.com', hashedPassword, 'CITIZEN']);
   }
-
-  // Insert a default clerk user
   const clerkExists = await get("SELECT * FROM users WHERE role = 'CLERK' LIMIT 1");
   if (!clerkExists) {
     const hashedPassword = bcrypt.hashSync('clerk123', 10);
-    await run(
-      "INSERT INTO users (username, email, password, role) VALUES (?, ?, ?, ?)",
-      ['clerk', 'clerk@cms.com', hashedPassword, 'CLERK']
-    );
-    console.log('Default Clerk user created: clerk / clerk123');
+    await run("INSERT INTO users (username, email, password, role) VALUES (?, ?, ?, ?)", ['clerk', 'clerk@cms.com', hashedPassword, 'CLERK']);
   }
-
-  // Insert a default judge user
   const judgeExists = await get("SELECT * FROM users WHERE role = 'JUDGE' LIMIT 1");
   if (!judgeExists) {
     const hashedPassword = bcrypt.hashSync('judge123', 10);
-    await run(
-      "INSERT INTO users (username, email, password, role) VALUES (?, ?, ?, ?)",
-      ['judge', 'judge@cms.com', hashedPassword, 'JUDGE']
-    );
-    console.log('Default Judge user created: judge / judge123');
+    await run("INSERT INTO users (username, email, password, role) VALUES (?, ?, ?, ?)", ['judge', 'judge@cms.com', hashedPassword, 'JUDGE']);
   }
 
-  console.log('Database initialized successfully (in-memory).');
+  console.log('Database initialized successfully.');
 }
 
 module.exports = {

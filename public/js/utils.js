@@ -69,6 +69,7 @@ async function apiRequest(url, options = {}) {
 
     // Include credentials so same-origin cookies (sessions) are sent
     options.credentials = options.credentials || 'include';
+    options.cache = 'no-store';
 
     try {
         const response = await fetch(url, options);

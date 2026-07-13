@@ -33,7 +33,7 @@ router.post('/', requireLogin, upload.single('attachment'), async (req, res) => 
     }
 
     // Validate fields
-    const validCategories = ['Civil', 'Criminal', 'Family', 'Administrative', 'Other'];
+    const validCategories = ['Civil', 'Criminal', 'Family', 'Property', 'Labor', 'Administrative', 'Other'];
     const priority = 'Medium'; // Default priority for citizen-filed complaints
 
     if (!validCategories.includes(category)) {
@@ -328,7 +328,7 @@ router.patch('/:id', requireAdmin, async (req, res) => {
             params.push(title);
         }
         if (category) {
-            const validCategories = ['Civil', 'Criminal', 'Family', 'Administrative', 'Other'];
+            const validCategories = ['Civil', 'Criminal', 'Family', 'Property', 'Labor', 'Administrative', 'Other'];
             if (!validCategories.includes(category)) {
                 return res.status(400).json({ error: 'Invalid category. Allowed: ' + validCategories.join(', ') });
             }
