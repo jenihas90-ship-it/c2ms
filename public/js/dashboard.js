@@ -583,7 +583,7 @@ function fileSelectedNotify(input) {
 }
 
 // Sidebar Navigation filter links switching
-function switchNav(tab) {
+function switchNav(tab, overrideStatus = null) {
     activeNavTab = tab;
 
     const navItems = document.querySelectorAll('.nav-item');
@@ -591,22 +591,39 @@ function switchNav(tab) {
 
     const statusFilter = document.getElementById('filter-status');
     const titleEl = document.getElementById('workspace-title');
+    const isStaff = ['ADMIN', 'admin', 'CLERK', 'JUDGE'].includes(currentUser?.role);
 
     if (tab === 'dashboard') {
         document.getElementById('nav-dashboard').classList.add('active');
         statusFilter.value = '';
         titleEl.textContent = 'Overview';
+
+        document.getElementById('metrics-panel').classList.remove('hidden');
+        if (isStaff) document.getElementById('admin-charts-section').classList.remove('hidden');
     } else if (tab === 'complaints') {
         document.getElementById('nav-all-complaints').classList.add('active');
-        statusFilter.value = '';
+
+        if (overrideStatus !== null) {
+            statusFilter.value = overrideStatus;
+        } else {
+            statusFilter.value = '';
+        }
 
         let headerText = 'Total Active Complaints';
         const activeRole = currentUser?.role || '';
-        if (activeRole === 'CLERK') headerText = 'Registry Intake Queue';
+
+        if (overrideStatus) headerText = overrideStatus + ' Complaints';
+        else if (activeRole === 'CLERK') headerText = 'Registry Intake Queue';
         else if (activeRole === 'JUDGE') headerText = 'Judicial Caseload';
 
         titleEl.textContent = headerText;
-    } else if (tab === 'new' && (!['ADMIN', 'admin', 'CLERK', 'JUDGE'].includes(currentUser?.role))) {
+
+        // Hide top metrics to give a clean "open list" view
+        document.getElementById('metrics-panel').classList.add('hidden');
+        document.getElementById('admin-charts-section').classList.add('hidden');
+
+        window.scrollTo({ top: 0, behavior: 'smooth' });
+    } else if (tab === 'new' && (!isStaff)) {
         document.getElementById('nav-new-complaint').classList.add('active');
         titleEl.textContent = 'Submit New Ticket';
         // Scroll directly to the form

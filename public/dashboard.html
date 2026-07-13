@@ -83,28 +83,32 @@
             <div class="dashboard-content">
                 <!-- 2A. OVERVIEW METRICS GRID PANEL -->
                 <section id="metrics-panel" class="dashboard-metrics-grid">
-                    <div class="metric-card total-mt" id="total-filed-card" onclick="switchNav('complaints')">
+                    <div class="metric-card total-mt" id="total-filed-card" style="cursor: pointer;"
+                        onclick="switchNav('complaints')">
                         <div class="metric-icon-box">📂</div>
                         <div class="metric-info">
                             <span id="metric-total-val" class="metric-value">0</span>
                             <span class="metric-name">Total filed</span>
                         </div>
                     </div>
-                    <div class="metric-card pending-mt">
+                    <div class="metric-card pending-mt" style="cursor: pointer;"
+                        onclick="switchNav('complaints', 'Pending')">
                         <div class="metric-icon-box">⏳</div>
                         <div class="metric-info">
                             <span id="metric-pending-val" class="metric-value">0</span>
                             <span class="metric-name">Pending</span>
                         </div>
                     </div>
-                    <div class="metric-card progress-mt">
+                    <div class="metric-card progress-mt" style="cursor: pointer;"
+                        onclick="switchNav('complaints', 'In Progress')">
                         <div class="metric-icon-box">⚙️</div>
                         <div class="metric-info">
                             <span id="metric-progress-val" class="metric-value">0</span>
                             <span class="metric-name">In Progress</span>
                         </div>
                     </div>
-                    <div class="metric-card resolved-mt">
+                    <div class="metric-card resolved-mt" style="cursor: pointer;"
+                        onclick="switchNav('complaints', 'Resolved')">
                         <div class="metric-icon-box">✅</div>
                         <div class="metric-info">
                             <span id="metric-resolved-val" class="metric-value">0</span>
