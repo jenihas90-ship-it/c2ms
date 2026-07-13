@@ -4,8 +4,264 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="description"
+    content="About Justice Connect – Court Complaint Management System. Learn about our mission, features, and how we simplify court e-Filing.">
   <title>About | Justice Connect</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link
+    href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Outfit:wght@400;500;600;700;800&display=swap"
+    rel="stylesheet">
   <link rel="stylesheet" href="/css/styles.css">
+  <style>
+    /* ── About page specific styles ── */
+    .about-hero {
+      position: relative;
+      width: 100%;
+      height: 420px;
+      overflow: hidden;
+      border-radius: 1.25rem;
+      margin-bottom: 3rem;
+      box-shadow: 0 20px 60px rgba(0, 0, 0, 0.35);
+    }
+
+    .about-hero img {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+      object-position: center;
+    }
+
+    .about-hero-overlay {
+      position: absolute;
+      inset: 0;
+      background: linear-gradient(to bottom, rgba(10, 10, 30, 0.15) 0%, rgba(10, 10, 30, 0.72) 100%);
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: flex-end;
+      padding: 2.5rem;
+      text-align: center;
+    }
+
+    .about-hero-overlay h1 {
+      font-family: var(--font-display);
+      font-size: 2.8rem;
+      color: #fff;
+      margin: 0 0 0.5rem;
+      text-shadow: 0 2px 12px rgba(0, 0, 0, 0.5);
+    }
+
+    .about-hero-overlay p {
+      color: rgba(255, 255, 255, 0.85);
+      font-size: 1.1rem;
+      max-width: 600px;
+      line-height: 1.6;
+    }
+
+    .about-section {
+      margin-bottom: 4rem;
+    }
+
+    .about-section h2 {
+      font-family: var(--font-display);
+      font-size: 1.7rem;
+      margin-bottom: 0.75rem;
+      color: var(--text-main);
+    }
+
+    .about-section p {
+      color: var(--text-muted);
+      font-size: 1rem;
+      line-height: 1.8;
+      margin-bottom: 1rem;
+    }
+
+    /* Feature row: image left + text right, alternating */
+    .feature-row {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 2.5rem;
+      align-items: center;
+      margin-bottom: 4rem;
+    }
+
+    .feature-row.reverse {
+      direction: rtl;
+    }
+
+    .feature-row.reverse>* {
+      direction: ltr;
+    }
+
+    .feature-img {
+      width: 100%;
+      height: 280px;
+      object-fit: cover;
+      border-radius: 1rem;
+      box-shadow: 0 10px 40px rgba(0, 0, 0, 0.25);
+      transition: transform 0.35s ease, box-shadow 0.35s ease;
+    }
+
+    .feature-img:hover {
+      transform: scale(1.025);
+      box-shadow: 0 18px 55px rgba(0, 0, 0, 0.35);
+    }
+
+    .feature-text h3 {
+      font-family: var(--font-display);
+      font-size: 1.4rem;
+      margin-bottom: 0.75rem;
+      color: var(--text-main);
+    }
+
+    .feature-text p {
+      color: var(--text-muted);
+      font-size: 0.97rem;
+      line-height: 1.8;
+      margin-bottom: 0.75rem;
+    }
+
+    .feature-text ul {
+      list-style: none;
+      padding: 0;
+      margin: 0;
+    }
+
+    .feature-text ul li {
+      color: var(--text-muted);
+      font-size: 0.95rem;
+      padding: 0.3rem 0;
+      display: flex;
+      align-items: flex-start;
+      gap: 0.6rem;
+      line-height: 1.6;
+    }
+
+    .feature-text ul li::before {
+      content: "✓";
+      color: var(--color-primary);
+      font-weight: 700;
+      flex-shrink: 0;
+      margin-top: 2px;
+    }
+
+    /* Stat chips */
+    .stats-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+      gap: 1.25rem;
+      margin: 2rem 0;
+    }
+
+    .stat-chip {
+      background: var(--glass-bg, rgba(255, 255, 255, 0.06));
+      border: 1px solid rgba(255, 255, 255, 0.1);
+      border-radius: 1rem;
+      padding: 1.5rem 1.25rem;
+      text-align: center;
+      backdrop-filter: blur(8px);
+    }
+
+    .stat-chip .stat-number {
+      font-family: var(--font-display);
+      font-size: 2.2rem;
+      font-weight: 800;
+      color: var(--color-primary);
+      display: block;
+    }
+
+    .stat-chip .stat-label {
+      color: var(--text-muted);
+      font-size: 0.85rem;
+      margin-top: 0.25rem;
+    }
+
+    /* Role cards */
+    .role-cards {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+      gap: 1.2rem;
+      margin-top: 1.5rem;
+    }
+
+    .role-card {
+      background: var(--glass-bg, rgba(255, 255, 255, 0.05));
+      border: 1px solid rgba(255, 255, 255, 0.1);
+      border-radius: 1rem;
+      padding: 1.5rem 1.25rem;
+      text-align: center;
+      backdrop-filter: blur(8px);
+      transition: transform 0.25s ease, box-shadow 0.25s ease;
+    }
+
+    .role-card:hover {
+      transform: translateY(-4px);
+      box-shadow: 0 12px 36px rgba(0, 0, 0, 0.25);
+    }
+
+    .role-card .role-icon {
+      font-size: 2rem;
+      margin-bottom: 0.6rem;
+      display: block;
+    }
+
+    .role-card h4 {
+      color: var(--text-main);
+      font-weight: 700;
+      margin: 0 0 0.4rem;
+    }
+
+    .role-card p {
+      color: var(--text-muted);
+      font-size: 0.85rem;
+      line-height: 1.6;
+      margin: 0;
+    }
+
+    /* Tech stack badges */
+    .tech-list {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 0.65rem;
+      margin-top: 1rem;
+    }
+
+    .tech-badge {
+      background: rgba(99, 102, 241, 0.15);
+      border: 1px solid rgba(99, 102, 241, 0.35);
+      color: var(--color-primary);
+      border-radius: 999px;
+      padding: 0.35rem 1rem;
+      font-size: 0.85rem;
+      font-weight: 600;
+    }
+
+    /* Divider */
+    .section-divider {
+      border: none;
+      border-top: 1px solid rgba(255, 255, 255, 0.08);
+      margin: 3rem 0;
+    }
+
+    @media (max-width: 680px) {
+      .feature-row {
+        grid-template-columns: 1fr;
+      }
+
+      .feature-row.reverse {
+        direction: ltr;
+      }
+
+      .about-hero {
+        height: 260px;
+      }
+
+      .about-hero-overlay h1 {
+        font-size: 1.8rem;
+      }
+    }
+  </style>
 </head>
 
 <body>
@@ -26,24 +282,217 @@
     </nav>
   </header>
 
-  <main style="padding:3rem; max-width:900px; margin:0 auto; color:var(--text-main);">
-    <h1 style="font-family:var(--font-display);">About Justice Connect</h1>
-    <p style="color:var(--text-muted); font-size:1.05rem;">Justice Connect is an open-source court complaint management
-      demo designed to simplify e-Filing, case tracking, and resolving court disputes. It demonstrates:</p>
-    <ul style="color:var(--text-muted);">
-      <li>Session-based authentication with hashed passwords</li>
-      <li>File uploads with `multer`</li>
-      <li>SQLite persistence and simple migration handling</li>
-      <li>Admin workflows for status updates and remarks</li>
-    </ul>
+  <main style="padding:3rem 2rem; max-width:980px; margin:0 auto; color:var(--text-main);">
 
-    <h3>Contributors</h3>
-    <p class="muted">This app was scaffolded and extended inside your workspace.</p>
+    <!-- ── Hero Banner ── -->
+    <div class="about-hero">
+      <img src="/images/justice_hero_banner.png" alt="Grand courthouse building at golden hour">
+      <div class="about-hero-overlay">
+        <h1>About Justice Connect</h1>
+        <p>A modern e-Filing platform bringing transparency, efficiency, and accessibility to court complaint management
+          across jurisdictions.</p>
+      </div>
+    </div>
+
+    <!-- ── Mission ── -->
+    <div class="about-section">
+      <h2>Our Mission</h2>
+      <p>
+        Justice Connect was built with a single purpose: to remove the barriers that prevent citizens from accessing
+        justice. Traditional court filing processes involve long queues, mountains of paperwork, and opaque status
+        updates. We change that by providing a secure, intuitive, web-based platform where anyone can file a complaint,
+        track their case in real time, and communicate directly with court staff — all from their browser.
+      </p>
+      <p>
+        The system is designed to serve everyone in the legal process — from citizens filing their first complaint, to
+        clerks managing intake queues, judges reviewing caseloads, and administrators overseeing the entire workflow.
+      </p>
+
+      <div class="stats-grid">
+        <div class="stat-chip">
+          <span class="stat-number">4</span>
+          <span class="stat-label">User Roles Supported</span>
+        </div>
+        <div class="stat-chip">
+          <span class="stat-number">6</span>
+          <span class="stat-label">Complaint Categories</span>
+        </div>
+        <div class="stat-chip">
+          <span class="stat-number">100%</span>
+          <span class="stat-label">Browser-Based Access</span>
+        </div>
+        <div class="stat-chip">
+          <span class="stat-number">24/7</span>
+          <span class="stat-label">Available Online</span>
+        </div>
+      </div>
+    </div>
+
+    <hr class="section-divider">
+
+    <!-- ── Feature: E-Filing ── -->
+    <div class="feature-row">
+      <img class="feature-img" src="/images/efiling_feature.png" alt="Person filing a complaint on a laptop">
+      <div class="feature-text">
+        <h3>📋 Seamless E-Filing Wizard</h3>
+        <p>
+          Our guided 4-step complaint wizard walks complainants through every detail needed for a valid court
+          submission. No legal jargon, no confusing forms — just simple, structured steps.
+        </p>
+        <ul>
+          <li>Select complaint type and court jurisdiction</li>
+          <li>Fill in party details — complainant, respondent, and address</li>
+          <li>Enter case number and hearing date if already assigned</li>
+          <li>Write a detailed narrative of the dispute</li>
+          <li>Optionally attach evidence documents, photos, or PDFs (up to 10 MB)</li>
+          <li>Submit and receive an instant reference number</li>
+        </ul>
+        <p>
+          Each complaint is stamped with a unique reference ID, timestamped, and immediately visible to assigned staff —
+          no delays, no lost paperwork.
+        </p>
+      </div>
+    </div>
+
+    <!-- ── Feature: Case Tracking ── -->
+    <div class="feature-row reverse">
+      <img class="feature-img" src="/images/case_tracking_feature.png" alt="Judge reviewing a case file in court">
+      <div class="feature-text">
+        <h3>⚖️ Real-Time Case Tracking</h3>
+        <p>
+          Once a complaint is filed, both the complainant and court staff can monitor every stage of its lifecycle.
+          Status updates are reflected immediately on the dashboard without needing to refresh.
+        </p>
+        <ul>
+          <li><strong>Filed</strong> — Complaint received and logged</li>
+          <li><strong>Pending</strong> — Awaiting clerk review and assignment</li>
+          <li><strong>In Progress</strong> — Active investigation or hearing scheduled</li>
+          <li><strong>Under Review</strong> — Judge has taken up the matter</li>
+          <li><strong>Scheduled</strong> — Hearing date confirmed</li>
+          <li><strong>Resolved / Rejected / Closed</strong> — Final disposition recorded</li>
+        </ul>
+        <p>
+          A live chat timeline within each complaint allows complainants, clerks, and judges to exchange remarks, upload
+          clarifications, and maintain a full audit trail.
+        </p>
+      </div>
+    </div>
+
+    <!-- ── Feature: Team Collaboration ── -->
+    <div class="feature-row">
+      <img class="feature-img" src="/images/team_collaboration.png"
+        alt="Legal professionals collaborating around a table">
+      <div class="feature-text">
+        <h3>🛠️ Multi-Role Staff Console</h3>
+        <p>
+          Justice Connect is not just a citizen portal — it is a full staff collaboration environment. Different roles
+          see different views and controls, ensuring every user has exactly what they need without clutter.
+        </p>
+        <ul>
+          <li>Admins access global analytics, category breakdowns, and priority reports</li>
+          <li>Clerks manage the registry intake queue and assign cases</li>
+          <li>Judges view their personal caseload and issue rulings</li>
+          <li>All staff can update statuses, post remarks, edit details, and delete records</li>
+          <li>CSV export with optional remarks and attachment columns for audit compliance</li>
+        </ul>
+      </div>
+    </div>
+
+    <hr class="section-divider">
+
+    <!-- ── Roles Section ── -->
+    <div class="about-section">
+      <h2>Who Uses Justice Connect?</h2>
+      <p>The platform supports four distinct roles, each with tailored dashboards and permissions:</p>
+      <div class="role-cards">
+        <div class="role-card">
+          <span class="role-icon">🧑</span>
+          <h4>Citizen</h4>
+          <p>File new complaints, track case status, upload evidence, and communicate via the live remarks timeline.</p>
+        </div>
+        <div class="role-card">
+          <span class="role-icon">📝</span>
+          <h4>Registry Clerk</h4>
+          <p>Review incoming filings, validate submissions, assign cases to judges, and manage the intake queue.</p>
+        </div>
+        <div class="role-card">
+          <span class="role-icon">⚖️</span>
+          <h4>Judge</h4>
+          <p>Access assigned caseloads, schedule hearings, issue orders, and post official rulings.</p>
+        </div>
+        <div class="role-card">
+          <span class="role-icon">🛠️</span>
+          <h4>Administrator</h4>
+          <p>Full system oversight — analytics, user management, export reports, and system configuration.</p>
+        </div>
+      </div>
+    </div>
+
+    <hr class="section-divider">
+
+    <!-- ── Technology ── -->
+    <div class="about-section">
+      <h2>Technology Stack</h2>
+      <p>
+        Justice Connect is built with a lightweight, battle-tested stack that keeps the system fast, secure, and easy to
+        deploy. The entire application can be hosted on Vercel's serverless infrastructure at zero cost during
+        development.
+      </p>
+      <p>
+        Security is a first-class concern: all passwords are hashed with <strong>bcrypt</strong>, sessions are managed
+        server-side with <strong>HTTP-only cookies</strong>, and every API endpoint enforces role-based access control.
+        File uploads are validated for type and size before storage.
+      </p>
+      <div class="tech-list">
+        <span class="tech-badge">Node.js</span>
+        <span class="tech-badge">Express.js</span>
+        <span class="tech-badge">SQL.js (SQLite)</span>
+        <span class="tech-badge">Multer</span>
+        <span class="tech-badge">bcryptjs</span>
+        <span class="tech-badge">express-session</span>
+        <span class="tech-badge">Vanilla JS</span>
+        <span class="tech-badge">CSS Variables</span>
+        <span class="tech-badge">Vercel Serverless</span>
+        <span class="tech-badge">Google Fonts</span>
+      </div>
+    </div>
+
+    <hr class="section-divider">
+
+    <!-- ── Demo Accounts ── -->
+    <div class="about-section">
+      <h2>Try It Now</h2>
+      <p>Use the following demo accounts to explore different perspectives of the platform:</p>
+      <div class="stats-grid" style="grid-template-columns: repeat(auto-fit,minmax(200px,1fr));">
+        <div class="stat-chip" style="text-align:left; padding:1.25rem 1.5rem;">
+          <span style="font-size:1.5rem;">🧑</span>
+          <strong style="display:block; margin:0.4rem 0 0.2rem; color:var(--text-main);">Citizen</strong>
+          <code style="color:var(--color-primary); font-size:0.9rem;">user / user123</code>
+        </div>
+        <div class="stat-chip" style="text-align:left; padding:1.25rem 1.5rem;">
+          <span style="font-size:1.5rem;">📝</span>
+          <strong style="display:block; margin:0.4rem 0 0.2rem; color:var(--text-main);">Clerk</strong>
+          <code style="color:var(--color-primary); font-size:0.9rem;">clerk / clerk123</code>
+        </div>
+        <div class="stat-chip" style="text-align:left; padding:1.25rem 1.5rem;">
+          <span style="font-size:1.5rem;">⚖️</span>
+          <strong style="display:block; margin:0.4rem 0 0.2rem; color:var(--text-main);">Judge</strong>
+          <code style="color:var(--color-primary); font-size:0.9rem;">judge / judge123</code>
+        </div>
+        <div class="stat-chip" style="text-align:left; padding:1.25rem 1.5rem;">
+          <span style="font-size:1.5rem;">🛠️</span>
+          <strong style="display:block; margin:0.4rem 0 0.2rem; color:var(--text-main);">Admin</strong>
+          <code style="color:var(--color-primary); font-size:0.9rem;">admin / admin123</code>
+        </div>
+      </div>
+    </div>
+
   </main>
 
   <footer style="padding:2rem; text-align:center; color:var(--text-muted);">
-    <small>© Justice Connect</small>
+    <small>© 2026 Justice Connect · Court Complaint Management System · Built with ⚖️ for accessible justice</small>
   </footer>
+
 </body>
 
 </html>
