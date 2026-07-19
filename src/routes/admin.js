@@ -4,8 +4,8 @@ const db = require('../db');
 const { requireLogin } = require('../middleware/auth');
 const requireRole = require('../middleware/roleCheck');
 
-// Get global analytics summary
-router.get('/stats', requireRole(['ADMIN']), async (req, res) => {
+// Get global analytics summary (Admin, Clerk, Judge can view)
+router.get('/stats', requireRole(['ADMIN', 'CLERK', 'JUDGE']), async (req, res) => {
     try {
         const totalCount = await db.get('SELECT COUNT(*) as val FROM complaints');
         const pendingCount = await db.get("SELECT COUNT(*) as val FROM complaints WHERE status = 'Pending'");

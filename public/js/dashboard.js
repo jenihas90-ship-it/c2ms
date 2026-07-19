@@ -74,10 +74,27 @@ async function refreshDashboardData() {
     if (isStaff) {
         await loadAdminStats();
     } else {
-        // Complainants compile metrics locally from their specific tickets list return
         await calculateComplainantMetrics();
     }
     await loadComplaintsList();
+}
+
+// Compile metrics from citizen's own complaints list
+async function calculateComplainantMetrics() {
+    try {
+        const list = await apiRequest('/api/complaints');
+        const total = list.length;
+        const pending = list.filter(c => c.status === 'Pending' || c.status === 'Filed').length;
+        const progress = list.filter(c => c.status === 'In Progress' || c.status === 'Under Review').length;
+        const resolved = list.filter(c => c.status === 'Resolved').length;
+
+        document.getElementById('metric-total-val').textContent = total;
+        document.getElementById('metric-pending-val').textContent = pending;
+        document.getElementById('metric-progress-val').textContent = progress;
+        document.getElementById('metric-resolved-val').textContent = resolved;
+    } catch (error) {
+        console.error('Failed to calculate citizen metrics:', error);
+    }
 }
 
 // Load statistics from Admin API endpoints
