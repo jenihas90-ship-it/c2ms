@@ -19,10 +19,10 @@ function setupDashboardView() {
 
     let roleText = 'Citizen';
     let icon = '🧑';
-    const activeRole = currentUser.role || '';
+    const activeRole = currentUser.role ? currentUser.role.toUpperCase() : '';
 
-    if (activeRole === 'ADMIN' || activeRole === 'admin') {
-        roleText = 'Staff / Admin';
+    if (activeRole === 'ADMIN') {
+        roleText = 'System Administrator';
         icon = '🛠️';
     } else if (activeRole === 'CLERK') {
         roleText = 'Registry Clerk';
@@ -36,30 +36,32 @@ function setupDashboardView() {
     const avatar = document.getElementById('sidebar-avatar');
     avatar.textContent = icon;
 
-    const isStaff = ['ADMIN', 'admin', 'CLERK', 'JUDGE'].includes(activeRole);
+    // Hide all role-specific classes by default
+    document.querySelectorAll('.role-citizen, .role-staff, .role-admin, .role-clerk, .role-judge').forEach(el => el.classList.add('hidden'));
+
+    const isStaff = ['ADMIN', 'CLERK', 'JUDGE'].includes(activeRole);
     if (isStaff) {
         avatar.classList.add('admin-user');
 
-        // Toggle Staff specific views
-        document.getElementById('file-complaint-section').classList.add('hidden');
-        document.getElementById('admin-charts-section').classList.remove('hidden');
-        document.getElementById('admin-actions-controls').classList.remove('hidden');
+        // Show all Staff items
+        document.querySelectorAll('.role-staff').forEach(el => el.classList.remove('hidden'));
 
-        if (activeRole === 'CLERK') {
+        if (activeRole === 'ADMIN') {
+            document.querySelectorAll('.role-admin').forEach(el => el.classList.remove('hidden'));
+            document.getElementById('nav-all-complaints').innerHTML = '<span>📁</span> All Complaints';
+            document.getElementById('workspace-title').textContent = 'System Overview';
+        } else if (activeRole === 'CLERK') {
+            document.querySelectorAll('.role-clerk').forEach(el => el.classList.remove('hidden'));
             document.getElementById('nav-all-complaints').innerHTML = '<span>📁</span> Registry Intake';
             document.getElementById('workspace-title').textContent = 'Registry Overview';
         } else if (activeRole === 'JUDGE') {
+            document.querySelectorAll('.role-judge').forEach(el => el.classList.remove('hidden'));
             document.getElementById('nav-all-complaints').innerHTML = '<span>⚖️</span> My Caseload';
             document.getElementById('workspace-title').textContent = 'Judicial Overview';
         }
     } else {
-        // Toggle Complainant specific views
-        document.getElementById('file-complaint-section').classList.remove('hidden');
-        document.getElementById('admin-charts-section').classList.add('hidden');
-        document.getElementById('admin-actions-controls').classList.add('hidden');
-
-        // Unhide complainant layout items
-        document.querySelectorAll('.complainant-only').forEach(el => el.classList.remove('hidden'));
+        // Show Citizen items
+        document.querySelectorAll('.role-citizen').forEach(el => el.classList.remove('hidden'));
     }
 
     // Load stats & tickets
@@ -227,14 +229,25 @@ async function loadComplaintsList() {
             card.onclick = () => openDetailsInspector(item.id);
 
             // Admin controls visible per-card for quick actions
-            const isStaff = ['ADMIN', 'admin', 'CLERK', 'JUDGE'].includes(currentUser?.role);
-            const adminControls = (isStaff) ? `
-                            <div class="card-admin-actions">
-                                <button class="tiny-btn" onclick="event.stopPropagation(); adminReject(${item.id})">Reject</button>
-                                <button class="tiny-btn" onclick="event.stopPropagation(); adminEdit(${item.id})">Edit</button>
-                                <button class="tiny-btn" onclick="event.stopPropagation(); adminDelete(${item.id})">Delete</button>
-                            </div>
-                        ` : '';
+            const isStaff = ['ADMIN', 'CLERK', 'JUDGE'].includes(currentUser?.role?.toUpperCase());
+            const activeRole = currentUser?.role?.toUpperCase();
+
+            let adminControls = '';
+            if (isStaff) {
+                adminControls = '<div class="card-admin-actions">';
+                if (activeRole === 'ADMIN') {
+                    adminControls += `
+                        <button class="tiny-btn" onclick="event.stopPropagation(); adminReject(${item.id})">Reject</button>
+                        <button class="tiny-btn" onclick="event.stopPropagation(); adminEdit(${item.id})">Edit</button>
+                        <button class="tiny-btn" onclick="event.stopPropagation(); adminDelete(${item.id})">Delete</button>
+                     `;
+                } else if (activeRole === 'JUDGE') {
+                    adminControls += `<button class="tiny-btn" onclick="event.stopPropagation(); openDetailsInspector(${item.id})">Adjudicate</button>`;
+                } else if (activeRole === 'CLERK') {
+                    adminControls += `<button class="tiny-btn" onclick="event.stopPropagation(); openDetailsInspector(${item.id})">Manage</button>`;
+                }
+                adminControls += '</div>';
+            }
 
             card.innerHTML = `
         <div class="complaint-item-details">
@@ -285,6 +298,17 @@ async function openDetailsInspector(id) {
         document.getElementById('inspect-date').textContent = formatDate(c.created_at);
         document.getElementById('inspect-desc-text').textContent = c.description;
 
+        // Complainant Location/Contact
+        document.getElementById('inspect-comp-phone').textContent = c.complainant_phone || 'None provided';
+        document.getElementById('inspect-comp-location').textContent = [c.complainant_woreda, c.complainant_region, c.complainant_country].filter(Boolean).join(', ') || 'N/A';
+
+        // Respondent Location/Contact
+        const respContactList = [];
+        if (c.respondent_phone) respContactList.push(c.respondent_phone);
+        if (c.respondent_email) respContactList.push(c.respondent_email);
+        document.getElementById('inspect-resp-contact').textContent = respContactList.length > 0 ? respContactList.join(' | ') : 'None provided';
+        document.getElementById('inspect-resp-location').textContent = [c.respondent_woreda, c.respondent_region, c.respondent_country].filter(Boolean).join(', ') || 'N/A';
+
         // Status badge class mapping
         const statusEl = document.getElementById('inspect-status-badge');
         statusEl.className = 'status-badge';
@@ -308,6 +332,13 @@ async function openDetailsInspector(id) {
             document.getElementById('inspect-attachment-link').href = `/api/complaints/${c.id}/attachment`;
         } else {
             docContainer.classList.add('hidden');
+        }
+
+        // Show citizen edit button if eligible
+        if (currentUser && currentUser.role === 'CITIZEN' && c.user_id === currentUser.id && (c.status === 'Filed' || c.status === 'Pending')) {
+            document.getElementById('citizen-edit-btn').classList.remove('hidden');
+        } else if (document.getElementById('citizen-edit-btn')) {
+            document.getElementById('citizen-edit-btn').classList.add('hidden');
         }
 
         // Load timeline chat logs
@@ -535,6 +566,17 @@ async function handleFileComplaint(event) {
     const complainantAddress = document.getElementById('comp-complainant-address').value;
     const description = document.getElementById('comp-description').value;
 
+    const complainantPhone = document.getElementById('comp-complainant-phone').value;
+    const complainantCountry = document.getElementById('comp-complainant-country').value;
+    const complainantRegion = document.getElementById('comp-complainant-region').value;
+    const complainantWoreda = document.getElementById('comp-complainant-woreda').value;
+
+    const respondentPhone = document.getElementById('comp-respondent-phone').value;
+    const respondentEmail = document.getElementById('comp-respondent-email').value;
+    const respondentCountry = document.getElementById('comp-respondent-country').value;
+    const respondentRegion = document.getElementById('comp-respondent-region').value;
+    const respondentWoreda = document.getElementById('comp-respondent-woreda').value;
+
     const fileInput = document.getElementById('comp-attachment');
     const submitBtn = event.target.querySelector('button[type="submit"]');
 
@@ -548,6 +590,17 @@ async function handleFileComplaint(event) {
     formData.append('respondent_name', respondentName);
     formData.append('complainant_address', complainantAddress);
     formData.append('description', description);
+
+    formData.append('complainant_phone', complainantPhone);
+    formData.append('complainant_country', complainantCountry);
+    formData.append('complainant_region', complainantRegion);
+    formData.append('complainant_woreda', complainantWoreda);
+
+    formData.append('respondent_phone', respondentPhone);
+    formData.append('respondent_email', respondentEmail);
+    formData.append('respondent_country', respondentCountry);
+    formData.append('respondent_region', respondentRegion);
+    formData.append('respondent_woreda', respondentWoreda);
 
     if (fileInput.files.length > 0) {
         formData.append('attachment', fileInput.files[0]);
@@ -730,5 +783,134 @@ async function adminReject(id) {
         await refreshDashboardData();
     } catch (err) {
         showToast(err.message || 'Reject failed', true);
+    }
+}
+
+async function citizenEdit() {
+    if (!currentComplaintId) return;
+    try {
+        const data = await apiRequest(`/api/complaints/${currentComplaintId}`);
+        const c = data.complaint;
+        if (c.status !== 'Filed' && c.status !== 'Pending') {
+            showToast('Cannot edit complaint after it is officially accepted.', true);
+            return;
+        }
+
+        const title = prompt('Edit Title:', c.title);
+        if (title === null) return;
+        const category = prompt('Edit Category (Civil, Criminal, Family, Administrative, Other):', c.category);
+        if (category === null) return;
+        const description = prompt('Edit Description:', c.description);
+        if (description === null) return;
+
+        await apiRequest(`/api/complaints/${currentComplaintId}`, {
+            method: 'PATCH',
+            body: JSON.stringify({ title, category, description })
+        });
+        showToast('Complaint updated successfully');
+        await openDetailsInspector(currentComplaintId);
+        await refreshDashboardData();
+    } catch (err) {
+        showToast(err.message || 'Edit failed', true);
+    }
+}
+
+// ==========================================
+// Specialized Roles Frontend Handlers
+// ==========================================
+
+async function openScheduleHearing() {
+    if (!currentComplaintId) return;
+
+    const hearing_type = prompt('Enter Hearing Type (Preliminary, Substantive, Interim, Final, Judgment):', 'Preliminary');
+    if (!hearing_type) return;
+
+    const session_date = prompt('Enter Hearing Date (YYYY-MM-DD):', new Date().toISOString().split('T')[0]);
+    if (!session_date) return;
+
+    const session_time = prompt('Enter Hearing Time (e.g. 10:00 AM):');
+    const judge_name = prompt('Assign Judge Name:');
+    const courtroom = prompt('Enter Courtroom:');
+
+    try {
+        await apiRequest('/api/clerk/schedule', {
+            method: 'POST',
+            body: JSON.stringify({
+                complaint_id: currentComplaintId,
+                hearing_type,
+                session_date,
+                session_time,
+                judge_name,
+                courtroom
+            })
+        });
+        showToast('Hearing scheduled successfully.');
+        await openDetailsInspector(currentComplaintId);
+        await refreshDashboardData();
+    } catch (err) {
+        showToast(err.message || 'Failed to schedule hearing.', true);
+    }
+}
+
+async function openIssueJudgment() {
+    if (!currentComplaintId) return;
+
+    const order_type = prompt('Enter Order Type (Interim, Final Judgment, Dismissal, Settlement, Appeal):', 'Interim');
+    if (!order_type) return;
+
+    const order_details = prompt('Enter Order/Judgment Details:');
+    if (!order_details) return;
+
+    let statusUpdate = confirm('Would you like to automatically mark this case as Resolved / Closed?');
+    const status = statusUpdate ? 'Resolved' : null;
+
+    try {
+        await apiRequest('/api/judge/adjudicate', {
+            method: 'POST',
+            body: JSON.stringify({
+                complaint_id: currentComplaintId,
+                order_type,
+                order_details,
+                status
+            })
+        });
+        showToast('Judgment/Order issued successfully.');
+        await openDetailsInspector(currentComplaintId);
+        await refreshDashboardData();
+    } catch (err) {
+        showToast(err.message || 'Failed to issue judgment.', true);
+    }
+}
+
+async function openConfidentialNotes() {
+    if (!currentComplaintId) return;
+
+    const isNew = confirm('Press OK to write a new confidential note. Press Cancel to ignore.');
+    if (isNew) {
+        const note_text = prompt('Enter your private note:');
+        if (!note_text) return;
+        try {
+            await apiRequest('/api/judge/notes', {
+                method: 'POST',
+                body: JSON.stringify({ complaint_id: currentComplaintId, note_text })
+            });
+            showToast('Note added.');
+        } catch (err) {
+            showToast(err.message || 'Failed to add note.', true);
+            return;
+        }
+    }
+
+    // Attempt to view past notes
+    try {
+        const notes = await apiRequest(`/api/judge/notes/${currentComplaintId}`);
+        if (notes.length === 0) {
+            alert('No confidential case notes found.');
+        } else {
+            const formatted = notes.map(n => `[${formatDate(n.created_at)}] ${n.note_text}`).join('\n\n');
+            alert(`Confidential Notes:\n\n${formatted}`);
+        }
+    } catch (err) {
+        showToast('Only Judges have access to confidential notes.', true);
     }
 }

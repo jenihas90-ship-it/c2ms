@@ -113,9 +113,29 @@ Review the conversation: ${linkText}`;
   }
 }
 
+async function notifyRespondentOfComplaint(complaintId) {
+  try {
+    const c = await db.get('SELECT * FROM complaints WHERE id = ?', [complaintId]);
+    if (!c) return;
+
+    if (c.respondent_phone) {
+      console.log(`[MOCK SMS] Sent to ${c.respondent_phone}: Notice: A complaint (#${c.id}) has been filed naming you as a respondent.`);
+    }
+
+    if (c.respondent_email) {
+      const subject = `Notice of Legal Complaint: #${c.id}`;
+      const text = `Dear ${c.defendant_name || 'Respondent'},\n\nA complaint titled "${c.title}" naming you as a respondent has been filed at ${c.court_name}.\n\nYou will be contacted by a clerk regarding proceedings.`;
+      await sendMail({ to: c.respondent_email, subject, text });
+    }
+  } catch (err) {
+    console.error('notifyRespondentOfComplaint error:', err);
+  }
+}
+
 module.exports = {
   notifyNewComplaint,
   notifyStatusChange,
   notifyRemarkAdded,
+  notifyRespondentOfComplaint,
   sendMail
 };

@@ -41,10 +41,14 @@ app.use(express.static(path.resolve(__dirname, '../public')));
 const authRouter = require('./routes/auth');
 const complaintsRouter = require('./routes/complaints');
 const adminRouter = require('./routes/admin');
+const judgeRouter = require('./routes/judge');
+const clerkRouter = require('./routes/clerk');
 
 app.use('/api/auth', authRouter);
 app.use('/api/complaints', complaintsRouter);
 app.use('/api/admin', adminRouter);
+app.use('/api/judge', judgeRouter);
+app.use('/api/clerk', clerkRouter);
 
 // Explicit chat page route support
 app.get('/chat', (req, res) => {

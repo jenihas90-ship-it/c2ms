@@ -103,11 +103,34 @@ async function initDatabase() {
       assigned_judge TEXT,
       attachment_path TEXT,
       legal_representation TEXT,
+      complainant_phone TEXT,
+      complainant_country TEXT,
+      complainant_region TEXT,
+      complainant_woreda TEXT,
+      respondent_phone TEXT,
+      respondent_email TEXT,
+      respondent_country TEXT,
+      respondent_region TEXT,
+      respondent_woreda TEXT,
       created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
       updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
       FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
     )
   `);
+
+  // Migration step: gracefully add new columns if upgrading existing local SQLite DB
+  const newCols = [
+    'complainant_phone TEXT', 'complainant_country TEXT', 'complainant_region TEXT', 'complainant_woreda TEXT',
+    'respondent_phone TEXT', 'respondent_email TEXT', 'respondent_country TEXT', 'respondent_region TEXT', 'respondent_woreda TEXT'
+  ];
+  for (const colDef of newCols) {
+    try {
+      // Will throw if column already exists
+      await run(`ALTER TABLE complaints ADD COLUMN ${colDef}`);
+    } catch (err) {
+      // Ignore "duplicate column name" error naturally.
+    }
+  }
 
   // Create Remarks Table
   await run(`
@@ -139,6 +162,19 @@ async function initDatabase() {
       created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
       updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
       FOREIGN KEY (complaint_id) REFERENCES complaints(id) ON DELETE CASCADE
+    )
+  `);
+
+  // Create Case Notes Table (Confidential)
+  await run(`
+    CREATE TABLE IF NOT EXISTS case_notes (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      complaint_id INTEGER NOT NULL,
+      author_id INTEGER NOT NULL,
+      note_text TEXT NOT NULL,
+      created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+      FOREIGN KEY (complaint_id) REFERENCES complaints(id) ON DELETE CASCADE,
+      FOREIGN KEY (author_id) REFERENCES users(id) ON DELETE CASCADE
     )
   `);
 

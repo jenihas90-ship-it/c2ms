@@ -1,10 +1,11 @@
 const express = require('express');
 const router = express.Router();
 const db = require('../db');
-const { requireAdmin } = require('../middleware/auth');
+const { requireLogin } = require('../middleware/auth');
+const requireRole = require('../middleware/roleCheck');
 
 // Get global analytics summary
-router.get('/stats', requireAdmin, async (req, res) => {
+router.get('/stats', requireRole(['ADMIN']), async (req, res) => {
     try {
         const totalCount = await db.get('SELECT COUNT(*) as val FROM complaints');
         const pendingCount = await db.get("SELECT COUNT(*) as val FROM complaints WHERE status = 'Pending'");
@@ -46,7 +47,7 @@ router.get('/stats', requireAdmin, async (req, res) => {
 });
 
 // Export complaints as CSV (admin only)
-router.get('/export', requireAdmin, async (req, res) => {
+router.get('/export', requireRole(['ADMIN']), async (req, res) => {
     try {
         // Accept optional filters: start (YYYY-MM-DD or ISO), end (YYYY-MM-DD or ISO), status, category
         const { start, end, status, category } = req.query;
@@ -98,8 +99,8 @@ router.get('/export', requireAdmin, async (req, res) => {
         }
 
         // Build CSV headers dynamically
-        const headers = ['ID','Complainant','Complainant Email','Title','Category','Priority','Status','Created At','Updated At'];
-        if (includeAttachments) headers.splice(7,0,'Attachment'); // insert before dates
+        const headers = ['ID', 'Complainant', 'Complainant Email', 'Title', 'Category', 'Priority', 'Status', 'Created At', 'Updated At'];
+        if (includeAttachments) headers.splice(7, 0, 'Attachment'); // insert before dates
         if (includeRemarks) headers.push('Remarks');
 
         const escape = (v) => '"' + String(v || '').replace(/"/g, '""') + '"';
@@ -118,6 +119,31 @@ router.get('/export', requireAdmin, async (req, res) => {
     } catch (err) {
         console.error('Export CSV error:', err);
         res.status(500).json({ error: 'Internal Server Error while exporting complaints.' });
+    }
+});
+
+// GET /api/admin/users
+router.get('/users', requireRole(['ADMIN']), async (req, res) => {
+    try {
+        const users = await db.all('SELECT id, username, email, role, created_at FROM users');
+        res.json(users);
+    } catch (err) {
+        res.status(500).json({ error: 'Failed to fetch users.' });
+    }
+});
+
+// PATCH /api/admin/users/:id/role
+router.patch('/users/:id/role', requireRole(['ADMIN']), async (req, res) => {
+    const { role } = req.body;
+    const userId = req.params.id;
+    if (!role) return res.status(400).json({ error: 'Role is required' });
+
+    try {
+        // Simple update role
+        await db.run('UPDATE users SET role = ? WHERE id = ?', [role.toUpperCase(), userId]);
+        res.json({ message: 'User role updated successfully.' });
+    } catch (err) {
+        res.status(500).json({ error: 'Failed to update user role.' });
     }
 });
 

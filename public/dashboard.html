@@ -52,10 +52,10 @@
                 <button id="nav-all-complaints" class="nav-item" onclick="switchNav('complaints')">
                     <span>📁</span> View Complaints
                 </button>
-                <button id="nav-new-complaint" class="nav-item complainant-only hidden" onclick="switchNav('new')">
+                <button id="nav-new-complaint" class="nav-item role-citizen hidden" onclick="switchNav('new')">
                     <span>➕</span> New Complaint
                 </button>
-                <button id="nav-chat" class="nav-item" onclick="window.location.href='/chat.html'">
+                <button id="nav-chat" class="nav-item role-citizen hidden" onclick="window.location.href='/chat.html'">
                     <span>💬</span> Support Chat
                 </button>
             </nav>
@@ -118,7 +118,7 @@
                 </section>
 
                 <!-- 2B. ADMIN ANALYTICS CHARTS (Hidden for Standard Complainant) -->
-                <section id="admin-charts-section" class="analytics-section hidden">
+                <section id="admin-charts-section" class="analytics-section role-admin hidden">
                     <!-- Category Breakdown Bar Chart -->
                     <div class="chart-card">
                         <h3 class="chart-card-title">Category Distribution</h3>
@@ -172,7 +172,7 @@
                     </div>
 
                     <!-- RIGHT SIDE: Complainant filing tools (Hidden for admin) -->
-                    <div id="file-complaint-section" class="file-ticket-card glass-card complainant-only">
+                    <div id="file-complaint-section" class="file-ticket-card glass-card role-citizen hidden">
                         <h3 class="chart-card-title" style="margin-bottom: 1rem;">Court Complaint Wizard</h3>
 
                         <!-- Progress indicator -->
@@ -222,22 +222,38 @@
 
                             <!-- STEP 2: Party Details -->
                             <div id="wizard-step-2" class="wizard-step hidden">
-                                <h4>Step 2: Fill Party Details</h4>
+                                <h4>Step 2: Fill Party Details (Including Contact & Geography)</h4>
                                 <div class="inspector-row-grid">
                                     <div class="form-group">
-                                        <label for="comp-complainant-name">Complainant Name</label>
+                                        <label>Complainant Details (You)</label>
                                         <input type="text" id="comp-complainant-name" required placeholder="Full Name">
+                                        <input type="tel" id="comp-complainant-phone" placeholder="Your Phone Number"
+                                            style="margin-top:0.4rem;">
+                                        <input type="text" id="comp-complainant-country" placeholder="Country" required
+                                            style="margin-top:0.4rem;">
+                                        <input type="text" id="comp-complainant-region" placeholder="Region" required
+                                            style="margin-top:0.4rem;">
+                                        <input type="text" id="comp-complainant-woreda" placeholder="Woreda" required
+                                            style="margin-top:0.4rem;">
+                                        <textarea id="comp-complainant-address" required rows="2"
+                                            placeholder="Physical Address..." style="margin-top:0.4rem;"></textarea>
                                     </div>
                                     <div class="form-group">
-                                        <label for="comp-respondent-name">Respondent Name</label>
+                                        <label>Respondent Details (Opposing Party)</label>
                                         <input type="text" id="comp-respondent-name" required
                                             placeholder="Full Name or Org">
+                                        <input type="tel" id="comp-respondent-phone"
+                                            placeholder="Respondent Phone (Required)" required
+                                            style="margin-top:0.4rem;">
+                                        <input type="email" id="comp-respondent-email" placeholder="Respondent Email"
+                                            style="margin-top:0.4rem;">
+                                        <input type="text" id="comp-respondent-country" placeholder="Country" required
+                                            style="margin-top:0.4rem;">
+                                        <input type="text" id="comp-respondent-region" placeholder="Region" required
+                                            style="margin-top:0.4rem;">
+                                        <input type="text" id="comp-respondent-woreda" placeholder="Woreda" required
+                                            style="margin-top:0.4rem;">
                                     </div>
-                                </div>
-                                <div class="form-group">
-                                    <label for="comp-complainant-address">Complainant Address</label>
-                                    <textarea id="comp-complainant-address" required rows="2"
-                                        placeholder="Physical Address..."></textarea>
                                 </div>
 
                                 <div style="display:flex; gap:10px; margin-top:1rem;">
@@ -362,6 +378,23 @@
                         </div>
                     </div>
 
+                    <div style="margin-top: 10px; padding: 10px; background: rgba(0,0,0,0.02); border-radius: 6px;">
+                        <h5 style="margin-bottom:8px; font-weight:600; color:var(--text-main);">Complainant Info</h5>
+                        <div class="inspector-row-grid" style="margin-bottom:0;">
+                            <div><span class="inspector-label">Phone:</span> <span id="inspect-comp-phone"></span></div>
+                            <div><span class="inspector-label">Location:</span> <span id="inspect-comp-location"></span>
+                            </div>
+                        </div>
+                        <h5 style="margin-top:12px; margin-bottom:8px; font-weight:600; color:var(--text-main);">
+                            Respondent Info</h5>
+                        <div class="inspector-row-grid" style="margin-bottom:0;">
+                            <div><span class="inspector-label">Contact:</span> <span id="inspect-resp-contact"></span>
+                            </div>
+                            <div><span class="inspector-label">Location:</span> <span id="inspect-resp-location"></span>
+                            </div>
+                        </div>
+                    </div>
+
                     <div class="inspector-row-grid">
                         <div>
                             <div class="inspector-label">Submitted By</div>
@@ -389,24 +422,53 @@
                     </div>
                 </article>
 
+                <!-- Citizen Controls -->
+                <section id="citizen-actions-controls" class="admin-actions-box role-citizen hidden"
+                    style="margin-bottom:1rem;">
+                    <h4>👤 Complainant Actions</h4>
+                    <div style="display: flex; gap: 0.8rem; margin-top: 0.5rem; flex-wrap: wrap;">
+                        <button id="citizen-edit-btn" class="status-badge status-edit-badge hidden"
+                            style="cursor: pointer; background:#007BFF; color:#fff;" onclick="citizenEdit()">✎ Edit
+                            Complaint</button>
+                    </div>
+                </section>
+
                 <!-- Administrative Controls (Hidden for complainant) -->
-                <section id="admin-actions-controls" class="admin-actions-box hidden">
+                <section id="admin-actions-controls" class="admin-actions-box role-staff hidden">
                     <h4>🛠️ Staff Resolution Console</h4>
-                    <div
-                        style="display: flex; gap: 0.8rem; margin-top: 0.5rem; justify-content: flex-start; align-items: center;">
-                        <span class="inspector-label" style="margin-right: 0.5rem;">Modify Status:</span>
+
+                    <!-- Clerk Controls -->
+                    <div class="role-clerk hidden"
+                        style="display: flex; gap: 0.8rem; margin-top: 0.5rem; flex-wrap: wrap;">
+                        <span class="inspector-label" style="margin-right: 0.5rem; width:100%;">Clerk Actions:</span>
                         <button class="status-badge status-pending-badge" style="cursor: pointer;"
-                            onclick="updateStatusAPI('Pending')">Pending</button>
+                            onclick="updateStatusAPI('Pending')">Set Pending</button>
                         <button class="status-badge status-progress-badge" style="cursor: pointer;"
                             onclick="updateStatusAPI('In Progress')">In Progress</button>
+                        <button class="status-badge status-edit-badge"
+                            style="cursor: pointer; background:#ffd166; color:#000;" onclick="openScheduleHearing()">📅
+                            Schedule Hearing</button>
+                        <button class="status-badge" style="cursor: pointer; background:#007BFF; color:#fff;"
+                            onclick="openEditComplaint()">Edit Details</button>
+                    </div>
+
+                    <!-- Judge Controls -->
+                    <div class="role-judge hidden"
+                        style="display: flex; gap: 0.8rem; margin-top: 1rem; flex-wrap: wrap;">
+                        <span class="inspector-label" style="margin-right: 0.5rem; width:100%;">Judicial Actions:</span>
                         <button class="status-badge status-resolved-badge" style="cursor: pointer;"
-                            onclick="updateStatusAPI('Resolved')">Resolved</button>
+                            onclick="openIssueJudgment()">⚖️ Issue Judgment / Order</button>
+                        <button class="status-badge" style="cursor: pointer; background:#8a5cf6; color:#fff;"
+                            onclick="openConfidentialNotes()">🔒 Confidential Notes</button>
+                    </div>
+
+                    <!-- Admin Controls -->
+                    <div class="role-admin hidden"
+                        style="display: flex; gap: 0.8rem; margin-top: 1rem; flex-wrap: wrap;">
+                        <span class="inspector-label" style="margin-right: 0.5rem; width:100%;">Admin Overrides:</span>
                         <button class="status-badge status-reject-badge"
                             style="cursor: pointer; background:#ff6b6b; color:#fff;"
                             onclick="updateStatusAPI('Rejected')">Reject</button>
-                        <button class="status-badge status-edit-badge"
-                            style="cursor: pointer; background:#ffd166; color:#000;"
-                            onclick="openEditComplaint()">Edit</button>
                         <button class="status-badge status-delete-badge"
                             style="cursor: pointer; background:#ff4d4f; color:#fff;"
                             onclick="deleteComplaintAPI()">Delete</button>

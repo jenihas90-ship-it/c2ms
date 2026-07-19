@@ -34,10 +34,14 @@ app.use(express.static(path.resolve(__dirname, '../public')));
 const authRouter = require('../src/routes/auth');
 const complaintsRouter = require('../src/routes/complaints');
 const adminRouter = require('../src/routes/admin');
+const judgeRouter = require('../src/routes/judge');
+const clerkRouter = require('../src/routes/clerk');
 
 app.use('/api/auth', authRouter);
 app.use('/api/complaints', complaintsRouter);
 app.use('/api/admin', adminRouter);
+app.use('/api/judge', judgeRouter);
+app.use('/api/clerk', clerkRouter);
 
 // Explicit page routes
 app.get('/chat', (req, res) => {
