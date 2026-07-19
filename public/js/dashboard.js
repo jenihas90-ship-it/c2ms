@@ -391,60 +391,93 @@ function openAboutModal() {
     }
 }
 
-// Render dynamic timeline remark list items
+// Render dynamic chat messages in the chat panel
 function renderTimelineRemarks(remarks) {
-    const container = document.getElementById('remarks-timeline');
+    const container = document.getElementById('chat-messages-list');
+    const empty = document.getElementById('chat-empty-state');
+    if (!container) return;
     container.innerHTML = '';
 
     if (!remarks || remarks.length === 0) {
-        container.innerHTML = '<div class="timeline-empty">No remarks posted on this ticket yet.</div>';
+        const emptyEl = document.createElement('div');
+        emptyEl.id = 'chat-empty-state';
+        emptyEl.style.cssText = 'text-align:center; color:var(--text-muted); font-size:0.85rem; margin:auto;';
+        emptyEl.textContent = 'No messages yet. Start the conversation below.';
+        container.appendChild(emptyEl);
         return;
     }
 
-    remarks.forEach(r => {
-        const bubble = document.createElement('div');
-        bubble.className = 'remark-bubble';
-        if (r.role === 'admin') {
-            bubble.classList.add('admin-comment');
-        }
+    const roleColors = {
+        'ADMIN': { bg: '#ffe0b2', accent: '#e65100', label: '🛡️ Admin' },
+        'admin': { bg: '#ffe0b2', accent: '#e65100', label: '🛡️ Admin' },
+        'CLERK': { bg: '#e3f2fd', accent: '#0d47a1', label: '📋 Clerk' },
+        'JUDGE': { bg: '#e8f5e9', accent: '#1b5e20', label: '⚖️ Judge' },
+        'CITIZEN': { bg: '#f3e5f5', accent: '#6a1b9a', label: '👤 Citizen' },
+    };
 
+    remarks.forEach(r => {
+        const style = roleColors[r.role] || { bg: '#f5f5f5', accent: '#333', label: r.role };
+        const bubble = document.createElement('div');
+        bubble.style.cssText = `
+            background: ${style.bg};
+            border-left: 3px solid ${style.accent};
+            border-radius: 8px;
+            padding: 0.5rem 0.75rem;
+            max-width: 90%;
+            align-self: ${['CITIZEN'].includes(r.role) ? 'flex-start' : 'flex-end'};
+        `;
         bubble.innerHTML = `
-      <div class="remark-header">
-        <span class="remark-author">${escapeHTML(r.username)} <span style="font-weight:normal; opacity:0.65; font-size:10px;">(${r.role})</span></span>
-        <span class="remark-time">${formatDate(r.created_at)}</span>
-      </div>
-      <div class="remark-body">${escapeHTML(r.remark)}</div>
-    `;
+            <div style="display:flex; justify-content:space-between; gap:1rem; margin-bottom:3px; font-size:0.78rem;">
+                <span style="font-weight:700; color:${style.accent};">${style.label} — ${escapeHTML(r.username)}</span>
+                <span style="color:#999; white-space:nowrap;">${formatDate(r.created_at)}</span>
+            </div>
+            <div style="font-size:0.9rem; color:#333; white-space:pre-wrap;">${escapeHTML(r.remark)}</div>
+        `;
         container.appendChild(bubble);
     });
 
-    // Scroll to bottom of remarks container
-    setTimeout(() => {
-        container.scrollTop = container.scrollHeight;
-    }, 50);
+    // Scroll to bottom after render
+    setTimeout(() => { container.scrollTop = container.scrollHeight; }, 50);
 }
 
-// Post feedback comments
+// Post feedback comments (legacy form, still works if markup exists)
 async function handlePostRemark(event) {
     event.preventDefault();
     const remarkBox = document.getElementById('remark-textarea');
-    const remarkStr = remarkBox.value;
-
+    const remarkStr = remarkBox ? remarkBox.value : '';
     if (!currentComplaintId || !remarkStr.trim()) return;
-
     try {
-        const data = await apiRequest(`/api/complaints/${currentComplaintId}/remarks`, {
-            method: 'POST',
-            body: JSON.stringify({ remark: remarkStr })
+        await apiRequest(`/api/complaints/${currentComplaintId}/remarks`, {
+            method: 'POST', body: JSON.stringify({ remark: remarkStr })
         });
-
-        remarkBox.value = '';
-
-        // Re-fetch details to fetch updated list & scroll timeline
+        if (remarkBox) remarkBox.value = '';
         await openDetailsInspector(currentComplaintId);
         showToast('Remark submitted successfully.');
     } catch (error) {
         showToast(error.message || 'Failed to submit comment feedback', true);
+    }
+}
+
+// Send chat message from the new inline chat panel
+async function sendChatMessage() {
+    const input = document.getElementById('chat-input');
+    const msg = input ? input.value.trim() : '';
+    if (!currentComplaintId || !msg) return;
+    input.disabled = true;
+    try {
+        await apiRequest(`/api/complaints/${currentComplaintId}/remarks`, {
+            method: 'POST',
+            body: JSON.stringify({ remark: msg })
+        });
+        input.value = '';
+        // Re-fetch and re-render
+        const data = await apiRequest(`/api/complaints/${currentComplaintId}`);
+        renderTimelineRemarks(data.remarks);
+    } catch (error) {
+        showToast(error.message || 'Failed to send message', true);
+    } finally {
+        input.disabled = false;
+        input.focus();
     }
 }
 

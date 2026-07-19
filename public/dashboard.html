@@ -422,6 +422,47 @@
                     </div>
                 </article>
 
+                <!-- ===== CHAT PANEL ===== -->
+                <section id="chat-panel"
+                    style="margin-top: 1rem; border: 1px solid var(--border); border-radius: 10px; overflow: hidden;">
+                    <div
+                        style="background: var(--sidebar-bg); padding: 0.7rem 1rem; display: flex; align-items: center; gap: 0.5rem; border-bottom: 1px solid var(--border);">
+                        <span style="font-size:1.1rem;">💬</span>
+                        <strong style="font-size:0.95rem; color:var(--text-main);">Case Communication</strong>
+                        <span style="font-size:0.78rem; color:var(--text-muted); margin-left: auto;">Complainant · Clerk
+                            · Judge</span>
+                    </div>
+
+                    <!-- Message thread -->
+                    <div id="chat-messages-list" style="
+                        height: 280px;
+                        overflow-y: auto;
+                        padding: 0.8rem 1rem;
+                        display: flex;
+                        flex-direction: column;
+                        gap: 0.6rem;
+                        background: var(--bg-main);
+                    ">
+                        <div id="chat-empty-state"
+                            style="text-align:center; color:var(--text-muted); font-size:0.85rem; margin:auto;">
+                            No messages yet. Start the conversation below.
+                        </div>
+                    </div>
+
+                    <!-- Input row -->
+                    <div
+                        style="padding: 0.6rem 0.8rem; border-top: 1px solid var(--border); display: flex; gap: 0.5rem; background: var(--sidebar-bg);">
+                        <input type="text" id="chat-input" placeholder="Type a message..."
+                            style="flex:1; padding:0.45rem 0.75rem; border-radius:6px; border:1px solid var(--border); background: var(--input-bg, #fff); color: var(--text-main); font-size:0.9rem;"
+                            onkeydown="if(event.key==='Enter') sendChatMessage()">
+                        <button onclick="sendChatMessage()"
+                            style="padding:0.45rem 1rem; background:var(--accent); color:#fff; border:none; border-radius:6px; cursor:pointer; font-weight:600; font-size:0.88rem; white-space:nowrap;">
+                            Send ➤
+                        </button>
+                    </div>
+                </section>
+                <!-- ===== END CHAT PANEL ===== -->
+
                 <!-- Citizen Controls -->
                 <section id="citizen-actions-controls" class="admin-actions-box role-citizen hidden"
                     style="margin-bottom:1rem;">
