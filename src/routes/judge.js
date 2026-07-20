@@ -62,7 +62,7 @@ router.get('/sms-preview', requireRole(['JUDGE']), async (req, res) => {
 
 // POST /api/judge/adjudicate
 router.post('/adjudicate', requireRole(['JUDGE']), async (req, res) => {
-    const { complaint_id, order_type, order_details, compensation_amount, status } = req.body;
+    const { complaint_id, order_type, order_details, compensation_amount, status, custom_sms_text } = req.body;
     if (!complaint_id || !order_type || !order_details) {
         return res.status(400).json({ error: 'Missing required fields' });
     }
@@ -81,7 +81,7 @@ router.post('/adjudicate', requireRole(['JUDGE']), async (req, res) => {
         }
 
         // Fire-and-forget: AI-generated SMS to respondent
-        notifications.notifyRespondentJudgmentSms(complaint_id, order_details, order_type)
+        notifications.notifyRespondentJudgmentSms(complaint_id, order_details, order_type, custom_sms_text)
             .then(result => {
                 if (result.success) {
                     console.log(`[AI SMS] Judgment SMS dispatched to ${result.phone}`);

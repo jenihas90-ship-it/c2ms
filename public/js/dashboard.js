@@ -1020,10 +1020,16 @@ async function confirmJudgmentWithSms() {
     confirmBtn.disabled = true;
     confirmBtn.textContent = '⏳ Saving...';
 
+    // Get the exact text the judge reviewed/edited
+    const custom_sms_text = document.getElementById('ai-sms-text').value;
+
     try {
         await apiRequest('/api/judge/adjudicate', {
             method: 'POST',
-            body: JSON.stringify(_pendingJudgmentData)
+            body: JSON.stringify({
+                ..._pendingJudgmentData,
+                custom_sms_text
+            })
         });
 
         // Close modal

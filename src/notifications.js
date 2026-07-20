@@ -141,8 +141,9 @@ async function notifyRespondentOfComplaint(complaintId) {
  * @param {number} complaintId  - DB id of the complaint
  * @param {string} orderDetails - The judge's written order/judgment details
  * @param {string} orderType    - e.g. "Final Judgment", "Dismissal"
+ * @param {string} [customSmsText] - The exact SMS text the judge confirmed/edited
  */
-async function notifyRespondentJudgmentSms(complaintId, orderDetails, orderType) {
+async function notifyRespondentJudgmentSms(complaintId, orderDetails, orderType, customSmsText) {
   try {
     const c = await db.get('SELECT * FROM complaints WHERE id = ?', [complaintId]);
     if (!c) {
@@ -155,8 +156,8 @@ async function notifyRespondentJudgmentSms(complaintId, orderDetails, orderType)
       return { success: false, error: 'No respondent phone number on record' };
     }
 
-    // Generate AI SMS content
-    const messageText = await sms.generateSmsContent(c, orderDetails, orderType);
+    // Use custom text from judge if provided, else regenerate
+    const messageText = customSmsText ? customSmsText : await sms.generateSmsContent(c, orderDetails, orderType);
 
     // Send SMS (Twilio if configured, else console log)
     await sms.sendSms(c.respondent_phone, messageText);
