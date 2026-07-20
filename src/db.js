@@ -77,7 +77,7 @@ async function initDatabase() {
       username TEXT UNIQUE NOT NULL,
       email TEXT UNIQUE NOT NULL,
       password TEXT NOT NULL,
-      role TEXT CHECK(role IN ('CITIZEN', 'CLERK', 'JUDGE', 'ADMIN', 'complainant', 'admin')) NOT NULL,
+      role TEXT CHECK(role IN ('CITIZEN', 'CLERK', 'JUDGE', 'ADMIN', 'RESPONDENT', 'complainant', 'admin')) NOT NULL,
       created_at DATETIME DEFAULT CURRENT_TIMESTAMP
     )
   `);
@@ -194,6 +194,19 @@ async function initDatabase() {
     )
   `);
 
+  // Create SMS Logs Table (audit trail for AI-generated SMS notifications)
+  await run(`
+    CREATE TABLE IF NOT EXISTS sms_logs (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      complaint_id INTEGER NOT NULL,
+      recipient_phone TEXT NOT NULL,
+      message TEXT NOT NULL,
+      status TEXT DEFAULT 'sent',
+      created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+      FOREIGN KEY (complaint_id) REFERENCES complaints(id) ON DELETE CASCADE
+    )
+  `);
+
   // Insert default administrator
   const adminExists = await get("SELECT * FROM users WHERE role = 'ADMIN' LIMIT 1");
   if (!adminExists) {
@@ -220,6 +233,13 @@ async function initDatabase() {
   if (!judgeExists) {
     const hashedPassword = bcrypt.hashSync('judge123', 10);
     await run("INSERT INTO users (username, email, password, role) VALUES (?, ?, ?, ?)", ['judge', 'judge@cms.com', hashedPassword, 'JUDGE']);
+  }
+
+  const respondentExists = await get("SELECT * FROM users WHERE role = 'RESPONDENT' LIMIT 1");
+  if (!respondentExists) {
+    const hashedPassword = bcrypt.hashSync('resp123', 10);
+    await run("INSERT INTO users (username, email, password, role) VALUES (?, ?, ?, ?)", ['respondent', 'respondent@cms.com', hashedPassword, 'RESPONDENT']);
+    console.log('Default Respondent user seeded.');
   }
 
   console.log('Database initialized successfully.');

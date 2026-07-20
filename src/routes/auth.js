@@ -12,7 +12,7 @@ router.post('/register', async (req, res) => {
     }
 
     // Validate role
-    const validRoles = ['CITIZEN', 'CLERK', 'JUDGE', 'ADMIN'];
+    const validRoles = ['CITIZEN', 'CLERK', 'JUDGE', 'ADMIN', 'RESPONDENT'];
     const userRole = validRoles.includes(role?.toUpperCase()) ? role.toUpperCase() : 'CITIZEN';
 
     try {
@@ -76,8 +76,12 @@ router.post('/login', async (req, res) => {
         req.session.username = user.username;
         req.session.role = user.role;
 
+        // Role-based redirect destination
+        const redirectUrl = user.role === 'RESPONDENT' ? '/respondent.html' : '/dashboard.html';
+
         res.json({
             message: 'Login successful!',
+            redirectUrl,
             user: {
                 id: user.id,
                 username: user.username,

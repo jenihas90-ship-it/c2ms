@@ -2,6 +2,8 @@ const express = require('express');
 const router = express.Router();
 const db = require('../db');
 const requireRole = require('../middleware/roleCheck');
+const notifications = require('../notifications');
+const sms = require('../sms');
 
 // GET /api/judge/calendar
 router.get('/calendar', requireRole(['JUDGE']), async (req, res) => {
@@ -16,6 +18,45 @@ router.get('/calendar', requireRole(['JUDGE']), async (req, res) => {
     } catch (err) {
         console.error('Judge calendar error:', err);
         res.status(500).json({ error: 'Failed to fetch calendar.' });
+    }
+});
+
+// GET /api/judge/sms-preview
+// Returns an AI-generated SMS preview for the judge to review before issuing judgment.
+// Query params: complaint_id, order_type, order_details
+router.get('/sms-preview', requireRole(['JUDGE']), async (req, res) => {
+    const { complaint_id, order_type, order_details } = req.query;
+
+    if (!complaint_id || !order_type || !order_details) {
+        return res.status(400).json({ error: 'complaint_id, order_type, and order_details are required.' });
+    }
+
+    try {
+        const complaint = await db.get('SELECT * FROM complaints WHERE id = ?', [complaint_id]);
+        if (!complaint) {
+            return res.status(404).json({ error: 'Complaint not found.' });
+        }
+
+        if (!complaint.respondent_phone) {
+            return res.json({
+                sms: null,
+                phone: null,
+                note: 'No respondent phone number is on file for this complaint. SMS will be skipped.'
+            });
+        }
+
+        // Generate AI SMS content (Gemini or fallback template)
+        const messageText = await sms.generateSmsContent(complaint, order_details, order_type);
+
+        res.json({
+            sms: messageText,
+            phone: complaint.respondent_phone,
+            respondent: complaint.defendant_name || 'Respondent',
+            aiGenerated: !!process.env.GEMINI_API_KEY
+        });
+    } catch (err) {
+        console.error('SMS preview error:', err);
+        res.status(500).json({ error: 'Failed to generate SMS preview.' });
     }
 });
 
@@ -39,14 +80,25 @@ router.post('/adjudicate', requireRole(['JUDGE']), async (req, res) => {
             await db.run(`UPDATE complaints SET status = ? WHERE id = ?`, [status, complaint_id]);
         }
 
-        res.json({ message: 'Judgment/Order saved successfully.' });
+        // Fire-and-forget: AI-generated SMS to respondent
+        notifications.notifyRespondentJudgmentSms(complaint_id, order_details, order_type)
+            .then(result => {
+                if (result.success) {
+                    console.log(`[AI SMS] Judgment SMS dispatched to ${result.phone}`);
+                } else {
+                    console.log('[AI SMS] SMS skipped:', result.error);
+                }
+            })
+            .catch(err => console.error('[AI SMS] Dispatch failed:', err.message || err));
+
+        res.json({ message: 'Judgment/Order saved successfully. SMS notification dispatched to respondent.' });
     } catch (err) {
         console.error('Adjudicate error:', err);
         res.status(500).json({ error: 'Failed to save order.' });
     }
 });
 
-// GET /api/judge/notes
+// GET /api/judge/notes/:complaint_id
 router.get('/notes/:complaint_id', requireRole(['JUDGE']), async (req, res) => {
     try {
         const notes = await db.all(

@@ -1,0 +1,1147 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Respondent Portal — CCMS</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap"
+        rel="stylesheet" />
+    <style>
+        *,
+        *::before,
+        *::after {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+
+        :root {
+            --bg: #0f1117;
+            --surface: #1a1d27;
+            --surface2: #22263a;
+            --border: #2e3352;
+            --primary: #7c69ef;
+            --primary-dark: #5a47d1;
+            --accent: #e5534b;
+            --green: #3fb950;
+            --yellow: #d29922;
+            --text: #e6e8f0;
+            --text-muted: #8b91b0;
+            --radius: 12px;
+        }
+
+        body {
+            font-family: 'Inter', sans-serif;
+            background: var(--bg);
+            color: var(--text);
+            min-height: 100vh;
+            display: flex;
+        }
+
+        /* ── Sidebar ── */
+        .sidebar {
+            width: 260px;
+            min-height: 100vh;
+            background: var(--surface);
+            border-right: 1px solid var(--border);
+            display: flex;
+            flex-direction: column;
+            padding: 1.5rem 1rem;
+            position: fixed;
+            top: 0;
+            left: 0;
+            bottom: 0;
+        }
+
+        .sidebar-logo {
+            display: flex;
+            align-items: center;
+            gap: .7rem;
+            padding: .5rem .75rem 1.5rem;
+            border-bottom: 1px solid var(--border);
+            margin-bottom: 1.5rem;
+        }
+
+        .logo-icon {
+            font-size: 1.8rem;
+        }
+
+        .logo-text {
+            font-size: 1rem;
+            font-weight: 700;
+            line-height: 1.2;
+        }
+
+        .logo-sub {
+            font-size: .7rem;
+            color: var(--text-muted);
+            font-weight: 400;
+        }
+
+        .nav-section {
+            font-size: .7rem;
+            text-transform: uppercase;
+            letter-spacing: .08em;
+            color: var(--text-muted);
+            padding: 0 .75rem .5rem;
+            margin-top: .5rem;
+        }
+
+        .nav-item {
+            display: flex;
+            align-items: center;
+            gap: .75rem;
+            padding: .65rem .75rem;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: .9rem;
+            font-weight: 500;
+            color: var(--text-muted);
+            transition: all .15s;
+            margin-bottom: 2px;
+            border: none;
+            background: none;
+            width: 100%;
+            text-align: left;
+        }
+
+        .nav-item:hover {
+            background: var(--surface2);
+            color: var(--text);
+        }
+
+        .nav-item.active {
+            background: rgba(124, 105, 239, .18);
+            color: var(--primary);
+        }
+
+        .nav-item .nav-icon {
+            font-size: 1.1rem;
+            width: 1.4rem;
+        }
+
+        .sidebar-bottom {
+            margin-top: auto;
+            border-top: 1px solid var(--border);
+            padding-top: 1rem;
+        }
+
+        .user-chip {
+            display: flex;
+            align-items: center;
+            gap: .75rem;
+            padding: .6rem .75rem;
+            border-radius: 8px;
+            background: var(--surface2);
+        }
+
+        .user-avatar {
+            width: 36px;
+            height: 36px;
+            border-radius: 50%;
+            background: linear-gradient(135deg, var(--primary), var(--primary-dark));
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: 700;
+            font-size: .85rem;
+            color: #fff;
+            flex-shrink: 0;
+        }
+
+        .user-name {
+            font-size: .875rem;
+            font-weight: 600;
+        }
+
+        .user-role {
+            font-size: .72rem;
+            color: var(--text-muted);
+        }
+
+        .logout-btn {
+            width: 100%;
+            margin-top: .75rem;
+            padding: .55rem;
+            border-radius: 8px;
+            background: transparent;
+            border: 1px solid var(--border);
+            color: var(--text-muted);
+            cursor: pointer;
+            font-size: .85rem;
+            transition: all .15s;
+        }
+
+        .logout-btn:hover {
+            border-color: var(--accent);
+            color: var(--accent);
+        }
+
+        /* ── Main content ── */
+        .main {
+            margin-left: 260px;
+            flex: 1;
+            padding: 2rem;
+            min-height: 100vh;
+        }
+
+        .page {
+            display: none;
+        }
+
+        .page.active {
+            display: block;
+        }
+
+        /* ── Page header ── */
+        .page-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            margin-bottom: 1.75rem;
+        }
+
+        .page-title {
+            font-size: 1.5rem;
+            font-weight: 700;
+        }
+
+        .page-subtitle {
+            font-size: .875rem;
+            color: var(--text-muted);
+            margin-top: .2rem;
+        }
+
+        /* ── Stat cards ── */
+        .stats-row {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+            gap: 1rem;
+            margin-bottom: 2rem;
+        }
+
+        .stat-card {
+            background: var(--surface);
+            border: 1px solid var(--border);
+            border-radius: var(--radius);
+            padding: 1.25rem 1.5rem;
+            transition: transform .15s;
+        }
+
+        .stat-card:hover {
+            transform: translateY(-2px);
+        }
+
+        .stat-label {
+            font-size: .78rem;
+            color: var(--text-muted);
+            text-transform: uppercase;
+            letter-spacing: .06em;
+        }
+
+        .stat-value {
+            font-size: 2rem;
+            font-weight: 800;
+            margin-top: .25rem;
+        }
+
+        .stat-card.purple .stat-value {
+            color: var(--primary);
+        }
+
+        .stat-card.green .stat-value {
+            color: var(--green);
+        }
+
+        .stat-card.yellow .stat-value {
+            color: var(--yellow);
+        }
+
+        .stat-card.red .stat-value {
+            color: var(--accent);
+        }
+
+        /* ── Case list ── */
+        .section-card {
+            background: var(--surface);
+            border: 1px solid var(--border);
+            border-radius: var(--radius);
+            padding: 1.5rem;
+            margin-bottom: 1.5rem;
+        }
+
+        .section-title {
+            font-size: 1rem;
+            font-weight: 700;
+            margin-bottom: 1.25rem;
+            display: flex;
+            align-items: center;
+            gap: .5rem;
+        }
+
+        .case-list {
+            display: flex;
+            flex-direction: column;
+            gap: .75rem;
+        }
+
+        .case-card {
+            background: var(--surface2);
+            border: 1px solid var(--border);
+            border-radius: 10px;
+            padding: 1rem 1.25rem;
+            cursor: pointer;
+            transition: all .15s;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 1rem;
+        }
+
+        .case-card:hover {
+            border-color: var(--primary);
+            background: rgba(124, 105, 239, .07);
+        }
+
+        .case-card-left {
+            flex: 1;
+            min-width: 0;
+        }
+
+        .case-title {
+            font-weight: 600;
+            font-size: .95rem;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+
+        .case-meta {
+            font-size: .78rem;
+            color: var(--text-muted);
+            margin-top: .3rem;
+        }
+
+        .case-badges {
+            display: flex;
+            gap: .5rem;
+            flex-shrink: 0;
+            flex-wrap: wrap;
+            justify-content: flex-end;
+        }
+
+        .badge {
+            display: inline-block;
+            padding: .2rem .65rem;
+            border-radius: 50px;
+            font-size: .72rem;
+            font-weight: 600;
+        }
+
+        .badge-pending {
+            background: rgba(210, 153, 34, .15);
+            color: var(--yellow);
+        }
+
+        .badge-progress {
+            background: rgba(124, 105, 239, .15);
+            color: var(--primary);
+        }
+
+        .badge-resolved {
+            background: rgba(63, 185, 80, .15);
+            color: var(--green);
+        }
+
+        .badge-rejected {
+            background: rgba(229, 83, 75, .15);
+            color: var(--accent);
+        }
+
+        .badge-low {
+            background: rgba(63, 185, 80, .12);
+            color: #6ee787;
+        }
+
+        .badge-medium {
+            background: rgba(210, 153, 34, .12);
+            color: #f0b429;
+        }
+
+        .badge-high {
+            background: rgba(229, 83, 75, .12);
+            color: #ff7b72;
+        }
+
+        .empty-state {
+            text-align: center;
+            padding: 3rem 1rem;
+            color: var(--text-muted);
+            font-size: .9rem;
+        }
+
+        .empty-state .big-icon {
+            font-size: 3rem;
+            margin-bottom: .75rem;
+        }
+
+        /* ── Case detail panel (slide-in) ── */
+        .detail-panel {
+            position: fixed;
+            top: 0;
+            right: -100%;
+            bottom: 0;
+            width: min(700px, 100vw);
+            background: var(--surface);
+            border-left: 1px solid var(--border);
+            z-index: 1000;
+            overflow-y: auto;
+            transition: right .3s cubic-bezier(.4, 0, .2, 1);
+            display: flex;
+            flex-direction: column;
+        }
+
+        .detail-panel.open {
+            right: 0;
+        }
+
+        .panel-overlay {
+            position: fixed;
+            inset: 0;
+            background: rgba(0, 0, 0, .5);
+            z-index: 999;
+            display: none;
+        }
+
+        .panel-overlay.open {
+            display: block;
+        }
+
+        .panel-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 1.25rem 1.5rem;
+            border-bottom: 1px solid var(--border);
+            position: sticky;
+            top: 0;
+            background: var(--surface);
+            z-index: 1;
+        }
+
+        .panel-title {
+            font-size: 1.1rem;
+            font-weight: 700;
+        }
+
+        .close-btn {
+            background: none;
+            border: none;
+            color: var(--text-muted);
+            font-size: 1.4rem;
+            cursor: pointer;
+            line-height: 1;
+        }
+
+        .close-btn:hover {
+            color: var(--text);
+        }
+
+        .panel-body {
+            padding: 1.5rem;
+            flex: 1;
+        }
+
+        .field-group {
+            margin-bottom: 1.25rem;
+        }
+
+        .field-label {
+            font-size: .75rem;
+            text-transform: uppercase;
+            letter-spacing: .06em;
+            color: var(--text-muted);
+            margin-bottom: .3rem;
+        }
+
+        .field-value {
+            font-size: .9rem;
+        }
+
+        .fields-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 1rem;
+        }
+
+        .panel-section {
+            margin-top: 1.75rem;
+        }
+
+        .panel-section-title {
+            font-size: .85rem;
+            font-weight: 700;
+            color: var(--text-muted);
+            text-transform: uppercase;
+            letter-spacing: .06em;
+            border-bottom: 1px solid var(--border);
+            padding-bottom: .5rem;
+            margin-bottom: 1rem;
+        }
+
+        /* chat */
+        .chat-messages {
+            display: flex;
+            flex-direction: column;
+            gap: .75rem;
+            max-height: 300px;
+            overflow-y: auto;
+            background: var(--bg);
+            border-radius: 8px;
+            padding: .75rem;
+            margin-bottom: .75rem;
+        }
+
+        .chat-bubble {
+            padding: .6rem .85rem;
+            border-radius: 8px;
+            font-size: .875rem;
+            max-width: 85%;
+        }
+
+        .chat-bubble.system {
+            background: var(--surface2);
+            color: var(--text-muted);
+            align-self: center;
+            font-size: .78rem;
+        }
+
+        .chat-bubble.other {
+            background: var(--surface2);
+            border-left: 3px solid var(--primary);
+            align-self: flex-start;
+        }
+
+        .chat-bubble.mine {
+            background: rgba(124, 105, 239, .2);
+            border-left: 3px solid #a78bfa;
+            align-self: flex-end;
+        }
+
+        .chat-meta {
+            font-size: .7rem;
+            color: var(--text-muted);
+            margin-top: .2rem;
+        }
+
+        .chat-input-row {
+            display: flex;
+            gap: .5rem;
+        }
+
+        .chat-input {
+            flex: 1;
+            background: var(--surface2);
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            padding: .6rem .9rem;
+            color: var(--text);
+            font-size: .875rem;
+            font-family: inherit;
+            resize: none;
+        }
+
+        .chat-input:focus {
+            outline: none;
+            border-color: var(--primary);
+        }
+
+        .send-btn {
+            padding: .6rem 1.25rem;
+            background: var(--primary);
+            color: #fff;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            font-weight: 600;
+            font-size: .875rem;
+            white-space: nowrap;
+            transition: background .15s;
+        }
+
+        .send-btn:hover {
+            background: var(--primary-dark);
+        }
+
+        .send-btn:disabled {
+            opacity: .6;
+            cursor: not-allowed;
+        }
+
+        /* session / order cards */
+        .mini-card {
+            background: var(--bg);
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            padding: .75rem 1rem;
+            margin-bottom: .5rem;
+            font-size: .85rem;
+        }
+
+        .mini-card-title {
+            font-weight: 600;
+            margin-bottom: .3rem;
+        }
+
+        .mini-card-meta {
+            color: var(--text-muted);
+            font-size: .78rem;
+        }
+
+        /* sms notice */
+        .sms-notice {
+            background: rgba(124, 105, 239, .1);
+            border: 1px solid rgba(124, 105, 239, .3);
+            border-radius: 8px;
+            padding: .75rem 1rem;
+            margin-bottom: .5rem;
+            font-size: .82rem;
+        }
+
+        .sms-notice-head {
+            font-weight: 600;
+            color: var(--primary);
+            margin-bottom: .2rem;
+        }
+
+        /* ── Loading skeleton ── */
+        .skeleton {
+            background: linear-gradient(90deg, var(--surface2) 25%, var(--border) 50%, var(--surface2) 75%);
+            background-size: 200% 100%;
+            animation: shimmer 1.4s infinite;
+            border-radius: 6px;
+            height: 1em;
+            margin-bottom: .4rem;
+        }
+
+        @keyframes shimmer {
+            0% {
+                background-position: 200% 0
+            }
+
+            100% {
+                background-position: -200% 0
+            }
+        }
+
+        /* ── Toast ── */
+        .toast {
+            position: fixed;
+            bottom: 1.5rem;
+            right: 1.5rem;
+            z-index: 9999;
+            padding: .75rem 1.25rem;
+            border-radius: 10px;
+            font-size: .875rem;
+            font-weight: 500;
+            box-shadow: 0 8px 24px rgba(0, 0, 0, .4);
+            opacity: 0;
+            transform: translateY(10px);
+            transition: opacity .25s, transform .25s;
+            pointer-events: none;
+        }
+
+        .toast.success {
+            background: #1f3a26;
+            color: #6ee787;
+            border: 1px solid #3fb950;
+        }
+
+        .toast.error {
+            background: #3a1f1f;
+            color: #ff7b72;
+            border: 1px solid var(--accent);
+        }
+
+        .toast.visible {
+            opacity: 1;
+            transform: translateY(0);
+        }
+
+        /* ── Responsive ── */
+        @media (max-width: 768px) {
+            .sidebar {
+                width: 100%;
+                min-height: auto;
+                position: relative;
+                flex-direction: row;
+                flex-wrap: wrap;
+                padding: .75rem;
+            }
+
+            .main {
+                margin-left: 0;
+                padding: 1rem;
+            }
+
+            .fields-grid {
+                grid-template-columns: 1fr;
+            }
+        }
+    </style>
+</head>
+
+<body>
+
+    <!-- Sidebar -->
+    <aside class="sidebar">
+        <div class="sidebar-logo">
+            <div class="logo-icon">⚖️</div>
+            <div>
+                <div class="logo-text">CCMS</div>
+                <div class="logo-sub">Respondent Portal</div>
+            </div>
+        </div>
+
+        <div class="nav-section">Navigation</div>
+        <button class="nav-item active" id="nav-overview" onclick="showPage('overview')">
+            <span class="nav-icon">🏠</span> Overview
+        </button>
+        <button class="nav-item" id="nav-cases" onclick="showPage('cases')">
+            <span class="nav-icon">📁</span> My Cases
+        </button>
+        <button class="nav-item" id="nav-notifications" onclick="showPage('notifications')">
+            <span class="nav-icon">🔔</span> Notifications
+        </button>
+
+        <div class="sidebar-bottom">
+            <div class="user-chip">
+                <div class="user-avatar" id="sidebar-avatar">R</div>
+                <div>
+                    <div class="user-name" id="sidebar-name">Loading…</div>
+                    <div class="user-role">Respondent</div>
+                </div>
+            </div>
+            <button class="logout-btn" onclick="handleLogout()">🚪 Sign Out</button>
+        </div>
+    </aside>
+
+    <!-- Main -->
+    <main class="main">
+
+        <!-- ═══ Overview Page ═══ -->
+        <div class="page active" id="page-overview">
+            <div class="page-header">
+                <div>
+                    <div class="page-title">Welcome back, <span id="welcome-name">—</span></div>
+                    <div class="page-subtitle">Here is a summary of your legal proceedings</div>
+                </div>
+            </div>
+
+            <div class="stats-row">
+                <div class="stat-card purple">
+                    <div class="stat-label">Total Cases</div>
+                    <div class="stat-value" id="stat-total">—</div>
+                </div>
+                <div class="stat-card yellow">
+                    <div class="stat-label">Pending</div>
+                    <div class="stat-value" id="stat-pending">—</div>
+                </div>
+                <div class="stat-card purple">
+                    <div class="stat-label">In Progress</div>
+                    <div class="stat-value" id="stat-progress">—</div>
+                </div>
+                <div class="stat-card green">
+                    <div class="stat-label">Resolved</div>
+                    <div class="stat-value" id="stat-resolved">—</div>
+                </div>
+            </div>
+
+            <div class="section-card">
+                <div class="section-title">📋 Recent Cases</div>
+                <div class="case-list" id="recent-cases-list">
+                    <div class="skeleton" style="height:60px"></div>
+                    <div class="skeleton" style="height:60px"></div>
+                    <div class="skeleton" style="height:60px"></div>
+                </div>
+            </div>
+        </div>
+
+        <!-- ═══ Cases Page ═══ -->
+        <div class="page" id="page-cases">
+            <div class="page-header">
+                <div>
+                    <div class="page-title">📁 All Cases</div>
+                    <div class="page-subtitle">Complaints where you are named as respondent</div>
+                </div>
+            </div>
+            <div class="section-card">
+                <div class="case-list" id="all-cases-list">
+                    <div class="skeleton" style="height:60px"></div>
+                    <div class="skeleton" style="height:60px"></div>
+                </div>
+            </div>
+        </div>
+
+        <!-- ═══ Notifications Page ═══ -->
+        <div class="page" id="page-notifications">
+            <div class="page-header">
+                <div>
+                    <div class="page-title">🔔 SMS Notifications</div>
+                    <div class="page-subtitle">Court notices sent to you by the judicial system</div>
+                </div>
+            </div>
+            <div class="section-card">
+                <div id="notifications-list">
+                    <div class="skeleton" style="height:60px"></div>
+                </div>
+            </div>
+        </div>
+
+    </main>
+
+    <!-- Case Detail Panel -->
+    <div class="panel-overlay" id="panel-overlay" onclick="closePanel()"></div>
+    <div class="detail-panel" id="detail-panel">
+        <div class="panel-header">
+            <div class="panel-title" id="panel-case-title">Case Details</div>
+            <button class="close-btn" onclick="closePanel()">✕</button>
+        </div>
+        <div class="panel-body">
+
+            <!-- Status row -->
+            <div style="display:flex;gap:.75rem;margin-bottom:1.5rem;flex-wrap:wrap;">
+                <span id="panel-status-badge" class="badge">—</span>
+                <span id="panel-priority-badge" class="badge">—</span>
+            </div>
+
+            <div class="fields-grid">
+                <div class="field-group">
+                    <div class="field-label">Case #</div>
+                    <div class="field-value" id="panel-case-number">—</div>
+                </div>
+                <div class="field-group">
+                    <div class="field-label">Category</div>
+                    <div class="field-value" id="panel-category">—</div>
+                </div>
+                <div class="field-group">
+                    <div class="field-label">Court</div>
+                    <div class="field-value" id="panel-court">—</div>
+                </div>
+                <div class="field-group">
+                    <div class="field-label">Hearing Date</div>
+                    <div class="field-value" id="panel-hearing-date">—</div>
+                </div>
+                <div class="field-group">
+                    <div class="field-label">Complainant</div>
+                    <div class="field-value" id="panel-complainant">—</div>
+                </div>
+                <div class="field-group">
+                    <div class="field-label">Filed On</div>
+                    <div class="field-value" id="panel-filed-on">—</div>
+                </div>
+            </div>
+
+            <div class="field-group">
+                <div class="field-label">Description</div>
+                <div class="field-value" id="panel-description" style="line-height:1.6">—</div>
+            </div>
+
+            <!-- Hearings -->
+            <div class="panel-section" id="panel-sessions-section">
+                <div class="panel-section-title">📅 Scheduled Hearings</div>
+                <div id="panel-sessions"></div>
+            </div>
+
+            <!-- Orders / Judgments -->
+            <div class="panel-section" id="panel-orders-section">
+                <div class="panel-section-title">⚖️ Orders & Judgments</div>
+                <div id="panel-orders"></div>
+            </div>
+
+            <!-- SMS Notifications for this case -->
+            <div class="panel-section" id="panel-sms-section">
+                <div class="panel-section-title">📱 Court SMS Notices</div>
+                <div id="panel-sms-list"></div>
+            </div>
+
+            <!-- Chat / Response -->
+            <div class="panel-section">
+                <div class="panel-section-title">💬 Case Discussion</div>
+                <div class="chat-messages" id="panel-chat-messages"></div>
+                <div class="chat-input-row">
+                    <textarea class="chat-input" id="panel-chat-input" rows="2"
+                        placeholder="Type your response to the court or complainant…"></textarea>
+                    <button class="send-btn" id="panel-send-btn" onclick="submitResponse()">Send</button>
+                </div>
+            </div>
+
+        </div>
+    </div>
+
+    <!-- Toast -->
+    <div class="toast" id="toast"></div>
+
+    <script src="/js/utils.js"></script>
+    <script>
+        let currentUser = null;
+        let allCases = [];
+        let currentCaseId = null;
+
+        // ── Bootstrap ──
+        (async () => {
+            currentUser = await checkAuthSession(false);
+            if (!currentUser) return;
+            if (currentUser.role !== 'RESPONDENT') {
+                window.location.href = '/dashboard.html';
+                return;
+            }
+            document.getElementById('sidebar-name').textContent = currentUser.username;
+            document.getElementById('sidebar-avatar').textContent = currentUser.username[0].toUpperCase();
+            document.getElementById('welcome-name').textContent = currentUser.username;
+            await loadCases();
+        })();
+
+        // ── Navigation ──
+        function showPage(name) {
+            document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+            document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
+            document.getElementById('page-' + name).classList.add('active');
+            document.getElementById('nav-' + name).classList.add('active');
+
+            if (name === 'notifications') renderNotifications();
+        }
+
+        // ── Load all cases ──
+        async function loadCases() {
+            try {
+                const data = await apiRequest('/api/respondent/cases');
+                allCases = data.cases || [];
+
+                renderCaseList('recent-cases-list', allCases.slice(0, 5));
+                renderCaseList('all-cases-list', allCases);
+                renderStats(allCases);
+            } catch (err) {
+                document.getElementById('recent-cases-list').innerHTML = '<div class="empty-state"><div class="big-icon">⚠️</div>Failed to load cases.</div>';
+            }
+        }
+
+        function renderStats(cases) {
+            document.getElementById('stat-total').textContent = cases.length;
+            document.getElementById('stat-pending').textContent = cases.filter(c => c.status === 'Pending').length;
+            document.getElementById('stat-progress').textContent = cases.filter(c => c.status === 'In Progress').length;
+            document.getElementById('stat-resolved').textContent = cases.filter(c => c.status === 'Resolved').length;
+        }
+
+        function renderCaseList(containerId, cases) {
+            const el = document.getElementById(containerId);
+            if (!cases || cases.length === 0) {
+                el.innerHTML = '<div class="empty-state"><div class="big-icon">📂</div>No cases found. Cases appear here when a complainant names you as a respondent.</div>';
+                return;
+            }
+            el.innerHTML = cases.map(c => `
+      <div class="case-card" onclick="openCase(${c.id})">
+        <div class="case-card-left">
+          <div class="case-title">${escapeHTML(c.title)}</div>
+          <div class="case-meta">Case #${escapeHTML(c.case_number || String(c.id))} · ${escapeHTML(c.court_name || 'Court')} · Filed ${formatDate(c.created_at)}</div>
+        </div>
+        <div class="case-badges">
+          <span class="badge ${statusBadgeClass(c.status)}">${escapeHTML(c.status)}</span>
+          <span class="badge ${prioBadgeClass(c.priority)}">${escapeHTML(c.priority)}</span>
+        </div>
+      </div>
+    `).join('');
+        }
+
+        function statusBadgeClass(s) {
+            if (s === 'Pending') return 'badge-pending';
+            if (s === 'In Progress') return 'badge-progress';
+            if (s === 'Resolved') return 'badge-resolved';
+            if (s === 'Rejected') return 'badge-rejected';
+            return 'badge-pending';
+        }
+        function prioBadgeClass(p) {
+            if (p === 'Low') return 'badge-low';
+            if (p === 'High') return 'badge-high';
+            return 'badge-medium';
+        }
+
+        // ── Open case detail ──
+        async function openCase(id) {
+            currentCaseId = id;
+            document.getElementById('detail-panel').classList.add('open');
+            document.getElementById('panel-overlay').classList.add('open');
+            document.getElementById('panel-case-title').textContent = 'Loading…';
+
+            try {
+                const { complaint: c, remarks, sessions, orders, smsLogs } = await apiRequest(`/api/respondent/case/${id}`);
+
+                document.getElementById('panel-case-title').textContent = c.title;
+                document.getElementById('panel-case-number').textContent = c.case_number || `#${c.id}`;
+                document.getElementById('panel-category').textContent = c.category;
+                document.getElementById('panel-court').textContent = c.court_name || 'N/A';
+                document.getElementById('panel-hearing-date').textContent = c.hearing_date || 'N/A';
+                document.getElementById('panel-complainant').textContent = c.complainant_username || c.complainant_email || 'N/A';
+                document.getElementById('panel-filed-on').textContent = formatDate(c.created_at);
+                document.getElementById('panel-description').textContent = c.description || '—';
+
+                const sBadge = document.getElementById('panel-status-badge');
+                sBadge.className = 'badge ' + statusBadgeClass(c.status);
+                sBadge.textContent = c.status;
+
+                const pBadge = document.getElementById('panel-priority-badge');
+                pBadge.className = 'badge ' + prioBadgeClass(c.priority);
+                pBadge.textContent = c.priority + ' Priority';
+
+                // Sessions
+                const sessEl = document.getElementById('panel-sessions');
+                if (sessions && sessions.length > 0) {
+                    sessEl.innerHTML = sessions.map(s => `
+          <div class="mini-card">
+            <div class="mini-card-title">📅 ${escapeHTML(s.hearing_type)} Hearing</div>
+            <div class="mini-card-meta">${escapeHTML(s.session_date)}${s.session_time ? ' at ' + escapeHTML(s.session_time) : ''} · ${escapeHTML(s.courtroom || 'TBD')} · Judge: ${escapeHTML(s.judge_name || 'TBD')}</div>
+          </div>
+        `).join('');
+                } else {
+                    sessEl.innerHTML = '<div style="color:var(--text-muted);font-size:.85rem">No hearings scheduled.</div>';
+                }
+
+                // Orders
+                const ordEl = document.getElementById('panel-orders');
+                if (orders && orders.length > 0) {
+                    ordEl.innerHTML = orders.map(o => `
+          <div class="mini-card" style="border-left:3px solid var(--primary)">
+            <div class="mini-card-title">⚖️ ${escapeHTML(o.order_type)}</div>
+            <div class="mini-card-meta">${formatDate(o.created_at)}</div>
+            <div style="margin-top:.4rem;font-size:.85rem">${escapeHTML(o.order_details)}</div>
+          </div>
+        `).join('');
+                } else {
+                    ordEl.innerHTML = '<div style="color:var(--text-muted);font-size:.85rem">No orders or judgments issued.</div>';
+                }
+
+                // SMS notices
+                const smsList = document.getElementById('panel-sms-list');
+                if (smsLogs && smsLogs.length > 0) {
+                    smsList.innerHTML = smsLogs.map(s => `
+          <div class="sms-notice">
+            <div class="sms-notice-head">📱 Court Notice — ${formatDate(s.created_at)}</div>
+            <div>${escapeHTML(s.message)}</div>
+          </div>
+        `).join('');
+                } else {
+                    smsList.innerHTML = '<div style="color:var(--text-muted);font-size:.85rem">No SMS notices for this case.</div>';
+                }
+
+                // Chat remarks
+                renderChat(remarks);
+
+            } catch (err) {
+                document.getElementById('panel-case-title').textContent = 'Error loading case';
+                showToast('Failed to load case details', true);
+            }
+        }
+
+        function renderChat(remarks) {
+            const container = document.getElementById('panel-chat-messages');
+            if (!remarks || remarks.length === 0) {
+                container.innerHTML = '<div class="chat-bubble system">No messages yet. Type your response below.</div>';
+                return;
+            }
+            container.innerHTML = remarks.map(r => {
+                const isMine = r.role === 'RESPONDENT';
+                const cls = isMine ? 'mine' : 'other';
+                return `
+        <div>
+          <div class="chat-bubble ${cls}">${escapeHTML(r.remark)}</div>
+          <div class="chat-meta" style="text-align:${isMine ? 'right' : 'left'}">${escapeHTML(r.username)} (${escapeHTML(r.role)}) · ${formatDate(r.created_at)}</div>
+        </div>
+      `;
+            }).join('');
+            setTimeout(() => { container.scrollTop = container.scrollHeight; }, 50);
+        }
+
+        async function submitResponse() {
+            if (!currentCaseId) return;
+            const input = document.getElementById('panel-chat-input');
+            const msg = input.value.trim();
+            if (!msg) return;
+            const btn = document.getElementById('panel-send-btn');
+            btn.disabled = true;
+
+            try {
+                await apiRequest(`/api/respondent/case/${currentCaseId}/respond`, {
+                    method: 'POST',
+                    body: JSON.stringify({ remark: msg })
+                });
+                input.value = '';
+                // Refresh remarks
+                const data = await apiRequest(`/api/respondent/case/${currentCaseId}`);
+                renderChat(data.remarks);
+                showToast('Response submitted');
+            } catch (err) {
+                showToast(err.message || 'Failed to submit response', true);
+            } finally {
+                btn.disabled = false;
+            }
+        }
+
+        function closePanel() {
+            document.getElementById('detail-panel').classList.remove('open');
+            document.getElementById('panel-overlay').classList.remove('open');
+            currentCaseId = null;
+        }
+
+        // ── Notifications page: aggregate all SMS logs across cases ──
+        function renderNotifications() {
+            const container = document.getElementById('notifications-list');
+            const allSms = [];
+            // We'll re-fetch each case to gather SMS — instead show the stats/overview message
+            if (allCases.length === 0) {
+                container.innerHTML = '<div class="empty-state"><div class="big-icon">🔔</div>No notifications yet.</div>';
+                return;
+            }
+            container.innerHTML = `
+      <div style="color:var(--text-muted);font-size:.875rem;margin-bottom:1rem">
+        Open any case from the <strong style="color:var(--text)">My Cases</strong> tab to view court SMS notices sent directly to you for that case.
+      </div>
+      ${allCases.map(c => `
+        <div class="case-card" onclick="openCase(${c.id}); showPage('cases')">
+          <div class="case-card-left">
+            <div class="case-title">${escapeHTML(c.title)}</div>
+            <div class="case-meta">Tap to view case details and notices</div>
+          </div>
+          <div class="case-badges">
+            <span class="badge ${statusBadgeClass(c.status)}">${escapeHTML(c.status)}</span>
+          </div>
+        </div>
+      `).join('')}
+    `;
+        }
+
+        // ── Logout ──
+        async function handleLogout() {
+            try {
+                await apiRequest('/api/auth/logout', { method: 'POST' });
+                showToast('Logging out…');
+                setTimeout(() => { window.location.href = '/'; }, 800);
+            } catch {
+                showToast('Logout failed', true);
+            }
+        }
+
+        // ── Enter key in chat ──
+        document.addEventListener('DOMContentLoaded', () => {
+            const ci = document.getElementById('panel-chat-input');
+            if (ci) {
+                ci.addEventListener('keydown', e => {
+                    if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); submitResponse(); }
+                });
+            }
+        });
+    </script>
+</body>
+
+</html>

@@ -1,5 +1,6 @@
 const nodemailer = require('nodemailer');
 const db = require('./db');
+const sms = require('./sms');
 
 // Read SMTP config from environment variables
 const SMTP_HOST = process.env.SMTP_HOST;
@@ -132,10 +133,57 @@ async function notifyRespondentOfComplaint(complaintId) {
   }
 }
 
+/**
+ * AI-Powered SMS notification to respondent after judge issues a judgment.
+ * Generates personalized message via Gemini API (falls back to template).
+ * Logs to sms_logs table for audit.
+ *
+ * @param {number} complaintId  - DB id of the complaint
+ * @param {string} orderDetails - The judge's written order/judgment details
+ * @param {string} orderType    - e.g. "Final Judgment", "Dismissal"
+ */
+async function notifyRespondentJudgmentSms(complaintId, orderDetails, orderType) {
+  try {
+    const c = await db.get('SELECT * FROM complaints WHERE id = ?', [complaintId]);
+    if (!c) {
+      console.log('[AI SMS] Complaint not found for SMS:', complaintId);
+      return { success: false, error: 'Complaint not found' };
+    }
+
+    if (!c.respondent_phone) {
+      console.log('[AI SMS] No respondent phone on complaint #' + complaintId + '. Skipping SMS.');
+      return { success: false, error: 'No respondent phone number on record' };
+    }
+
+    // Generate AI SMS content
+    const messageText = await sms.generateSmsContent(c, orderDetails, orderType);
+
+    // Send SMS (Twilio if configured, else console log)
+    await sms.sendSms(c.respondent_phone, messageText);
+
+    // Log to sms_logs table for audit trail
+    try {
+      await db.run(
+        `INSERT INTO sms_logs (complaint_id, recipient_phone, message, status) VALUES (?, ?, ?, 'sent')`,
+        [complaintId, c.respondent_phone, messageText]
+      );
+    } catch (logErr) {
+      // Non-fatal — table may not exist in old schema
+      console.warn('[AI SMS] Could not log to sms_logs:', logErr.message);
+    }
+
+    return { success: true, message: messageText, phone: c.respondent_phone };
+  } catch (err) {
+    console.error('[AI SMS] notifyRespondentJudgmentSms error:', err.message || err);
+    return { success: false, error: err.message || 'Unknown SMS error' };
+  }
+}
+
 module.exports = {
   notifyNewComplaint,
   notifyStatusChange,
   notifyRemarkAdded,
   notifyRespondentOfComplaint,
+  notifyRespondentJudgmentSms,
   sendMail
 };

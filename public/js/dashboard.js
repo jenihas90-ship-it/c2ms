@@ -902,40 +902,120 @@ async function openScheduleHearing() {
     }
 }
 
+// State variables for the AI SMS modal judgment flow
+let _pendingJudgmentData = null;
+
 async function openIssueJudgment() {
     if (!currentComplaintId) return;
 
-    const order_type = prompt('Enter Order Type (Interim, Final Judgment, Dismissal, Settlement, Appeal):', 'Interim');
+    const order_type = prompt('Enter Order Type (Interim, Final Judgment, Dismissal, Settlement, Appeal):', 'Final Judgment');
     if (!order_type) return;
 
     const order_details = prompt('Enter Order/Judgment Details:');
     if (!order_details) return;
 
-    let statusUpdate = confirm('Would you like to automatically mark this case as Resolved / Closed?');
+    const statusUpdate = confirm('Mark this case as Resolved / Closed after issuing judgment?');
     const status = statusUpdate ? 'Resolved' : null;
+
+    // Store pending judgment data
+    _pendingJudgmentData = { complaint_id: currentComplaintId, order_type, order_details, status };
+
+    // Show the AI SMS Preview modal
+    const modal = document.getElementById('ai-sms-modal');
+    const phoneEl = document.getElementById('ai-sms-phone');
+    const recipientEl = document.getElementById('ai-sms-recipient-name');
+    const smsTextEl = document.getElementById('ai-sms-text');
+    const charCountEl = document.getElementById('ai-sms-char-count');
+    const aiBadge = document.getElementById('ai-sms-ai-badge');
+    const noPhoneNote = document.getElementById('ai-sms-no-phone-note');
+    const confirmBtn = document.getElementById('ai-sms-confirm-btn');
+
+    // Show modal with loading state
+    smsTextEl.value = '⏳ Generating AI message...';
+    smsTextEl.disabled = true;
+    confirmBtn.disabled = true;
+    confirmBtn.textContent = '⏳ Generating...';
+    noPhoneNote.style.display = 'none';
+    aiBadge.style.display = 'none';
+    modal.style.display = 'flex';
+
+    try {
+        const params = new URLSearchParams({
+            complaint_id: currentComplaintId,
+            order_type,
+            order_details
+        });
+        const preview = await apiRequest(`/api/judge/sms-preview?${params.toString()}`);
+
+        if (!preview.phone || !preview.sms) {
+            // No phone number — show warning but allow judgment
+            noPhoneNote.style.display = 'block';
+            phoneEl.textContent = 'N/A';
+            recipientEl.textContent = '';
+            smsTextEl.value = '';
+            smsTextEl.disabled = true;
+            confirmBtn.textContent = '⚖️ Confirm Judgment (No SMS)';
+        } else {
+            phoneEl.textContent = preview.phone;
+            recipientEl.textContent = preview.respondent || '';
+            smsTextEl.value = preview.sms;
+            smsTextEl.disabled = false;
+            charCountEl.textContent = preview.sms.length;
+            if (preview.aiGenerated) {
+                aiBadge.style.display = 'inline-block';
+            }
+            confirmBtn.textContent = '⚖️ Confirm & Send SMS';
+        }
+    } catch (err) {
+        smsTextEl.value = 'Failed to generate preview. The judgment will still be saved.';
+        confirmBtn.textContent = '⚖️ Confirm Judgment';
+    }
+
+    smsTextEl.oninput = () => {
+        charCountEl.textContent = smsTextEl.value.length;
+    };
+
+    smsTextEl.disabled = false;
+    confirmBtn.disabled = false;
+}
+
+function cancelAiSmsModal() {
+    const modal = document.getElementById('ai-sms-modal');
+    modal.style.display = 'none';
+    _pendingJudgmentData = null;
+}
+
+async function confirmJudgmentWithSms() {
+    if (!_pendingJudgmentData) return;
+
+    const confirmBtn = document.getElementById('ai-sms-confirm-btn');
+    confirmBtn.disabled = true;
+    confirmBtn.textContent = '⏳ Saving...';
 
     try {
         await apiRequest('/api/judge/adjudicate', {
             method: 'POST',
-            body: JSON.stringify({
-                complaint_id: currentComplaintId,
-                order_type,
-                order_details,
-                status
-            })
+            body: JSON.stringify(_pendingJudgmentData)
         });
-        showToast('Judgment/Order issued successfully.');
+
+        // Close modal
+        document.getElementById('ai-sms-modal').style.display = 'none';
+        _pendingJudgmentData = null;
+
+        showToast('✅ Judgment issued. AI SMS dispatched to respondent.');
         await openDetailsInspector(currentComplaintId);
         await refreshDashboardData();
     } catch (err) {
         showToast(err.message || 'Failed to issue judgment.', true);
+        confirmBtn.disabled = false;
+        confirmBtn.textContent = '⚖️ Confirm & Send SMS';
     }
 }
 
 async function openConfidentialNotes() {
     if (!currentComplaintId) return;
 
-    const isNew = confirm('Press OK to write a new confidential note. Press Cancel to ignore.');
+    const isNew = confirm('Press OK to write a new confidential note. Press Cancel to view existing notes only.');
     if (isNew) {
         const note_text = prompt('Enter your private note:');
         if (!note_text) return;

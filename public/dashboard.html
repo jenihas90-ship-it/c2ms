@@ -543,6 +543,112 @@
         </div>
     </div>
 
+    <!-- ===== AI SMS PREVIEW MODAL ===== -->
+    <div id="ai-sms-modal" style="
+        display: none;
+        position: fixed; inset: 0; z-index: 9999;
+        background: rgba(0,0,0,0.6);
+        backdrop-filter: blur(4px);
+        align-items: center;
+        justify-content: center;
+    ">
+        <div style="
+            background: var(--sidebar-bg, #1e1e2e);
+            border: 1px solid var(--border, #3a3a4a);
+            border-radius: 16px;
+            padding: 2rem;
+            width: 90%;
+            max-width: 540px;
+            box-shadow: 0 24px 64px rgba(0,0,0,0.5);
+            animation: slideUp 0.25s ease;
+        ">
+            <!-- Header -->
+            <div style="display:flex; align-items:center; gap:0.75rem; margin-bottom:1.5rem;">
+                <span style="font-size:1.8rem;">📱</span>
+                <div>
+                    <h3 style="margin:0; font-size:1.1rem; color:var(--text-main, #f0f0f0);">AI-Generated SMS Preview
+                    </h3>
+                    <p style="margin:0; font-size:0.8rem; color:var(--text-muted, #888);">Review the notification before
+                        it is sent to the respondent</p>
+                </div>
+                <span id="ai-sms-ai-badge" style="
+                    margin-left:auto;
+                    background: linear-gradient(135deg,#8a5cf6,#06b6d4);
+                    color:#fff;
+                    font-size:0.7rem;
+                    font-weight:700;
+                    padding:3px 10px;
+                    border-radius:20px;
+                    display:none;
+                ">✨ AI</span>
+            </div>
+
+            <!-- Recipient -->
+            <div
+                style="margin-bottom:1rem; padding:0.6rem 1rem; background:rgba(255,255,255,0.05); border-radius:8px; font-size:0.88rem;">
+                <span style="color:var(--text-muted,#888);">To: </span>
+                <span id="ai-sms-phone" style="font-weight:600; color:var(--text-main,#f0f0f0);"></span>
+                &nbsp;·&nbsp;
+                <span id="ai-sms-recipient-name" style="color:var(--text-muted,#888);"></span>
+            </div>
+
+            <!-- Message (editable) -->
+            <div style="margin-bottom:1.25rem;">
+                <label
+                    style="font-size:0.82rem; color:var(--text-muted,#888); margin-bottom:0.4rem; display:block;">Message
+                    <span style="opacity:0.6;">(you may edit before sending)</span></label>
+                <textarea id="ai-sms-text" rows="5" style="
+                    width:100%; box-sizing:border-box;
+                    padding:0.75rem; border-radius:8px;
+                    border:1px solid var(--border,#3a3a4a);
+                    background:rgba(255,255,255,0.04);
+                    color:var(--text-main,#f0f0f0);
+                    font-size:0.9rem; line-height:1.5;
+                    resize:vertical;
+                "></textarea>
+                <div style="text-align:right; font-size:0.75rem; color:var(--text-muted,#888); margin-top:0.25rem;">
+                    <span id="ai-sms-char-count">0</span> chars
+                </div>
+            </div>
+
+            <!-- No phone warning -->
+            <div id="ai-sms-no-phone-note" style="
+                display:none;
+                background:rgba(255,180,0,0.1);
+                border:1px solid rgba(255,180,0,0.3);
+                border-radius:8px;
+                padding:0.75rem 1rem;
+                font-size:0.85rem;
+                color:#f5a623;
+                margin-bottom:1rem;
+            ">⚠️ No respondent phone number is on file. The judgment will be saved but no SMS will be sent.</div>
+
+            <!-- Actions -->
+            <div style="display:flex; gap:0.75rem; justify-content:flex-end;">
+                <button onclick="cancelAiSmsModal()" style="
+                    padding:0.55rem 1.4rem;
+                    border:1px solid var(--border,#3a3a4a);
+                    border-radius:8px;
+                    background:transparent;
+                    color:var(--text-main,#f0f0f0);
+                    cursor:pointer;
+                    font-size:0.9rem;
+                ">Cancel</button>
+                <button id="ai-sms-confirm-btn" onclick="confirmJudgmentWithSms()" style="
+                    padding:0.55rem 1.6rem;
+                    background:linear-gradient(135deg,#8a5cf6,#6d4ed6);
+                    color:#fff;
+                    border:none;
+                    border-radius:8px;
+                    cursor:pointer;
+                    font-weight:600;
+                    font-size:0.9rem;
+                ">⚖️ Confirm &amp; Send SMS</button>
+            </div>
+        </div>
+    </div>
+    <!-- ===== END AI SMS PREVIEW MODAL ===== -->
+
     <!-- JavaScript Scripts -->
     <script src="/js/utils.js"></script>
     <script src="/js/dashboard.js"></script>

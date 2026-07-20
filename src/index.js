@@ -43,19 +43,27 @@ const complaintsRouter = require('./routes/complaints');
 const adminRouter = require('./routes/admin');
 const judgeRouter = require('./routes/judge');
 const clerkRouter = require('./routes/clerk');
+const respondentRouter = require('./routes/respondent');
 
 app.use('/api/auth', authRouter);
 app.use('/api/complaints', complaintsRouter);
 app.use('/api/admin', adminRouter);
 app.use('/api/judge', judgeRouter);
 app.use('/api/clerk', clerkRouter);
+app.use('/api/respondent', respondentRouter);
 
-// Explicit chat page route support
+// Explicit page routes
 app.get('/chat', (req, res) => {
     res.sendFile(path.resolve(__dirname, '../public/chat.html'));
 });
 app.get('/chat.html', (req, res) => {
     res.sendFile(path.resolve(__dirname, '../public/chat.html'));
+});
+app.get('/respondent', (req, res) => {
+    res.sendFile(path.resolve(__dirname, '../public/respondent.html'));
+});
+app.get('/respondent.html', (req, res) => {
+    res.sendFile(path.resolve(__dirname, '../public/respondent.html'));
 });
 
 // Fallback to serving public/index.html for UI routes

@@ -49,7 +49,7 @@ async function handleLogin(event) {
 
         showToast('Logged in successfully! Redirecting...', false);
         setTimeout(() => {
-            window.location.href = '/dashboard.html';
+            window.location.href = response.redirectUrl || '/dashboard.html';
         }, 1200);
     } catch (error) {
         showToast(error.message || 'Login failed. Please try again.', true);
