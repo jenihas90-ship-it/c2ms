@@ -10,6 +10,17 @@ document.addEventListener('DOMContentLoaded', async () => {
     if (currentUser) {
         setupDashboardView();
     }
+
+    // Populate country dropdowns
+    const countries = ["Afghanistan", "Albania", "Algeria", "Andorra", "Angola", "Antigua and Barbuda", "Argentina", "Armenia", "Australia", "Austria", "Azerbaijan", "Bahamas", "Bahrain", "Bangladesh", "Barbados", "Belarus", "Belgium", "Belize", "Benin", "Bhutan", "Bolivia", "Bosnia and Herzegovina", "Botswana", "Brazil", "Brunei", "Bulgaria", "Burkina Faso", "Burundi", "Côte d'Ivoire", "Cabo Verde", "Cambodia", "Cameroon", "Canada", "Central African Republic", "Chad", "Chile", "China", "Colombia", "Comoros", "Congo (Congo-Brazzaville)", "Costa Rica", "Croatia", "Cuba", "Cyprus", "Czechia (Czech Republic)", "Democratic Republic of the Congo", "Denmark", "Djibouti", "Dominica", "Dominican Republic", "Ecuador", "Egypt", "El Salvador", "Equatorial Guinea", "Eritrea", "Estonia", "Eswatini (fmr. Swaziland)", "Ethiopia", "Fiji", "Finland", "France", "Gabon", "Gambia", "Georgia", "Germany", "Ghana", "Greece", "Grenada", "Guatemala", "Guinea", "Guinea-Bissau", "Guyana", "Haiti", "Holy See", "Honduras", "Hungary", "Iceland", "India", "Indonesia", "Iran", "Iraq", "Ireland", "Israel", "Italy", "Jamaica", "Japan", "Jordan", "Kazakhstan", "Kenya", "Kiribati", "Kuwait", "Kyrgyzstan", "Laos", "Latvia", "Lebanon", "Lesotho", "Liberia", "Libya", "Liechtenstein", "Lithuania", "Luxembourg", "Madagascar", "Malawi", "Malaysia", "Maldives", "Mali", "Malta", "Marshall Islands", "Mauritania", "Mauritius", "Mexico", "Micronesia", "Moldova", "Monaco", "Mongolia", "Montenegro", "Morocco", "Mozambique", "Myanmar (formerly Burma)", "Namibia", "Nauru", "Nepal", "Netherlands", "New Zealand", "Nicaragua", "Niger", "Nigeria", "North Korea", "North Macedonia", "Norway", "Oman", "Pakistan", "Palau", "Palestine State", "Panama", "Papua New Guinea", "Paraguay", "Peru", "Philippines", "Poland", "Portugal", "Qatar", "Romania", "Russia", "Rwanda", "Saint Kitts and Nevis", "Saint Lucia", "Saint Vincent and the Grenadines", "Samoa", "San Marino", "Sao Tome and Principe", "Saudi Arabia", "Senegal", "Serbia", "Seychelles", "Sierra Leone", "Singapore", "Slovakia", "Slovenia", "Solomon Islands", "Somalia", "South Africa", "South Korea", "South Sudan", "Spain", "Sri Lanka", "Sudan", "Suriname", "Sweden", "Switzerland", "Syria", "Tajikistan", "Tanzania", "Thailand", "Timor-Leste", "Togo", "Tonga", "Trinidad and Tobago", "Tunisia", "Turkey", "Turkmenistan", "Tuvalu", "Uganda", "Ukraine", "United Arab Emirates", "United Kingdom", "United States of America", "Uruguay", "Uzbekistan", "Vanuatu", "Venezuela", "Vietnam", "Yemen", "Zambia", "Zimbabwe"];
+    const compCountry = document.getElementById('comp-complainant-country');
+    const respCountry = document.getElementById('comp-respondent-country');
+    if (compCountry && respCountry) {
+        countries.forEach(c => {
+            compCountry.add(new Option(c, c));
+            respCountry.add(new Option(c, c));
+        });
+    }
 });
 
 // Configure UI components based on authenticated user role
@@ -302,6 +313,7 @@ async function openDetailsInspector(id) {
         const data = await apiRequest(`/api/complaints/${id}`);
         const c = data.complaint;
         const remarks = data.remarks;
+        const orders = data.orders || [];
 
         // Populates fields
         document.getElementById('inspect-title-text').textContent = c.title;
@@ -356,6 +368,35 @@ async function openDetailsInspector(id) {
             document.getElementById('citizen-edit-btn').classList.remove('hidden');
         } else if (document.getElementById('citizen-edit-btn')) {
             document.getElementById('citizen-edit-btn').classList.add('hidden');
+        }
+
+        // Show Clerk "Serve Notice" button if not yet served
+        const serveBtn = document.getElementById('clerk-serve-btn');
+        if (serveBtn) {
+            const isClerkOrAdmin = ['CLERK', 'ADMIN', 'admin'].includes(currentUser?.role);
+            if (isClerkOrAdmin && !c.is_served) {
+                serveBtn.classList.remove('hidden');
+            } else {
+                serveBtn.classList.add('hidden');
+            }
+        }
+
+        // Render Orders & Judgments
+        const ordersContainer = document.getElementById('inspect-orders');
+        if (ordersContainer) {
+            if (orders && orders.length > 0) {
+                document.getElementById('inspector-orders-section').classList.remove('hidden');
+                ordersContainer.innerHTML = orders.map(o => `
+                    <div style="background:var(--bg-main, #15171e); border-left:3px solid var(--primary, #7c69ef); padding:0.75rem; border-radius:6px;">
+                        <div style="font-weight:600; font-size:0.95rem; margin-bottom:0.25rem;">${escapeHTML(o.order_type)}</div>
+                        <div style="font-size:0.78rem; color:var(--text-muted); margin-bottom:0.4rem;">${formatDate(o.created_at)} — Judge: ${escapeHTML(o.judge_name)}</div>
+                        <div style="font-size:0.88rem; color:var(--text-main);">${escapeHTML(o.order_details)}</div>
+                    </div>
+                `).join('');
+            } else {
+                document.getElementById('inspector-orders-section').classList.add('hidden');
+                ordersContainer.innerHTML = '';
+            }
         }
 
         // Load timeline chat logs
@@ -927,6 +968,23 @@ async function openScheduleHearing() {
         await refreshDashboardData();
     } catch (err) {
         showToast(err.message || 'Failed to schedule hearing.', true);
+    }
+}
+
+async function serveComplaint() {
+    if (!currentComplaintId) return;
+    if (!confirm("Officially serve this complaint to the respondent? They will be notified immediately and it will appear on their dashboard.")) return;
+
+    try {
+        await apiRequest('/api/clerk/serve', {
+            method: 'POST',
+            body: JSON.stringify({ complaint_id: currentComplaintId })
+        });
+        showToast('Complaint successfully served to respondent.');
+        await openDetailsInspector(currentComplaintId);
+        await refreshDashboardData();
+    } catch (err) {
+        showToast(err.message || 'Failed to serve complaint.', true);
     }
 }
 

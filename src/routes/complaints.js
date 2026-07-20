@@ -48,10 +48,15 @@ router.post('/', requireLogin, upload.single('attachment'), async (req, res) => 
     }
 
     const userId = req.session.userId;
-    // memoryStorage (used on Vercel) provides .buffer and .originalname but NOT .filename.
-    // Disk storage provides .filename. We store null on serverless environments since
-    // there is no persistent file system to serve files from.
-    const attachmentPath = req.file && req.file.filename ? `/uploads/${req.file.filename}` : null;
+    // Convert file to base64 data URI to store in memory SQLite for serverless logic
+    let attachmentPath = null;
+    if (req.file) {
+        if (req.file.buffer) {
+            attachmentPath = `data:${req.file.mimetype};base64,${req.file.buffer.toString('base64')}`;
+        } else if (req.file.filename) {
+            attachmentPath = `/uploads/${req.file.filename}`;
+        }
+    }
     const parties = `Complainant: ${complainant_name || 'N/A'}, Respondent: ${respondent_name || 'N/A'}`;
 
     try {
@@ -71,7 +76,7 @@ router.post('/', requireLogin, upload.single('attachment'), async (req, res) => 
 
         // Fire-and-forget notification (do not block response)
         notifications.notifyNewComplaint(result.id).catch(err => console.error('notifyNewComplaint failed', err));
-        notifications.notifyRespondentOfComplaint(result.id).catch(err => console.error('notifyRespondentOfComplaint failed', err));
+        // Respondent notification is now delayed until the Clerk 'Serves' the complaint.
 
         res.status(201).json({
             message: 'Complaint submitted successfully!',
@@ -174,9 +179,16 @@ router.get('/:id', requireLogin, async (req, res) => {
             [complaintId]
         );
 
+        // Fetch case orders
+        const orders = await db.all(
+            `SELECT * FROM case_orders WHERE complaint_id = ? ORDER BY created_at DESC`,
+            [complaintId]
+        );
+
         res.json({
             complaint,
-            remarks
+            remarks,
+            orders
         });
     } catch (err) {
         console.error('Fetch complaint details error:', err);
@@ -203,6 +215,18 @@ router.get('/:id/attachment', requireLogin, async (req, res) => {
         const isStaff = ['admin', 'ADMIN', 'CLERK', 'JUDGE'].includes(role);
         if (!isStaff && complaint.user_id !== userId) {
             return res.status(403).json({ error: 'Forbidden. You do not have permission to access this attachment.' });
+        }
+
+        // Check if attachment is a data URI (base64)
+        if (complaint.attachment_path && complaint.attachment_path.startsWith('data:')) {
+            const arr = complaint.attachment_path.split(',');
+            const mimeMatch = arr[0].match(/:(.*?);/);
+            if (mimeMatch && arr[1]) {
+                const mime = mimeMatch[1];
+                const b64 = arr[1];
+                res.setHeader('Content-Type', mime);
+                return res.send(Buffer.from(b64, 'base64'));
+            }
         }
 
         const filePath = path.resolve(__dirname, '../../public', complaint.attachment_path.replace(/^\//, ''));

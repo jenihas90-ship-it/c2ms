@@ -80,6 +80,12 @@ router.post('/adjudicate', requireRole(['JUDGE']), async (req, res) => {
             await db.run(`UPDATE complaints SET status = ? WHERE id = ?`, [status, complaint_id]);
         }
 
+        // Add a system remark for the timeline
+        await db.run(
+            `INSERT INTO remarks (complaint_id, user_id, remark) VALUES (?, ?, ?)`,
+            [complaint_id, req.session.userId, `[System Notice] Judgment / Order Issued (${order_type}):\n${order_details}`]
+        );
+
         // Fire-and-forget: AI-generated SMS to respondent
         notifications.notifyRespondentJudgmentSms(complaint_id, order_details, order_type, custom_sms_text)
             .then(result => {

@@ -889,6 +889,7 @@
         let currentUser = null;
         let allCases = [];
         let currentCaseId = null;
+        let panelPollTimer = null;
 
         // ── Bootstrap ──
         (async () => {
@@ -1038,9 +1039,62 @@
                 // Chat remarks
                 renderChat(remarks);
 
+                // Start polling for this case
+                startPanelPolling(id);
+
             } catch (err) {
                 document.getElementById('panel-case-title').textContent = 'Error loading case';
                 showToast('Failed to load case details', true);
+            }
+        }
+
+        function startPanelPolling(id) {
+            stopPanelPolling();
+            panelPollTimer = setInterval(async () => {
+                if (currentCaseId !== id) {
+                    stopPanelPolling();
+                    return;
+                }
+                try {
+                    const { complaint: c, remarks, sessions, orders, smsLogs } = await apiRequest(`/api/respondent/case/${id}`);
+
+                    // Re-render orders
+                    const ordEl = document.getElementById('panel-orders');
+                    if (orders && orders.length > 0) {
+                        ordEl.innerHTML = orders.map(o => `
+              <div class="mini-card" style="border-left:3px solid var(--primary)">
+                <div class="mini-card-title">⚖️ ${escapeHTML(o.order_type)}</div>
+                <div class="mini-card-meta">${formatDate(o.created_at)}</div>
+                <div style="margin-top:.4rem;font-size:.85rem">${escapeHTML(o.order_details)}</div>
+              </div>
+            `).join('');
+                    }
+
+                    // Re-render chat
+                    renderChat(remarks);
+
+                    // Re-render SMS notices
+                    const smsList = document.getElementById('panel-sms-list');
+                    if (smsLogs && smsLogs.length > 0) {
+                        smsList.innerHTML = smsLogs.map(s => `
+              <div class="sms-notice">
+                <div class="sms-notice-head">📱 Court Notice — ${formatDate(s.created_at)}</div>
+                <div>${escapeHTML(s.message)}</div>
+              </div>
+            `).join('');
+                    } else {
+                        smsList.innerHTML = '<div style="color:var(--text-muted);font-size:.85rem">No SMS notices for this case.</div>';
+                    }
+                } catch (err) {
+                    console.error('Polling error:', err);
+                }
+            }, 8000);
+        }
+
+        function stopPanelPolling() {
+            if (panelPollTimer) {
+                clearInterval(panelPollTimer);
+                panelPollTimer = null;
             }
         }
 
@@ -1092,6 +1146,7 @@
             document.getElementById('detail-panel').classList.remove('open');
             document.getElementById('panel-overlay').classList.remove('open');
             currentCaseId = null;
+            stopPanelPolling();
         }
 
         // ── Notifications page: aggregate all SMS logs across cases ──

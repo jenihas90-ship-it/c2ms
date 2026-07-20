@@ -151,32 +151,39 @@ async function notifyRespondentJudgmentSms(complaintId, orderDetails, orderType,
       return { success: false, error: 'Complaint not found' };
     }
 
-    if (!c.respondent_phone) {
-      console.log('[AI SMS] No respondent phone on complaint #' + complaintId + '. Skipping SMS.');
-      return { success: false, error: 'No respondent phone number on record' };
+    if (!c.respondent_phone && !c.respondent_email) {
+      console.log('[Notice] No respondent phone or email on complaint #' + complaintId + '. Skipping notifications.');
+      return { success: false, error: 'No contact information on record' };
     }
 
     // Use custom text from judge if provided, else regenerate
     const messageText = customSmsText ? customSmsText : await sms.generateSmsContent(c, orderDetails, orderType);
 
     // Send SMS (Twilio if configured, else console log)
-    await sms.sendSms(c.respondent_phone, messageText);
-
-    // Log to sms_logs table for audit trail
-    try {
-      await db.run(
-        `INSERT INTO sms_logs (complaint_id, recipient_phone, message, status) VALUES (?, ?, ?, 'sent')`,
-        [complaintId, c.respondent_phone, messageText]
-      );
-    } catch (logErr) {
-      // Non-fatal — table may not exist in old schema
-      console.warn('[AI SMS] Could not log to sms_logs:', logErr.message);
+    if (c.respondent_phone) {
+      await sms.sendSms(c.respondent_phone, messageText);
+      // Log to sms_logs table for audit trail
+      try {
+        await db.run(
+          `INSERT INTO sms_logs (complaint_id, recipient_phone, message, status) VALUES (?, ?, ?, 'sent')`,
+          [complaintId, c.respondent_phone, messageText]
+        );
+      } catch (logErr) {
+        console.warn('[AI SMS] Could not log to sms_logs:', logErr.message);
+      }
     }
 
-    return { success: true, message: messageText, phone: c.respondent_phone };
+    // Send Email
+    if (c.respondent_email) {
+      const subject = `Court Judgment Issued: Case #${c.case_number || c.id}`;
+      const text = `Dear ${c.defendant_name || 'Respondent'},\n\nA ${orderType} has been issued by the court regarding complaint "${c.title}".\n\nJudgment Details:\n${orderDetails}\n\nLogin to the respondent portal to view your case updates.`;
+      await sendMail({ to: c.respondent_email, subject, text });
+    }
+
+    return { success: true, message: messageText };
   } catch (err) {
-    console.error('[AI SMS] notifyRespondentJudgmentSms error:', err.message || err);
-    return { success: false, error: err.message || 'Unknown SMS error' };
+    console.error('[Notification] notifyRespondentJudgmentSms error:', err.message || err);
+    return { success: false, error: err.message || 'Unknown error' };
   }
 }
 

@@ -112,6 +112,7 @@ async function initDatabase() {
       respondent_country TEXT,
       respondent_region TEXT,
       respondent_woreda TEXT,
+      is_served INTEGER DEFAULT 0,
       created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
       updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
       FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
@@ -121,7 +122,8 @@ async function initDatabase() {
   // Migration step: gracefully add new columns if upgrading existing local SQLite DB
   const newCols = [
     'complainant_phone TEXT', 'complainant_country TEXT', 'complainant_region TEXT', 'complainant_woreda TEXT',
-    'respondent_phone TEXT', 'respondent_email TEXT', 'respondent_country TEXT', 'respondent_region TEXT', 'respondent_woreda TEXT'
+    'respondent_phone TEXT', 'respondent_email TEXT', 'respondent_country TEXT', 'respondent_region TEXT', 'respondent_woreda TEXT',
+    'is_served INTEGER DEFAULT 0'
   ];
   for (const colDef of newCols) {
     try {

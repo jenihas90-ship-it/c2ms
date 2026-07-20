@@ -2,6 +2,26 @@ const express = require('express');
 const router = express.Router();
 const db = require('../db');
 const requireRole = require('../middleware/roleCheck');
+const notifications = require('../notifications');
+
+// POST /api/clerk/serve
+// Clerk officially serves the complaint to the respondent
+router.post('/serve', requireRole(['CLERK', 'ADMIN']), async (req, res) => {
+    const { complaint_id } = req.body;
+    if (!complaint_id) return res.status(400).json({ error: 'Complaint ID required.' });
+
+    try {
+        await db.run('UPDATE complaints SET is_served = 1, status = \'In Progress\' WHERE id = ?', [complaint_id]);
+
+        // Dispatch notifications now
+        notifications.notifyRespondentOfComplaint(complaint_id).catch(err => console.error('notifyRespondent failed', err));
+
+        res.json({ message: 'Complaint has been served to the respondent.' });
+    } catch (err) {
+        console.error('Serve complaint error:', err);
+        res.status(500).json({ error: 'Failed to serve complaint.' });
+    }
+});
 
 // POST /api/clerk/verify
 // Clerk verifies filings and can update status or assignments
