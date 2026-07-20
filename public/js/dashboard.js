@@ -712,13 +712,30 @@ function switchNav(tab, overrideStatus = null) {
     const titleEl = document.getElementById('workspace-title');
     const isStaff = ['ADMIN', 'admin', 'CLERK', 'JUDGE'].includes(currentUser?.role);
 
+    // Reset visibility of main columns
+    const listContainer = document.querySelector('.content-container');
+    const wizardForm = document.getElementById('file-complaint-section');
+    const workspace = document.querySelector('.complaints-workspace');
+
+    if (listContainer) listContainer.style.display = 'block';
+    if (wizardForm) wizardForm.style.display = 'none';
+    if (workspace) workspace.style.gridTemplateColumns = '1.6fr 1fr';
+
     if (tab === 'dashboard') {
         document.getElementById('nav-dashboard').classList.add('active');
         statusFilter.value = '';
         titleEl.textContent = 'Overview';
 
         document.getElementById('metrics-panel').classList.remove('hidden');
-        if (isStaff) document.getElementById('admin-charts-section').classList.remove('hidden');
+        if (isStaff) {
+            document.getElementById('admin-charts-section').classList.remove('hidden');
+        } else {
+            // For citizen dashboard, show the wizard on the right side if they are on dashboard view
+            if (wizardForm) {
+                wizardForm.style.display = 'block';
+                wizardForm.classList.remove('hidden');
+            }
+        }
     } else if (tab === 'complaints') {
         document.getElementById('nav-all-complaints').classList.add('active');
 
@@ -741,12 +758,23 @@ function switchNav(tab, overrideStatus = null) {
         document.getElementById('metrics-panel').classList.add('hidden');
         document.getElementById('admin-charts-section').classList.add('hidden');
 
+        // Make the list take full width, hide wizard
+        if (workspace) workspace.style.gridTemplateColumns = '1fr';
+
         window.scrollTo({ top: 0, behavior: 'smooth' });
     } else if (tab === 'new' && (!isStaff)) {
         document.getElementById('nav-new-complaint').classList.add('active');
         titleEl.textContent = 'Submit New Ticket';
-        // Scroll directly to the form
-        document.getElementById('file-complaint-section').scrollIntoView({ behavior: 'smooth' });
+
+        document.getElementById('metrics-panel').classList.add('hidden');
+
+        // Hide the list, show the wizard full width
+        if (listContainer) listContainer.style.display = 'none';
+        if (workspace) workspace.style.gridTemplateColumns = '1fr';
+        if (wizardForm) {
+            wizardForm.style.display = 'block';
+            wizardForm.classList.remove('hidden');
+        }
     }
 
     loadComplaintsList();
