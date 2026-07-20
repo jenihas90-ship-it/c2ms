@@ -20,7 +20,7 @@ router.get('/cases', requireRespondent, async (req, res) => {
             `SELECT c.*, u.username as complainant_username, u.email as complainant_email
              FROM complaints c
              JOIN users u ON c.user_id = u.id
-             WHERE (c.respondent_email = ? OR c.respondent_phone = ?) AND c.is_served = 1
+             WHERE c.respondent_email = ? OR c.respondent_phone = ?
              ORDER BY c.created_at DESC`,
             [user.email, req.session.username]
         );
@@ -45,7 +45,7 @@ router.get('/case/:id', requireRespondent, async (req, res) => {
             `SELECT c.*, u.username as complainant_username, u.email as complainant_email
              FROM complaints c
              JOIN users u ON c.user_id = u.id
-             WHERE c.id = ? AND c.is_served = 1`,
+             WHERE c.id = ?`,
             [complaintId]
         );
 
