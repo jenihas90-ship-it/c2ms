@@ -1,16 +1,36 @@
 const bcrypt = require('bcryptjs');
+const fs = require('fs');
+const path = require('path');
+const os = require('os');
 
 let db = null;
 let SQL = null;
+let DB_FILE = null;
 
-// Initialize sql.js and create in-memory database
+// Initialize sql.js and create in-memory/tmp database
 async function getDb() {
   if (db) return db;
+
+  if (!DB_FILE) {
+    // Vercel serverless apps can only write to /tmp
+    DB_FILE = path.join(os.tmpdir(), 'cms_vercel.sqlite');
+  }
 
   if (!SQL) {
     // Use the ASM.js build (pure JavaScript, no WASM file needed)
     const initSqlJs = require('sql.js/dist/sql-asm.js');
     SQL = await initSqlJs();
+  }
+
+  try {
+    if (fs.existsSync(DB_FILE)) {
+      const fileBuffer = fs.readFileSync(DB_FILE);
+      db = new SQL.Database(fileBuffer);
+      console.log('Loaded database from ' + DB_FILE);
+      return db;
+    }
+  } catch (e) {
+    console.warn('Failed to load existing tmp DB, starting fresh.', e);
   }
 
   db = new SQL.Database();
@@ -25,6 +45,17 @@ async function run(sql, params = []) {
     const result = database.exec("SELECT last_insert_rowid() as id, changes() as changes");
     const id = result.length > 0 ? result[0].values[0][0] : 0;
     const changes = result.length > 0 ? result[0].values[0][1] : 0;
+
+    // Persist to Vercel's /tmp filesystem
+    if (DB_FILE && (sql.trim().toUpperCase().startsWith('INSERT') || sql.trim().toUpperCase().startsWith('UPDATE') || sql.trim().toUpperCase().startsWith('DELETE') || sql.trim().toUpperCase().startsWith('CREATE') || sql.trim().toUpperCase().startsWith('ALTER'))) {
+      try {
+        const data = database.export();
+        fs.writeFileSync(DB_FILE, Buffer.from(data));
+      } catch (err) {
+        console.warn('Could not persist to tmp:', err.message);
+      }
+    }
+
     return { id, changes };
   } catch (err) {
     throw err;
