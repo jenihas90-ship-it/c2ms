@@ -89,7 +89,7 @@ async function notifyRemarkAdded(complaintId, remark, authorId) {
     const excerpt = remark.length > 200 ? remark.slice(0, 197) + '...' : remark;
     const linkText = `/dashboard.html`; // relative UI link
 
-    if (author.role === 'admin') {
+    if (author.role === 'ADMIN' || author.role === 'CLERK' || author.role === 'JUDGE' || author.role === 'admin' || author.role === 'clerk' || author.role === 'judge') {
       // Notify complainant
       const text = `A staff member (${author.username}) has posted a new message on your complaint #${c.id}.
 
@@ -97,16 +97,41 @@ Message: ${excerpt}
 
 View the conversation: ${linkText}`;
       await sendMail({ to: c.email, subject, text });
-    } else {
-      // Notify all admins
-      const text = `A complainant (${author.username}) has added a new message to complaint #${c.id}.
+
+      // Notify respondent if they have email
+      if (c.respondent_email) {
+        const respText = `A staff member (${author.username}) has posted a new message on the case where you are named as respondent (${c.title}).\n\nLogin to the respondent portal to view.`;
+        await sendMail({ to: c.respondent_email, subject, text: respText });
+      }
+    } else if (author.role === 'RESPONDENT') {
+      // Notify complainant and all admins/clerks
+      const text = `The respondent (${author.username}) has added a new message to complaint #${c.id}.
 
 Message: ${excerpt}
 
 Review the conversation: ${linkText}`;
-      const admins = await db.all("SELECT email FROM users WHERE role = 'admin'");
-      for (const a of admins) {
+      await sendMail({ to: c.email, subject, text });
+
+      const staff = await db.all("SELECT email FROM users WHERE role IN ('ADMIN', 'CLERK', 'admin', 'clerk', 'admin')");
+      for (const a of staff) {
         await sendMail({ to: a.email, subject, text });
+      }
+    } else {
+      // Author is CITIZEN (complainant). Notify all admins/clerks, and respondent
+      const text = `The complainant (${author.username}) has added a new message to complaint #${c.id}.
+
+Message: ${excerpt}
+
+Review the conversation: ${linkText}`;
+
+      const staff = await db.all("SELECT email FROM users WHERE role IN ('ADMIN', 'CLERK', 'admin', 'clerk', 'admin')");
+      for (const a of staff) {
+        await sendMail({ to: a.email, subject, text });
+      }
+
+      if (c.respondent_email) {
+        const respText = `The complainant (${author.username}) has posted a new message on the case where you are named as respondent (${c.title}).\n\nLogin to the respondent portal to view.`;
+        await sendMail({ to: c.respondent_email, subject, text: respText });
       }
     }
   } catch (err) {

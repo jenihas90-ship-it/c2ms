@@ -21,7 +21,7 @@ router.get('/cases', requireRespondent, async (req, res) => {
              FROM complaints c
              JOIN users u ON c.user_id = u.id
              WHERE (c.respondent_email = ? OR c.respondent_phone = ?)
-             AND c.is_served = 1
+             AND (c.is_served = 1 OR c.id IN (SELECT complaint_id FROM case_orders))
              ORDER BY c.created_at DESC`,
             [user.email, user.username]
         );
@@ -95,6 +95,8 @@ router.get('/case/:id', requireRespondent, async (req, res) => {
     }
 });
 
+const notifications = require('../notifications');
+
 /**
  * POST /api/respondent/case/:id/respond
  * Allow respondent to post a reply/remark to a case they are named in.
@@ -129,6 +131,9 @@ router.post('/case/:id/respond', requireRespondent, async (req, res) => {
             `SELECT r.*, u.username, u.role FROM remarks r JOIN users u ON r.user_id = u.id WHERE r.id = ?`,
             [result.id]
         );
+
+        // Send notification email for new chat remark
+        notifications.notifyRemarkAdded(complaintId, remark.trim(), req.session.userId).catch(err => console.error('notifyRemarkAdded failed', err));
 
         res.status(201).json({ message: 'Response submitted.', remark: newRemark });
     } catch (err) {
@@ -165,7 +170,7 @@ router.get('/notifications', requireRespondent, async (req, res) => {
         const cases = await db.all(
             `SELECT id, title, case_number, court_name, status FROM complaints
              WHERE (respondent_email = ? OR respondent_phone = ?)
-             AND is_served = 1
+             AND (is_served = 1 OR id IN (SELECT complaint_id FROM case_orders))
              ORDER BY created_at DESC`,
             [user.email, user.username]
         );
