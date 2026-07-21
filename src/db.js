@@ -48,12 +48,17 @@ async function run(sql, params = []) {
 
     // Persist to Vercel's /tmp filesystem
     if (DB_FILE && (sql.trim().toUpperCase().startsWith('INSERT') || sql.trim().toUpperCase().startsWith('UPDATE') || sql.trim().toUpperCase().startsWith('DELETE') || sql.trim().toUpperCase().startsWith('CREATE') || sql.trim().toUpperCase().startsWith('ALTER'))) {
-      try {
-        const data = database.export();
-        fs.writeFileSync(DB_FILE, Buffer.from(data));
-      } catch (err) {
-        console.warn('Could not persist to tmp:', err.message);
-      }
+      // Run the export and write asynchronously to avoid blocking the HTTP response
+      setTimeout(() => {
+        try {
+          const data = database.export();
+          fs.writeFile(DB_FILE, Buffer.from(data), (err) => {
+            if (err) console.warn('Could not persist to tmp:', err.message);
+          });
+        } catch (err) {
+          console.warn('Could not export DB:', err.message);
+        }
+      }, 0);
     }
 
     return { id, changes };
