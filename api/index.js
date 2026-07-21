@@ -36,12 +36,14 @@ const complaintsRouter = require('../src/routes/complaints');
 const adminRouter = require('../src/routes/admin');
 const judgeRouter = require('../src/routes/judge');
 const clerkRouter = require('../src/routes/clerk');
+const respondentRouter = require('../src/routes/respondent');
 
 app.use('/api/auth', authRouter);
 app.use('/api/complaints', complaintsRouter);
 app.use('/api/admin', adminRouter);
 app.use('/api/judge', judgeRouter);
 app.use('/api/clerk', clerkRouter);
+app.use('/api/respondent', respondentRouter);
 
 // Explicit page routes
 app.get('/chat', (req, res) => {
