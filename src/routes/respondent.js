@@ -20,9 +20,10 @@ router.get('/cases', requireRespondent, async (req, res) => {
             `SELECT c.*, u.username as complainant_username, u.email as complainant_email
              FROM complaints c
              JOIN users u ON c.user_id = u.id
-             WHERE c.respondent_email = ? OR c.respondent_phone = ?
+             WHERE (c.respondent_email = ? OR c.respondent_phone = ?)
+             AND c.is_served = 1
              ORDER BY c.created_at DESC`,
-            [user.email, req.session.username]
+            [user.email, user.username]
         );
 
         res.json({ cases, respondentEmail: user.email });
@@ -150,4 +151,59 @@ router.get('/profile', requireRespondent, async (req, res) => {
     }
 });
 
+/**
+ * GET /api/respondent/notifications
+ * Returns all SMS logs and served-complaint notices for this respondent,
+ * aggregated across all their cases.
+ */
+router.get('/notifications', requireRespondent, async (req, res) => {
+    try {
+        const user = await db.get('SELECT email, username FROM users WHERE id = ?', [req.session.userId]);
+        if (!user) return res.status(404).json({ error: 'User not found.' });
+
+        // Get all served cases for this respondent
+        const cases = await db.all(
+            `SELECT id, title, case_number, court_name, status FROM complaints
+             WHERE (respondent_email = ? OR respondent_phone = ?)
+             AND is_served = 1
+             ORDER BY created_at DESC`,
+            [user.email, user.username]
+        );
+
+        if (cases.length === 0) {
+            return res.json({ notifications: [] });
+        }
+
+        const caseIds = cases.map(c => c.id);
+
+        // Fetch all SMS logs for those cases
+        const placeholders = caseIds.map(() => '?').join(',');
+        const smsLogs = await db.all(
+            `SELECT s.*, c.title as case_title, c.case_number
+             FROM sms_logs s
+             JOIN complaints c ON s.complaint_id = c.id
+             WHERE s.complaint_id IN (${placeholders})
+             ORDER BY s.created_at DESC`,
+            caseIds
+        ).catch(() => []);
+
+        // Build a notification about each newly served case
+        const servedNotices = cases.map(c => ({
+            type: 'served',
+            complaint_id: c.id,
+            case_title: c.title,
+            case_number: c.case_number,
+            court_name: c.court_name,
+            message: `You have been named as a respondent in case "${c.title}" (${c.case_number || '#' + c.id}) at ${c.court_name || 'the court'}.`,
+            created_at: null
+        }));
+
+        res.json({ notifications: smsLogs, servedNotices });
+    } catch (err) {
+        console.error('Respondent notifications error:', err);
+        res.status(500).json({ error: 'Failed to fetch notifications.' });
+    }
+});
+
 module.exports = router;
+

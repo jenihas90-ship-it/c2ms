@@ -1149,32 +1149,54 @@
             stopPanelPolling();
         }
 
-        // ── Notifications page: aggregate all SMS logs across cases ──
-        function renderNotifications() {
+        // ── Notifications page: fetch and display real SMS logs ──
+        async function renderNotifications() {
             const container = document.getElementById('notifications-list');
-            const allSms = [];
-            // We'll re-fetch each case to gather SMS — instead show the stats/overview message
-            if (allCases.length === 0) {
-                container.innerHTML = '<div class="empty-state"><div class="big-icon">🔔</div>No notifications yet.</div>';
-                return;
+            container.innerHTML = '<div class="skeleton" style="height:60px"></div><div class="skeleton" style="height:60px;margin-top:.75rem"></div>';
+
+            try {
+                const data = await apiRequest('/api/respondent/notifications');
+                const { notifications: smsLogs = [], servedNotices = [] } = data;
+
+                if (smsLogs.length === 0 && servedNotices.length === 0) {
+                    container.innerHTML = '<div class="empty-state"><div class="big-icon">🔔</div>No notifications yet. You will be notified when a case is served to you.</div>';
+                    return;
+                }
+
+                let html = '';
+
+                // Case served alerts
+                if (servedNotices.length > 0) {
+                    html += '<div style="font-size:.75rem;text-transform:uppercase;letter-spacing:.06em;color:var(--text-muted);padding:.25rem 0 .75rem;border-bottom:1px solid var(--border);margin-bottom:.75rem;">⚖️ Case Notices</div>';
+                    html += servedNotices.map(n => `
+                        <div class="sms-notice" style="margin-bottom:.75rem;">
+                            <div class="sms-notice-head">📋 Case Assigned — #${escapeHTML(n.case_number || String(n.complaint_id))}</div>
+                            <div>${escapeHTML(n.message)}</div>
+                            <div style="margin-top:.4rem">
+                                <button onclick="openCase(${n.complaint_id}); showPage('cases')" style="font-size:.78rem;background:var(--primary);color:#fff;border:none;border-radius:6px;padding:.3rem .75rem;cursor:pointer;">View Case →</button>
+                            </div>
+                        </div>
+                    `).join('');
+                }
+
+                // SMS court notices
+                if (smsLogs.length > 0) {
+                    html += '<div style="font-size:.75rem;text-transform:uppercase;letter-spacing:.06em;color:var(--text-muted);padding:.25rem 0 .75rem;border-bottom:1px solid var(--border);margin-bottom:.75rem;margin-top:1.25rem;">📱 Court SMS Notices</div>';
+                    html += smsLogs.map(s => `
+                        <div class="sms-notice" style="margin-bottom:.75rem;">
+                            <div class="sms-notice-head">📱 Court Notice — ${formatDate(s.created_at)}</div>
+                            <div style="font-size:.8rem;color:var(--text-muted);margin-bottom:.25rem;">Case: ${escapeHTML(s.case_title || '')} · ${escapeHTML(s.case_number || '#' + s.complaint_id)}</div>
+                            <div>${escapeHTML(s.message)}</div>
+                        </div>
+                    `).join('');
+                }
+
+                container.innerHTML = html;
+            } catch (err) {
+                container.innerHTML = '<div class="empty-state"><div class="big-icon">⚠️</div>Failed to load notifications.</div>';
             }
-            container.innerHTML = `
-      <div style="color:var(--text-muted);font-size:.875rem;margin-bottom:1rem">
-        Open any case from the <strong style="color:var(--text)">My Cases</strong> tab to view court SMS notices sent directly to you for that case.
-      </div>
-      ${allCases.map(c => `
-        <div class="case-card" onclick="openCase(${c.id}); showPage('cases')">
-          <div class="case-card-left">
-            <div class="case-title">${escapeHTML(c.title)}</div>
-            <div class="case-meta">Tap to view case details and notices</div>
-          </div>
-          <div class="case-badges">
-            <span class="badge ${statusBadgeClass(c.status)}">${escapeHTML(c.status)}</span>
-          </div>
-        </div>
-      `).join('')}
-    `;
         }
+
 
         // ── Logout ──
         async function handleLogout() {
