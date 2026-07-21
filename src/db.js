@@ -121,6 +121,7 @@ async function initDatabase() {
       title TEXT NOT NULL,
       category TEXT CHECK(category IN ('Civil', 'Criminal', 'Family', 'Property', 'Labor', 'Administrative', 'Other')) NOT NULL,
       court_name TEXT NOT NULL DEFAULT '',
+      court_address TEXT NOT NULL DEFAULT '',
       court_jurisdiction TEXT NOT NULL DEFAULT '',
       case_number TEXT NOT NULL DEFAULT '',
       plaintiff_name TEXT,
@@ -154,7 +155,8 @@ async function initDatabase() {
   const newCols = [
     'complainant_phone TEXT', 'complainant_country TEXT', 'complainant_region TEXT', 'complainant_woreda TEXT',
     'respondent_phone TEXT', 'respondent_email TEXT', 'respondent_country TEXT', 'respondent_region TEXT', 'respondent_woreda TEXT',
-    'is_served INTEGER DEFAULT 0'
+    'is_served INTEGER DEFAULT 0',
+    'court_address TEXT NOT NULL DEFAULT ""'
   ];
   for (const colDef of newCols) {
     try {

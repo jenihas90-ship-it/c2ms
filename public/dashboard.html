@@ -206,6 +206,11 @@
                                     <input type="text" id="comp-court-name" required
                                         placeholder="Name of Court (e.g. Supreme Court, District Court)">
                                 </div>
+                                <div class="form-group">
+                                    <label for="comp-court-address">Court Address</label>
+                                    <textarea id="comp-court-address" required rows="2"
+                                        placeholder="Physical address of the court"></textarea>
+                                </div>
                                 <div class="inspector-row-grid">
                                     <div class="form-group">
                                         <label for="comp-case-number">Case Number (if known)</label>
@@ -362,6 +367,8 @@
                         <div>
                             <div class="inspector-label">Court</div>
                             <div id="inspect-court-name" class="inspector-val"></div>
+                            <div id="inspect-court-address" class="inspector-val"
+                                style="font-size:0.85rem; color:var(--text-muted); margin-top:2px;"></div>
                         </div>
                         <div>
                             <div class="inspector-label">Case No.</div>

@@ -30,13 +30,13 @@ const upload = multer({
 // File Complaint
 router.post('/', requireLogin, upload.single('attachment'), async (req, res) => {
     const {
-        title, category, court_name, case_number, hearing_date, complainant_name, respondent_name, complainant_address, description,
+        title, category, court_name, court_address, case_number, hearing_date, complainant_name, respondent_name, complainant_address, description,
         complainant_phone, complainant_country, complainant_region, complainant_woreda,
         respondent_phone, respondent_email, respondent_country, respondent_region, respondent_woreda
     } = req.body;
 
-    if (!title || !category || !court_name || !description) {
-        return res.status(400).json({ error: 'Title, category, court name, and description are required fields.' });
+    if (!title || !category || !court_name || !court_address || !description) {
+        return res.status(400).json({ error: 'Title, category, court name, court address, and description are required fields.' });
     }
 
     // Validate fields
@@ -62,13 +62,13 @@ router.post('/', requireLogin, upload.single('attachment'), async (req, res) => 
     try {
         const result = await db.run(
             `INSERT INTO complaints (
-                user_id, title, category, court_name, case_number, hearing_date, plaintiff_name, defendant_name, parties, description, priority, status, attachment_path,
+                user_id, title, category, court_name, court_address, case_number, hearing_date, plaintiff_name, defendant_name, parties, description, priority, status, attachment_path,
                 complainant_phone, complainant_country, complainant_region, complainant_woreda,
                 respondent_phone, respondent_email, respondent_country, respondent_region, respondent_woreda
             ) 
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'Filed', ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'Filed', ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
             [
-                userId, title, category, court_name, case_number || 'Pending Assignment', hearing_date || null, complainant_name || null, respondent_name || null, parties || null, description, priority, attachmentPath || null,
+                userId, title, category, court_name, court_address, case_number || 'Pending Assignment', hearing_date || null, complainant_name || null, respondent_name || null, parties || null, description, priority, attachmentPath || null,
                 complainant_phone || null, complainant_country || null, complainant_region || null, complainant_woreda || null,
                 respondent_phone || null, respondent_email || null, respondent_country || null, respondent_region || null, respondent_woreda || null
             ]
@@ -353,7 +353,7 @@ router.patch('/:id/status', requireRole(['ADMIN', 'CLERK']), async (req, res) =>
 // Edit core complaint fields (Admin, Clerk, or Citizen if pending)
 router.patch('/:id', requireLogin, async (req, res) => {
     const complaintId = req.params.id;
-    const { title, category, court_name, case_number, parties, hearing_date, description, priority } = req.body;
+    const { title, category, court_name, court_address, case_number, parties, hearing_date, description, priority } = req.body;
     const role = req.session.role;
     const userId = req.session.userId;
 
@@ -397,6 +397,10 @@ router.patch('/:id', requireLogin, async (req, res) => {
         if (court_name) {
             updates.push('court_name = ?');
             params.push(court_name);
+        }
+        if (court_address) {
+            updates.push('court_address = ?');
+            params.push(court_address);
         }
         if (case_number) {
             updates.push('case_number = ?');

@@ -320,6 +320,7 @@ async function openDetailsInspector(id) {
         document.getElementById('inspect-ref-id').textContent = `#${c.id}`;
         document.getElementById('inspect-category').textContent = c.category;
         document.getElementById('inspect-court-name').textContent = c.court_name;
+        document.getElementById('inspect-court-address').textContent = c.court_address || '';
         document.getElementById('inspect-case-number').textContent = c.case_number;
         document.getElementById('inspect-parties').textContent = c.parties || 'N/A';
         document.getElementById('inspect-hearing-date').textContent = c.hearing_date || 'N/A';
@@ -650,6 +651,7 @@ async function handleFileComplaint(event) {
     const title = document.getElementById('comp-title').value;
     const category = document.getElementById('comp-category').value;
     const courtName = document.getElementById('comp-court-name').value;
+    const courtAddress = document.getElementById('comp-court-address').value;
     const caseNumber = document.getElementById('comp-case-number').value;
     const hearingDate = document.getElementById('comp-hearing-date').value;
     const complainantName = document.getElementById('comp-complainant-name').value;
@@ -675,6 +677,7 @@ async function handleFileComplaint(event) {
     formData.append('title', title);
     formData.append('category', category);
     formData.append('court_name', courtName);
+    formData.append('court_address', courtAddress);
     formData.append('case_number', caseNumber);
     formData.append('hearing_date', hearingDate);
     formData.append('complainant_name', complainantName);
