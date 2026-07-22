@@ -21,7 +21,10 @@ router.get('/cases', requireRespondent, async (req, res) => {
              FROM complaints c
              JOIN users u ON c.user_id = u.id
              WHERE (c.respondent_email = ? OR c.respondent_phone = ?)
-             AND (c.is_served = 1 OR c.id IN (SELECT complaint_id FROM case_orders))
+             AND (c.is_served = 1 
+                  OR c.id IN (SELECT complaint_id FROM case_orders)
+                  OR c.id IN (SELECT complaint_id FROM remarks WHERE user_id IN (SELECT id FROM users WHERE role IN ('ADMIN', 'CLERK', 'JUDGE', 'admin', 'clerk', 'judge')))
+                  OR c.user_id IN (SELECT id FROM users WHERE role IN ('ADMIN', 'CLERK', 'JUDGE', 'admin', 'clerk', 'judge')))
              ORDER BY c.created_at DESC`,
             [user.email, user.username]
         );
@@ -112,8 +115,12 @@ router.post('/case/:id/respond', requireRespondent, async (req, res) => {
     try {
         const user = await db.get('SELECT email FROM users WHERE id = ?', [req.session.userId]);
 
-        const complaint = await db.get('SELECT id, respondent_email, respondent_phone FROM complaints WHERE id = ?', [complaintId]);
+        const complaint = await db.get('SELECT id, respondent_email, respondent_phone, status FROM complaints WHERE id = ?', [complaintId]);
         if (!complaint) return res.status(404).json({ error: 'Case not found.' });
+
+        if (['Resolved', 'Closed', 'Rejected'].includes(complaint.status)) {
+            return res.status(403).json({ error: 'Court rules do not allow responses on inactive cases (Resolved/Closed/Rejected).' });
+        }
 
         const isNamed = (complaint.respondent_email && complaint.respondent_email === user.email) ||
             (complaint.respondent_phone && complaint.respondent_phone === req.session.username);
@@ -170,7 +177,10 @@ router.get('/notifications', requireRespondent, async (req, res) => {
         const cases = await db.all(
             `SELECT id, title, case_number, court_name, status FROM complaints
              WHERE (respondent_email = ? OR respondent_phone = ?)
-             AND (is_served = 1 OR id IN (SELECT complaint_id FROM case_orders))
+             AND (is_served = 1 
+                  OR id IN (SELECT complaint_id FROM case_orders)
+                  OR id IN (SELECT complaint_id FROM remarks WHERE user_id IN (SELECT id FROM users WHERE role IN ('ADMIN', 'CLERK', 'JUDGE', 'admin', 'clerk', 'judge')))
+                  OR user_id IN (SELECT id FROM users WHERE role IN ('ADMIN', 'CLERK', 'JUDGE', 'admin', 'clerk', 'judge')))
              ORDER BY created_at DESC`,
             [user.email, user.username]
         );

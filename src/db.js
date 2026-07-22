@@ -161,7 +161,8 @@ async function initDatabase() {
     'complainant_phone TEXT', 'complainant_country TEXT', 'complainant_region TEXT', 'complainant_woreda TEXT',
     'respondent_phone TEXT', 'respondent_email TEXT', 'respondent_country TEXT', 'respondent_region TEXT', 'respondent_woreda TEXT',
     'is_served INTEGER DEFAULT 0',
-    'court_address TEXT NOT NULL DEFAULT ""'
+    'court_address TEXT NOT NULL DEFAULT ""',
+    'complainant_kebele TEXT', 'respondent_kebele TEXT'
   ];
   for (const colDef of newCols) {
     try {

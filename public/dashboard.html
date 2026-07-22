@@ -14,6 +14,7 @@
         rel="stylesheet">
     <!-- Stylesheets -->
     <link rel="stylesheet" href="/css/styles.css">
+    <script src="https://meet.jit.si/external_api.js"></script>
 </head>
 
 <body>
@@ -148,6 +149,23 @@
                                     oninput="triggerSearch()">
                             </div>
                             <div class="filters-wrapper-fs">
+                                <select id="filter-region" onchange="loadComplaintsList()">
+                                    <option value="">All Regions</option>
+                                    <option value="Addis Ababa">Addis Ababa</option>
+                                    <option value="Afar">Afar</option>
+                                    <option value="Amhara">Amhara</option>
+                                    <option value="Benishangul-Gumuz">Benishangul-Gumuz</option>
+                                    <option value="Central Ethiopia">Central Ethiopia</option>
+                                    <option value="Dire Dawa">Dire Dawa</option>
+                                    <option value="Gambella">Gambella</option>
+                                    <option value="Harari">Harari</option>
+                                    <option value="Oromia">Oromia</option>
+                                    <option value="Sidama">Sidama</option>
+                                    <option value="Somali">Somali</option>
+                                    <option value="South Ethiopia">South Ethiopia</option>
+                                    <option value="South West Ethiopia">South West Ethiopia</option>
+                                    <option value="Tigray">Tigray</option>
+                                </select>
                                 <select id="filter-category" onchange="loadComplaintsList()">
                                     <option value="">All Categories</option>
                                     <option value="Civil">Civil</option>
@@ -237,9 +255,26 @@
                                         <select id="comp-complainant-country" required style="margin-top:0.4rem;">
                                             <option value="" disabled selected>Country</option>
                                         </select>
-                                        <input type="text" id="comp-complainant-region" placeholder="Region" required
-                                            style="margin-top:0.4rem;">
+                                        <select id="comp-complainant-region" required style="margin-top:0.4rem;">
+                                            <option value="" disabled selected>Select Region</option>
+                                            <option value="Addis Ababa">Addis Ababa</option>
+                                            <option value="Afar">Afar</option>
+                                            <option value="Amhara">Amhara</option>
+                                            <option value="Benishangul-Gumuz">Benishangul-Gumuz</option>
+                                            <option value="Central Ethiopia">Central Ethiopia</option>
+                                            <option value="Dire Dawa">Dire Dawa</option>
+                                            <option value="Gambella">Gambella</option>
+                                            <option value="Harari">Harari</option>
+                                            <option value="Oromia">Oromia</option>
+                                            <option value="Sidama">Sidama</option>
+                                            <option value="Somali">Somali</option>
+                                            <option value="South Ethiopia">South Ethiopia</option>
+                                            <option value="South West Ethiopia">South West Ethiopia</option>
+                                            <option value="Tigray">Tigray</option>
+                                        </select>
                                         <input type="text" id="comp-complainant-woreda" placeholder="Woreda" required
+                                            style="margin-top:0.4rem;">
+                                        <input type="text" id="comp-complainant-kebele" placeholder="Kebele"
                                             style="margin-top:0.4rem;">
                                         <textarea id="comp-complainant-address" required rows="2"
                                             placeholder="Physical Address..." style="margin-top:0.4rem;"></textarea>
@@ -256,9 +291,26 @@
                                         <select id="comp-respondent-country" required style="margin-top:0.4rem;">
                                             <option value="" disabled selected>Country</option>
                                         </select>
-                                        <input type="text" id="comp-respondent-region" placeholder="Region" required
-                                            style="margin-top:0.4rem;">
+                                        <select id="comp-respondent-region" required style="margin-top:0.4rem;">
+                                            <option value="" disabled selected>Select Region</option>
+                                            <option value="Addis Ababa">Addis Ababa</option>
+                                            <option value="Afar">Afar</option>
+                                            <option value="Amhara">Amhara</option>
+                                            <option value="Benishangul-Gumuz">Benishangul-Gumuz</option>
+                                            <option value="Central Ethiopia">Central Ethiopia</option>
+                                            <option value="Dire Dawa">Dire Dawa</option>
+                                            <option value="Gambella">Gambella</option>
+                                            <option value="Harari">Harari</option>
+                                            <option value="Oromia">Oromia</option>
+                                            <option value="Sidama">Sidama</option>
+                                            <option value="Somali">Somali</option>
+                                            <option value="South Ethiopia">South Ethiopia</option>
+                                            <option value="South West Ethiopia">South West Ethiopia</option>
+                                            <option value="Tigray">Tigray</option>
+                                        </select>
                                         <input type="text" id="comp-respondent-woreda" placeholder="Woreda" required
+                                            style="margin-top:0.4rem;">
+                                        <input type="text" id="comp-respondent-kebele" placeholder="Kebele"
                                             style="margin-top:0.4rem;">
                                     </div>
                                 </div>
@@ -330,7 +382,12 @@
         <div id="details-pane" class="details-pane-modal">
             <div class="details-modal-header">
                 <h3 id="inspect-title">Ticket Details</h3>
-                <button class="btn-close-modal" onclick="closeDetailsInspector()">×</button>
+                <div style="display:flex; gap:0.5rem; align-items:center;">
+                    <button class="send-btn" id="btn-jitsi-dashboard"
+                        style="background:#2ea043; color:white; padding:0.4rem 0.8rem; font-size:0.85rem; border:none; border-radius:6px; cursor:pointer; font-weight:600;"
+                        onclick="openVirtualHearing(currentComplaintId)">🎥 Join Virtual Hearing</button>
+                    <button class="btn-close-modal" onclick="closeDetailsInspector()">×</button>
+                </div>
             </div>
 
             <div class="details-modal-body">
@@ -671,6 +728,21 @@
         </div>
     </div>
     <!-- ===== END AI SMS PREVIEW MODAL ===== -->
+
+    <!-- ===== JITSI MEET MODAL ===== -->
+    <div id="jitsi-overlay" class="hidden" style="position:fixed; inset:0; z-index:99998; background:rgba(0,0,0,0.8);"
+        onclick="closeJitsiModal()"></div>
+    <div id="jitsi-panel" class="hidden"
+        style="position:fixed; z-index:99999; top:5%; left:10%; right:10%; bottom:5%; background:var(--bg-main, #151821); border:1px solid #333; border-radius:12px; flex-direction:column;">
+        <div
+            style="padding:1rem; border-bottom:1px solid #333; display:flex; justify-content:space-between; align-items:center; background:var(--sidebar-bg, #1e1e2e); border-radius:12px 12px 0 0;">
+            <h3 style="margin:0; font-size:1.1rem; color:var(--text-main);">🎥 Virtual Hearing Room</h3>
+            <button onclick="closeJitsiModal()"
+                style="background:transparent; border:none; color:var(--text-muted); font-size:1.5rem; cursor:pointer;">&times;</button>
+        </div>
+        <div id="jitsi-container" style="flex:1; width:100%; height:100%;"></div>
+    </div>
+    <!-- ===== END JITSI MEET MODAL ===== -->
 
     <!-- JavaScript Scripts -->
     <script src="/js/utils.js"></script>

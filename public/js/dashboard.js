@@ -224,6 +224,7 @@ async function loadComplaintsList() {
     const searchVal = document.getElementById('search-input').value;
     const categoryVal = document.getElementById('filter-category').value;
     const statusVal = document.getElementById('filter-status').value;
+    const regionVal = document.getElementById('filter-region') ? document.getElementById('filter-region').value : '';
 
     container.innerHTML = '<div class="no-complaints">Filtering issues database...</div>';
 
@@ -233,6 +234,7 @@ async function loadComplaintsList() {
         if (searchVal) params.append('search', searchVal);
         if (categoryVal) params.append('category', categoryVal);
         if (statusVal) params.append('status', statusVal);
+        if (regionVal) params.append('region', regionVal);
 
         const data = await apiRequest(`/api/complaints?${params.toString()}`);
 
@@ -330,14 +332,14 @@ async function openDetailsInspector(id) {
 
         // Complainant Location/Contact
         document.getElementById('inspect-comp-phone').textContent = c.complainant_phone || 'None provided';
-        document.getElementById('inspect-comp-location').textContent = [c.complainant_woreda, c.complainant_region, c.complainant_country].filter(Boolean).join(', ') || 'N/A';
+        document.getElementById('inspect-comp-location').textContent = [c.complainant_kebele ? `Kebele ${c.complainant_kebele}` : null, c.complainant_woreda, c.complainant_region, c.complainant_country].filter(Boolean).join(', ') || 'N/A';
 
         // Respondent Location/Contact
         const respContactList = [];
         if (c.respondent_phone) respContactList.push(c.respondent_phone);
         if (c.respondent_email) respContactList.push(c.respondent_email);
         document.getElementById('inspect-resp-contact').textContent = respContactList.length > 0 ? respContactList.join(' | ') : 'None provided';
-        document.getElementById('inspect-resp-location').textContent = [c.respondent_woreda, c.respondent_region, c.respondent_country].filter(Boolean).join(', ') || 'N/A';
+        document.getElementById('inspect-resp-location').textContent = [c.respondent_kebele ? `Kebele ${c.respondent_kebele}` : null, c.respondent_woreda, c.respondent_region, c.respondent_country].filter(Boolean).join(', ') || 'N/A';
 
         // Status badge class mapping
         const statusEl = document.getElementById('inspect-status-badge');
@@ -663,12 +665,14 @@ async function handleFileComplaint(event) {
     const complainantCountry = document.getElementById('comp-complainant-country').value;
     const complainantRegion = document.getElementById('comp-complainant-region').value;
     const complainantWoreda = document.getElementById('comp-complainant-woreda').value;
+    const complainantKebele = document.getElementById('comp-complainant-kebele')?.value || '';
 
     const respondentPhone = document.getElementById('comp-respondent-phone').value;
     const respondentEmail = document.getElementById('comp-respondent-email').value;
     const respondentCountry = document.getElementById('comp-respondent-country').value;
     const respondentRegion = document.getElementById('comp-respondent-region').value;
     const respondentWoreda = document.getElementById('comp-respondent-woreda').value;
+    const respondentKebele = document.getElementById('comp-respondent-kebele')?.value || '';
 
     const fileInput = document.getElementById('comp-attachment');
     const submitBtn = event.target.querySelector('button[type="submit"]');
@@ -689,12 +693,14 @@ async function handleFileComplaint(event) {
     formData.append('complainant_country', complainantCountry);
     formData.append('complainant_region', complainantRegion);
     formData.append('complainant_woreda', complainantWoreda);
+    formData.append('complainant_kebele', complainantKebele);
 
     formData.append('respondent_phone', respondentPhone);
     formData.append('respondent_email', respondentEmail);
     formData.append('respondent_country', respondentCountry);
     formData.append('respondent_region', respondentRegion);
     formData.append('respondent_woreda', respondentWoreda);
+    formData.append('respondent_kebele', respondentKebele);
 
     if (fileInput.files.length > 0) {
         formData.append('attachment', fileInput.files[0]);
@@ -1132,10 +1138,49 @@ async function openConfidentialNotes() {
         if (notes.length === 0) {
             alert('No confidential case notes found.');
         } else {
-            const formatted = notes.map(n => `[${formatDate(n.created_at)}] ${n.note_text}`).join('\n\n');
-            alert(`Confidential Notes:\n\n${formatted}`);
+            const formatted = notes.map(n => `[${formatDate(n.created_at)}] ${n.note_text}`).join('\\n\\n');
+            alert(`Confidential Notes:\\n\\n${formatted}`);
         }
     } catch (err) {
         showToast('Only Judges have access to confidential notes.', true);
+    }
+}
+
+// ── Virtual Hearing (Jitsi Meet) ──
+let jitsiApi = null;
+
+function openVirtualHearing(caseId) {
+    if (!caseId) return;
+    document.getElementById('jitsi-overlay').classList.remove('hidden');
+    document.getElementById('jitsi-panel').classList.remove('hidden');
+    document.getElementById('jitsi-panel').style.display = 'flex';
+    document.getElementById('jitsi-overlay').style.display = 'block';
+
+    if (jitsiApi) jitsiApi.dispose();
+
+    const domain = 'meet.jit.si';
+    const options = {
+        roomName: 'CCMS_Hearing_Case_' + caseId + '_JusticeConnect',
+        width: '100%',
+        height: '100%',
+        parentNode: document.querySelector('#jitsi-container'),
+        userInfo: {
+            displayName: currentUser ? currentUser.username : 'Participant'
+        },
+        configOverwrite: { prejoinPageEnabled: false },
+        interfaceConfigOverwrite: { SHOW_JITSI_WATERMARK: false }
+    };
+    jitsiApi = new JitsiMeetExternalAPI(domain, options);
+}
+
+function closeJitsiModal() {
+    document.getElementById('jitsi-overlay').style.display = 'none';
+    document.getElementById('jitsi-panel').style.display = 'none';
+    document.getElementById('jitsi-overlay').classList.add('hidden');
+    document.getElementById('jitsi-panel').classList.add('hidden');
+
+    if (jitsiApi) {
+        jitsiApi.dispose();
+        jitsiApi = null;
     }
 }

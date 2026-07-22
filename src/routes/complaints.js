@@ -31,8 +31,8 @@ const upload = multer({
 router.post('/', requireLogin, upload.single('attachment'), async (req, res) => {
     const {
         title, category, court_name, court_address, case_number, hearing_date, complainant_name, respondent_name, complainant_address, description,
-        complainant_phone, complainant_country, complainant_region, complainant_woreda,
-        respondent_phone, respondent_email, respondent_country, respondent_region, respondent_woreda
+        complainant_phone, complainant_country, complainant_region, complainant_woreda, complainant_kebele,
+        respondent_phone, respondent_email, respondent_country, respondent_region, respondent_woreda, respondent_kebele
     } = req.body;
 
     if (!title || !category || !court_name || !court_address || !description) {
@@ -63,14 +63,14 @@ router.post('/', requireLogin, upload.single('attachment'), async (req, res) => 
         const result = await db.run(
             `INSERT INTO complaints (
                 user_id, title, category, court_name, court_address, case_number, hearing_date, plaintiff_name, defendant_name, parties, description, priority, status, attachment_path,
-                complainant_phone, complainant_country, complainant_region, complainant_woreda,
-                respondent_phone, respondent_email, respondent_country, respondent_region, respondent_woreda
+                complainant_phone, complainant_country, complainant_region, complainant_woreda, complainant_kebele,
+                respondent_phone, respondent_email, respondent_country, respondent_region, respondent_woreda, respondent_kebele
             ) 
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'Filed', ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'Filed', ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
             [
                 userId, title, category, court_name, court_address, case_number || 'Pending Assignment', hearing_date || null, complainant_name || null, respondent_name || null, parties || null, description, priority, attachmentPath || null,
-                complainant_phone || null, complainant_country || null, complainant_region || null, complainant_woreda || null,
-                respondent_phone || null, respondent_email || null, respondent_country || null, respondent_region || null, respondent_woreda || null
+                complainant_phone || null, complainant_country || null, complainant_region || null, complainant_woreda || null, complainant_kebele || null,
+                respondent_phone || null, respondent_email || null, respondent_country || null, respondent_region || null, respondent_woreda || null, respondent_kebele || null
             ]
         );
 
@@ -95,7 +95,14 @@ router.get('/', requireLogin, async (req, res) => {
     const { status, category, search } = req.query;
 
     let query = `
-    SELECT c.*, u.username as complainant_name 
+    SELECT 
+        c.id, c.user_id, c.title, c.category, c.court_name, c.court_address, c.court_jurisdiction,
+        c.case_number, c.plaintiff_name, c.defendant_name, c.parties, c.hearing_date, 
+        c.description, c.priority, c.status, c.assignment_status, c.assigned_judge,
+        c.complainant_phone, c.complainant_country, c.complainant_region, c.complainant_woreda, c.complainant_kebele,
+        c.respondent_phone, c.respondent_email, c.respondent_country, c.respondent_region, c.respondent_woreda, c.respondent_kebele,
+        c.is_served, c.created_at, c.updated_at,
+        u.username as complainant_name 
     FROM complaints c
     JOIN users u ON c.user_id = u.id
     WHERE 1=1
@@ -122,6 +129,12 @@ router.get('/', requireLogin, async (req, res) => {
     if (category) {
         query += ' AND c.category = ?';
         params.push(category);
+    }
+
+    // Optional region filter
+    if (req.query.region) {
+        query += ' AND c.complainant_region = ?';
+        params.push(req.query.region);
     }
 
     // Optional search query (matches title or description)

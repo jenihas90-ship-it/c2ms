@@ -12,6 +12,7 @@ async function test() {
         title: 'Property Dispute',
         category: 'Property',
         court_name: 'Local Court',
+        court_address: '123 Main St',
         description: 'Test dispute over boundary',
         complainant_name: 'John Doe',
         complainant_phone: '555-0001',

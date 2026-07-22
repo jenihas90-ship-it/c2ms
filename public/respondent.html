@@ -807,7 +807,12 @@
     <div class="detail-panel" id="detail-panel">
         <div class="panel-header">
             <div class="panel-title" id="panel-case-title">Case Details</div>
-            <button class="close-btn" onclick="closePanel()">✕</button>
+            <div style="display:flex; gap:0.5rem; align-items:center;">
+                <button class="send-btn" id="btn-jitsi-respondent"
+                    style="background:#2ea043; color:white; padding:0.4rem 0.8rem; font-size:0.85rem; border:none; border-radius:6px; cursor:pointer; font-weight:600;"
+                    onclick="openVirtualHearing(currentCaseId)">🎥 Join Virtual Hearing</button>
+                <button class="close-btn" onclick="closePanel()">✕</button>
+            </div>
         </div>
         <div class="panel-body">
 
@@ -867,16 +872,171 @@
                 <div id="panel-sms-list"></div>
             </div>
 
-            <!-- Chat / Response -->
-            <div class="panel-section">
-                <div class="panel-section-title">💬 Case Discussion</div>
-                <div class="chat-messages" id="panel-chat-messages"></div>
-                <div class="chat-input-row">
-                    <textarea class="chat-input" id="panel-chat-input" rows="2"
-                        placeholder="Type your response to the court or complainant…"></textarea>
-                    <button class="send-btn" id="panel-send-btn" onclick="submitResponse()">Send</button>
+            <!-- Counter-Claim Section -->
+            <div class="panel-section" id="panel-counter-claim-btn-section" style="text-align: right;">
+                <button class="send-btn" style="background:#e5c942; color:#0f1117;"
+                    onclick="toggleCounterClaimForm()">📝 File Counter-Claim</button>
+            </div>
+
+            <div class="panel-section" id="panel-counter-claim-form"
+                style="display:none; background:var(--surface2); padding:1rem; border-radius:8px; margin-bottom:1rem; border:1px solid var(--border);">
+                <div class="panel-section-title" style="border:none; margin-bottom:0.5rem; color:#e5c942;">File
+                    Counter-Claim</div>
+                <div style="font-size:0.85rem; color:var(--text-muted); margin-bottom:1rem;">Submit an official
+                    cross-claim against the complainant for this case.</div>
+
+                <div class="field-label">Title</div>
+                <input type="text" id="cc-title" class="chat-input" style="width:100%; margin-bottom:1rem;">
+
+                <div class="field-label">Category</div>
+                <select id="cc-category" class="chat-input" style="width:100%; margin-bottom:1rem; cursor:pointer;">
+                    <option value="Civil">Civil</option>
+                    <option value="Criminal">Criminal</option>
+                    <option value="Family">Family</option>
+                    <option value="Property">Property</option>
+                    <option value="Labor">Labor</option>
+                    <option value="Administrative">Administrative</option>
+                    <option value="Other">Other</option>
+                </select>
+
+                <div class="field-label">Description of Claim</div>
+                <textarea id="cc-desc" class="chat-input" rows="4" style="width:100%; margin-bottom:1rem;"></textarea>
+
+                <div style="display:flex; gap:0.5rem; justify-content:flex-end;">
+                    <button class="send-btn"
+                        style="background:transparent; border:1px solid var(--border); color:var(--text-muted);"
+                        onclick="toggleCounterClaimForm()">Cancel</button>
+                    <button class="send-btn" id="cc-submit-btn" onclick="submitCounterClaim()">Submit
+                        Counter-Claim</button>
                 </div>
             </div>
+
+            <!-- Formal Response Wizard -->
+            <div class="panel-section">
+                <div class="panel-section-title">⚖️ Case Discussion &amp; Formal Response</div>
+
+                <!-- Existing remarks / chat thread -->
+                <div class="chat-messages" id="panel-chat-messages" style="margin-bottom:1rem;"></div>
+
+                <!-- Toggle between quick chat and formal response -->
+                <div
+                    style="display:flex; gap:0.5rem; margin-bottom:0.75rem; border-bottom:1px solid var(--border); padding-bottom:0.75rem;">
+                    <button id="tab-quick" onclick="switchResponseTab('quick')"
+                        style="flex:1; padding:0.45rem; border-radius:6px; border:1px solid var(--border); background:var(--accent); color:#fff; cursor:pointer; font-weight:600; font-size:0.85rem;">
+                        💬 Quick Message
+                    </button>
+                    <button id="tab-formal" onclick="switchResponseTab('formal')"
+                        style="flex:1; padding:0.45rem; border-radius:6px; border:1px solid var(--border); background:transparent; color:var(--text-muted); cursor:pointer; font-weight:600; font-size:0.85rem;">
+                        📄 Formal Response
+                    </button>
+                </div>
+
+                <!-- Quick chat mode -->
+                <div id="resp-tab-quick">
+                    <div class="chat-input-row">
+                        <textarea class="chat-input" id="panel-chat-input" rows="2"
+                            placeholder="Type your message to the court or complainant…"></textarea>
+                        <button class="send-btn" id="panel-send-btn" onclick="submitResponse()">Send</button>
+                    </div>
+                </div>
+
+                <!-- Formal response mode — court rules wizard -->
+                <div id="resp-tab-formal" style="display:none;">
+                    <div
+                        style="background:rgba(229,201,66,0.08); border:1px solid rgba(229,201,66,0.3); border-radius:8px; padding:0.75rem 1rem; margin-bottom:1rem; font-size:0.82rem; color:#e5c942;">
+                        ⚖️ <strong>Court Rule:</strong> Your formal response will be recorded as an official legal
+                        document. Be factual, concise and respectful. Responses are not allowed on Resolved, Closed or
+                        Rejected cases.
+                    </div>
+
+                    <!-- Progress steps -->
+                    <div
+                        style="display:flex; justify-content:space-between; margin-bottom:1.25rem; font-size:0.78rem; font-weight:600;">
+                        <span id="fr-prog-1" style="color:var(--accent);">1. Position</span>
+                        <span id="fr-prog-2" style="color:var(--text-muted);">2. Defense</span>
+                        <span id="fr-prog-3" style="color:var(--text-muted);">3. Relief</span>
+                        <span id="fr-prog-4" style="color:var(--text-muted);">4. Review</span>
+                    </div>
+
+                    <!-- Step 1: Position Statement -->
+                    <div id="fr-step-1">
+                        <div class="field-label">Your Position on the Complaint</div>
+                        <div style="display:flex; gap:0.5rem; margin-bottom:0.75rem;">
+                            <label style="display:flex;align-items:center;gap:.3rem;cursor:pointer;font-size:0.85rem;">
+                                <input type="radio" name="fr-position" value="I deny all allegations in this complaint">
+                                Deny All
+                            </label>
+                            <label style="display:flex;align-items:center;gap:.3rem;cursor:pointer;font-size:0.85rem;">
+                                <input type="radio" name="fr-position" value="I partially admit to some allegations">
+                                Partial Admission
+                            </label>
+                            <label style="display:flex;align-items:center;gap:.3rem;cursor:pointer;font-size:0.85rem;">
+                                <input type="radio" name="fr-position"
+                                    value="I admit to the allegations but provide context"> Admit with Context
+                            </label>
+                        </div>
+                        <div class="field-label">Opening Statement</div>
+                        <textarea id="fr-opening" class="chat-input" rows="3" style="width:100%; margin-bottom:0.75rem;"
+                            placeholder="Briefly state your position on this complaint (e.g. nature of relationship, dispute background)…"></textarea>
+                        <div style="text-align:right;">
+                            <button class="send-btn" onclick="frNextStep(2, 1)">Next →</button>
+                        </div>
+                    </div>
+
+                    <!-- Step 2: Defense Arguments -->
+                    <div id="fr-step-2" style="display:none;">
+                        <div class="field-label">Defense / Rebuttal Arguments</div>
+                        <textarea id="fr-defense" class="chat-input" rows="5" style="width:100%; margin-bottom:0.75rem;"
+                            placeholder="State your specific defense. Address each allegation point by point. Include dates, facts, and supporting reasons…"></textarea>
+                        <div class="field-label">Witnesses or Evidence You Intend to Present (optional)</div>
+                        <textarea id="fr-evidence" class="chat-input" rows="2"
+                            style="width:100%; margin-bottom:0.75rem;"
+                            placeholder="e.g. Bank receipts dated Jan 10 2026, Witness: John Doe (neighbour)…"></textarea>
+                        <div style="display:flex; gap:0.5rem; justify-content:flex-end;">
+                            <button class="send-btn"
+                                style="background:transparent;border:1px solid var(--border);color:var(--text-muted);"
+                                onclick="frNextStep(1)">← Back</button>
+                            <button class="send-btn" onclick="frNextStep(3, 2)">Next →</button>
+                        </div>
+                    </div>
+
+                    <!-- Step 3: Relief Requested -->
+                    <div id="fr-step-3" style="display:none;">
+                        <div class="field-label">Relief You Are Requesting from the Court</div>
+                        <textarea id="fr-relief" class="chat-input" rows="3" style="width:100%; margin-bottom:0.75rem;"
+                            placeholder="e.g. Dismiss the complaint, award costs, issue injunction against complainant…"></textarea>
+                        <div class="field-label">Closing Statement (optional)</div>
+                        <textarea id="fr-closing" class="chat-input" rows="2" style="width:100%; margin-bottom:0.75rem;"
+                            placeholder="Any final statement for the court's consideration…"></textarea>
+                        <div style="display:flex; gap:0.5rem; justify-content:flex-end;">
+                            <button class="send-btn"
+                                style="background:transparent;border:1px solid var(--border);color:var(--text-muted);"
+                                onclick="frNextStep(2)">← Back</button>
+                            <button class="send-btn" onclick="frNextStep(4, 3)">Review →</button>
+                        </div>
+                    </div>
+
+                    <!-- Step 4: Review & Submit -->
+                    <div id="fr-step-4" style="display:none;">
+                        <div class="field-label" style="margin-bottom:0.5rem;">Review Your Formal Response</div>
+                        <div id="fr-preview"
+                            style="background:var(--surface2);border:1px solid var(--border);border-radius:8px;padding:1rem;font-size:0.83rem;line-height:1.7;white-space:pre-wrap;color:var(--text-main);max-height:220px;overflow-y:auto;margin-bottom:1rem;">
+                        </div>
+                        <div style="font-size:0.78rem; color:var(--text-muted); margin-bottom:1rem;">
+                            By submitting, you confirm this response is truthful and submitted in accordance with court
+                            rules.
+                        </div>
+                        <div style="display:flex; gap:0.5rem; justify-content:flex-end;">
+                            <button class="send-btn"
+                                style="background:transparent;border:1px solid var(--border);color:var(--text-muted);"
+                                onclick="frNextStep(3)">← Edit</button>
+                            <button class="send-btn" id="fr-submit-btn" style="background:#2ea043;"
+                                onclick="submitFormalResponse()">⚖️ Submit Formal Response</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
 
         </div>
     </div>
@@ -884,6 +1044,24 @@
     <!-- Toast -->
     <div class="toast" id="toast"></div>
 
+    <!-- Stylesheets -->
+    <link rel="stylesheet" href="/css/styles.css">
+    <script src="https://meet.jit.si/external_api.js"></script> <!-- ===== JITSI MEET MODAL ===== -->
+    <div id="jitsi-overlay" class="hidden" style="position:fixed; inset:0; z-index:99998; background:rgba(0,0,0,0.8);"
+        onclick="closeJitsiModal()"></div>
+    <div id="jitsi-panel" class="hidden"
+        style="position:fixed; z-index:99999; top:5%; left:10%; right:10%; bottom:5%; background:var(--bg-main, #151821); border:1px solid #333; border-radius:12px; flex-direction:column;">
+        <div
+            style="padding:1rem; border-bottom:1px solid #333; display:flex; justify-content:space-between; align-items:center; background:var(--sidebar-bg, #1e1e2e); border-radius:12px 12px 0 0;">
+            <h3 style="margin:0; font-size:1.1rem; color:var(--text-main);">🎥 Virtual Hearing Room</h3>
+            <button onclick="closeJitsiModal()"
+                style="background:transparent; border:none; color:var(--text-muted); font-size:1.5rem; cursor:pointer;">&times;</button>
+        </div>
+        <div id="jitsi-container" style="flex:1; width:100%; height:100%;"></div>
+    </div>
+    <!-- ===== END JITSI MEET MODAL ===== -->
+
+    <!-- Scripts -->
     <script src="/js/utils.js"></script>
     <script>
         let currentUser = null;
@@ -1149,6 +1327,63 @@
             stopPanelPolling();
         }
 
+        // ── Counter-Claim ──
+        function toggleCounterClaimForm() {
+            const form = document.getElementById('panel-counter-claim-form');
+            if (form.style.display === 'none') {
+                form.style.display = 'block';
+                const titleEl = document.getElementById('panel-case-title');
+                if (titleEl) {
+                    document.getElementById('cc-title').value = "Counter-Claim: " + titleEl.textContent;
+                }
+            } else {
+                form.style.display = 'none';
+            }
+        }
+
+        async function submitCounterClaim() {
+            if (!currentCaseId) return;
+            const title = document.getElementById('cc-title').value.trim();
+            const category = document.getElementById('cc-category').value;
+            const desc = document.getElementById('cc-desc').value.trim();
+
+            if (!title || !desc) {
+                showToast('Title and Description are required', true);
+                return;
+            }
+
+            const btn = document.getElementById('cc-submit-btn');
+            btn.disabled = true;
+
+            try {
+                const { complaint: c } = await apiRequest(`/api/respondent/case/${currentCaseId}`);
+
+                const formData = new FormData();
+                formData.append('title', title);
+                formData.append('category', category);
+                formData.append('court_name', c.court_name || 'N/A');
+                formData.append('court_address', c.court_address || 'N/A');
+                formData.append('case_number', 'Linked to #' + currentCaseId);
+                formData.append('complainant_name', currentUser.username);
+                formData.append('respondent_name', c.complainant_username || c.complainant_email || 'Original Complainant');
+                formData.append('description', "CROSS-CLAIM AGAINST CASE #" + currentCaseId + ": \\n\\n" + desc);
+
+                await apiRequest('/api/complaints', {
+                    method: 'POST',
+                    body: formData
+                });
+
+                showToast('Counter-Claim filed successfully!');
+                toggleCounterClaimForm();
+                document.getElementById('cc-desc').value = '';
+
+            } catch (err) {
+                showToast(err.message || 'Failed to file counter-claim', true);
+            } finally {
+                btn.disabled = false;
+            }
+        }
+
         // ── Notifications page: fetch and display real SMS logs ──
         async function renderNotifications() {
             const container = document.getElementById('notifications-list');
@@ -1206,6 +1441,162 @@
                 setTimeout(() => { window.location.href = '/'; }, 800);
             } catch {
                 showToast('Logout failed', true);
+            }
+        }
+
+        // ── Virtual Hearing (Jitsi Meet) ──
+        let jitsiApi = null;
+
+        function openVirtualHearing(caseId) {
+            if (!caseId) return;
+            document.getElementById('jitsi-overlay').classList.remove('hidden');
+            document.getElementById('jitsi-panel').classList.remove('hidden');
+            document.getElementById('jitsi-panel').style.display = 'flex';
+            document.getElementById('jitsi-overlay').style.display = 'block';
+
+            if (jitsiApi) jitsiApi.dispose();
+
+            const domain = 'meet.jit.si';
+            const options = {
+                roomName: 'CCMS_Hearing_Case_' + caseId + '_JusticeConnect',
+                width: '100%',
+                height: '100%',
+                parentNode: document.querySelector('#jitsi-container'),
+                userInfo: {
+                    displayName: currentUser ? currentUser.username : 'Respondent'
+                },
+                configOverwrite: { prejoinPageEnabled: false },
+                interfaceConfigOverwrite: { SHOW_JITSI_WATERMARK: false }
+            };
+            jitsiApi = new JitsiMeetExternalAPI(domain, options);
+        }
+
+        function closeJitsiModal() {
+            document.getElementById('jitsi-overlay').style.display = 'none';
+            document.getElementById('jitsi-panel').style.display = 'none';
+            document.getElementById('jitsi-overlay').classList.add('hidden');
+            document.getElementById('jitsi-panel').classList.add('hidden');
+
+            if (jitsiApi) {
+                jitsiApi.dispose();
+                jitsiApi = null;
+            }
+        }
+
+        // ── Tab switching ──
+        function switchResponseTab(tab) {
+            const isQuick = tab === 'quick';
+            document.getElementById('resp-tab-quick').style.display = isQuick ? '' : 'none';
+            document.getElementById('resp-tab-formal').style.display = isQuick ? 'none' : '';
+            document.getElementById('tab-quick').style.background = isQuick ? 'var(--accent)' : 'transparent';
+            document.getElementById('tab-quick').style.color = isQuick ? '#fff' : 'var(--text-muted)';
+            document.getElementById('tab-formal').style.background = isQuick ? 'transparent' : 'var(--accent)';
+            document.getElementById('tab-formal').style.color = isQuick ? 'var(--text-muted)' : '#fff';
+        }
+
+        // ── Formal response step navigation ──
+        const frSteps = 4;
+        function frNextStep(goTo, validateFrom = null) {
+            // Validation
+            if (validateFrom === 1) {
+                const pos = document.querySelector('input[name="fr-position"]:checked');
+                const opening = document.getElementById('fr-opening').value.trim();
+                if (!pos) { showToast('Please select your position on the complaint.', true); return; }
+                if (!opening) { showToast('Opening statement is required.', true); return; }
+            }
+            if (validateFrom === 2) {
+                if (!document.getElementById('fr-defense').value.trim()) {
+                    showToast('Defense arguments are required.', true); return;
+                }
+            }
+            if (validateFrom === 3) {
+                if (!document.getElementById('fr-relief').value.trim()) {
+                    showToast('Please state what relief you are requesting.', true); return;
+                }
+                // Build preview for step 4
+                const pos = document.querySelector('input[name="fr-position"]:checked')?.value || '';
+                const opening = document.getElementById('fr-opening').value.trim();
+                const defense = document.getElementById('fr-defense').value.trim();
+                const evidence = document.getElementById('fr-evidence').value.trim();
+                const relief = document.getElementById('fr-relief').value.trim();
+                const closing = document.getElementById('fr-closing').value.trim();
+                document.getElementById('fr-preview').textContent =
+                    `═══════════════════════════════════════
+         FORMAL RESPONSE TO COMPLAINT
+═══════════════════════════════════════
+
+POSITION: ${pos}
+
+OPENING STATEMENT:
+${opening}
+
+DEFENSE & REBUTTAL:
+${defense}
+${evidence ? '\nEVIDENCE / WITNESSES:\n' + evidence : ''}
+
+RELIEF REQUESTED:
+${relief}
+${closing ? '\nCLOSING STATEMENT:\n' + closing : ''}
+
+═══════════════════════════════════════`;
+            }
+
+            // Switch steps
+            for (let i = 1; i <= frSteps; i++) {
+                document.getElementById('fr-step-' + i).style.display = i === goTo ? '' : 'none';
+                const prog = document.getElementById('fr-prog-' + i);
+                if (prog) prog.style.color = i === goTo ? 'var(--accent)' : (i < goTo ? '#2ea043' : 'var(--text-muted)');
+            }
+        }
+
+        // ── Submit formal response ──
+        async function submitFormalResponse() {
+            if (!currentCaseId) return;
+            const pos = document.querySelector('input[name="fr-position"]:checked')?.value || '';
+            const opening = document.getElementById('fr-opening').value.trim();
+            const defense = document.getElementById('fr-defense').value.trim();
+            const evidence = document.getElementById('fr-evidence').value.trim();
+            const relief = document.getElementById('fr-relief').value.trim();
+            const closing = document.getElementById('fr-closing').value.trim();
+
+            const formalDoc =
+                `[FORMAL RESPONSE]
+Position: ${pos}
+
+Opening Statement:
+${opening}
+
+Defense:
+${defense}
+${evidence ? '\nEvidence/Witnesses: ' + evidence : ''}
+
+Relief Requested:
+${relief}
+${closing ? '\nClosing: ' + closing : ''}`;
+
+            const btn = document.getElementById('fr-submit-btn');
+            btn.disabled = true;
+
+            try {
+                await apiRequest(`/api/respondent/case/${currentCaseId}/respond`, {
+                    method: 'POST',
+                    body: JSON.stringify({ remark: formalDoc })
+                });
+                showToast('✅ Formal response submitted to the court.');
+                // Clear fields and go back to step 1
+                ['fr-opening', 'fr-defense', 'fr-evidence', 'fr-relief', 'fr-closing'].forEach(id => {
+                    document.getElementById(id).value = '';
+                });
+                document.querySelectorAll('input[name="fr-position"]').forEach(r => r.checked = false);
+                frNextStep(1);
+                switchResponseTab('quick');
+                // Reload remarks
+                const data = await apiRequest(`/api/respondent/case/${currentCaseId}`);
+                renderChat(data.remarks);
+            } catch (err) {
+                showToast(err.message || 'Failed to submit formal response.', true);
+            } finally {
+                btn.disabled = false;
             }
         }
 
