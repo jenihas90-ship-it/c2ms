@@ -52,6 +52,12 @@ app.get('/chat', (req, res) => {
 app.get('/chat.html', (req, res) => {
     res.sendFile(path.resolve(__dirname, '../public/chat.html'));
 });
+app.get('/respondent', (req, res) => {
+    res.sendFile(path.resolve(__dirname, '../public/respondent.html'));
+});
+app.get('/respondent.html', (req, res) => {
+    res.sendFile(path.resolve(__dirname, '../public/respondent.html'));
+});
 
 // Fallback to serving public/index.html for UI routes
 app.get('*', (req, res) => {

@@ -40,6 +40,10 @@
             "dest": "/public/dashboard.html"
         },
         {
+            "src": "/respondent(\\.html)?$",
+            "dest": "/public/respondent.html"
+        },
+        {
             "src": "/home(\\.html)?$",
             "dest": "/public/home.html"
         },
