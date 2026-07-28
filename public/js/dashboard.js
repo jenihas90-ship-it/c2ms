@@ -333,6 +333,7 @@ async function openDetailsInspector(id) {
         // Complainant Location/Contact
         document.getElementById('inspect-comp-phone').textContent = c.complainant_phone || 'None provided';
         document.getElementById('inspect-comp-location').textContent = [c.complainant_kebele ? `Kebele ${c.complainant_kebele}` : null, c.complainant_woreda, c.complainant_region, c.complainant_country].filter(Boolean).join(', ') || 'N/A';
+        document.getElementById('inspect-comp-language').textContent = c.complainant_language || 'N/A';
 
         // Respondent Location/Contact
         const respContactList = [];
@@ -340,6 +341,18 @@ async function openDetailsInspector(id) {
         if (c.respondent_email) respContactList.push(c.respondent_email);
         document.getElementById('inspect-resp-contact').textContent = respContactList.length > 0 ? respContactList.join(' | ') : 'None provided';
         document.getElementById('inspect-resp-location').textContent = [c.respondent_kebele ? `Kebele ${c.respondent_kebele}` : null, c.respondent_woreda, c.respondent_region, c.respondent_country].filter(Boolean).join(', ') || 'N/A';
+        document.getElementById('inspect-resp-language').textContent = c.respondent_language || 'N/A';
+
+        const staffLangRow = document.getElementById('inspector-staff-language-row');
+        if (staffLangRow) {
+            if (c.clerk_language || c.judge_language || ['admin', 'ADMIN', 'CLERK', 'JUDGE'].includes(currentUser?.role)) {
+                staffLangRow.style.display = 'flex';
+                document.getElementById('inspect-clerk-language').textContent = c.clerk_language || 'Not set';
+                document.getElementById('inspect-judge-language').textContent = c.judge_language || 'Not set';
+            } else {
+                staffLangRow.style.display = 'none';
+            }
+        }
 
         // Status badge class mapping
         const statusEl = document.getElementById('inspect-status-badge');
@@ -599,10 +612,18 @@ async function openEditComplaint() {
         const description = prompt('Edit Description:', c.description);
         if (description === null) return;
 
+        let clerk_language = c.clerk_language || '';
+        let judge_language = c.judge_language || '';
+        if (currentUser.role === 'CLERK') {
+            clerk_language = prompt('Edit preferred Clerk language for this case (Oromic, English, Amharic):', clerk_language) || clerk_language;
+        } else if (currentUser.role === 'JUDGE') {
+            judge_language = prompt('Edit preferred Judge language for this case (Oromic, English, Amharic):', judge_language) || judge_language;
+        }
+
         // Send update to server
         await apiRequest(`/api/complaints/${currentComplaintId}`, {
             method: 'PATCH',
-            body: JSON.stringify({ title, category, priority, description })
+            body: JSON.stringify({ title, category, priority, description, clerk_language, judge_language })
         });
 
         showToast('Complaint updated successfully.');
@@ -666,6 +687,7 @@ async function handleFileComplaint(event) {
     const complainantRegion = document.getElementById('comp-complainant-region').value;
     const complainantWoreda = document.getElementById('comp-complainant-woreda').value;
     const complainantKebele = document.getElementById('comp-complainant-kebele')?.value || '';
+    const complainantLanguage = document.getElementById('comp-complainant-language')?.value || '';
 
     const respondentPhone = document.getElementById('comp-respondent-phone').value;
     const respondentEmail = document.getElementById('comp-respondent-email').value;
@@ -673,6 +695,7 @@ async function handleFileComplaint(event) {
     const respondentRegion = document.getElementById('comp-respondent-region').value;
     const respondentWoreda = document.getElementById('comp-respondent-woreda').value;
     const respondentKebele = document.getElementById('comp-respondent-kebele')?.value || '';
+    const respondentLanguage = document.getElementById('comp-respondent-language')?.value || '';
 
     const fileInput = document.getElementById('comp-attachment');
     const submitBtn = event.target.querySelector('button[type="submit"]');
@@ -694,6 +717,7 @@ async function handleFileComplaint(event) {
     formData.append('complainant_region', complainantRegion);
     formData.append('complainant_woreda', complainantWoreda);
     formData.append('complainant_kebele', complainantKebele);
+    formData.append('complainant_language', complainantLanguage);
 
     formData.append('respondent_phone', respondentPhone);
     formData.append('respondent_email', respondentEmail);
@@ -701,6 +725,7 @@ async function handleFileComplaint(event) {
     formData.append('respondent_region', respondentRegion);
     formData.append('respondent_woreda', respondentWoreda);
     formData.append('respondent_kebele', respondentKebele);
+    formData.append('respondent_language', respondentLanguage);
 
     if (fileInput.files.length > 0) {
         formData.append('attachment', fileInput.files[0]);

@@ -12,8 +12,13 @@ async function getDb() {
   if (db) return db;
 
   if (!DB_FILE) {
-    // Vercel serverless apps can only write to /tmp
-    DB_FILE = path.join(os.tmpdir(), 'cms_vercel.sqlite');
+    if (process.env.VERCEL || process.env.NOW_REGION) {
+      // Vercel serverless apps can only write to /tmp
+      DB_FILE = path.join(os.tmpdir(), 'cms_vercel.sqlite');
+    } else {
+      // Local development or VM deployment uses permanent db file
+      DB_FILE = path.join(__dirname, '..', 'cms.db');
+    }
   }
 
   if (!SQL) {
@@ -149,6 +154,10 @@ async function initDatabase() {
       respondent_country TEXT,
       respondent_region TEXT,
       respondent_woreda TEXT,
+      complainant_language TEXT,
+      respondent_language TEXT,
+      clerk_language TEXT,
+      judge_language TEXT,
       is_served INTEGER DEFAULT 0,
       created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
       updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
@@ -162,7 +171,8 @@ async function initDatabase() {
     'respondent_phone TEXT', 'respondent_email TEXT', 'respondent_country TEXT', 'respondent_region TEXT', 'respondent_woreda TEXT',
     'is_served INTEGER DEFAULT 0',
     'court_address TEXT NOT NULL DEFAULT ""',
-    'complainant_kebele TEXT', 'respondent_kebele TEXT'
+    'complainant_kebele TEXT', 'respondent_kebele TEXT',
+    'complainant_language TEXT', 'respondent_language TEXT', 'clerk_language TEXT', 'judge_language TEXT'
   ];
   for (const colDef of newCols) {
     try {

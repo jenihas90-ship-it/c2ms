@@ -276,6 +276,12 @@
                                             style="margin-top:0.4rem;">
                                         <input type="text" id="comp-complainant-kebele" placeholder="Kebele"
                                             style="margin-top:0.4rem;">
+                                        <select id="comp-complainant-language" style="margin-top:0.4rem;">
+                                            <option value="" disabled selected>Preferred Language</option>
+                                            <option value="English">English</option>
+                                            <option value="Amharic">Amharic</option>
+                                            <option value="Oromic">Oromic</option>
+                                        </select>
                                         <textarea id="comp-complainant-address" required rows="2"
                                             placeholder="Physical Address..." style="margin-top:0.4rem;"></textarea>
                                     </div>
@@ -312,6 +318,12 @@
                                             style="margin-top:0.4rem;">
                                         <input type="text" id="comp-respondent-kebele" placeholder="Kebele"
                                             style="margin-top:0.4rem;">
+                                        <select id="comp-respondent-language" style="margin-top:0.4rem;">
+                                            <option value="" disabled selected>Preferred Language</option>
+                                            <option value="English">English</option>
+                                            <option value="Amharic">Amharic</option>
+                                            <option value="Oromic">Oromic</option>
+                                        </select>
                                     </div>
                                 </div>
 
@@ -450,6 +462,8 @@
                             <div><span class="inspector-label">Phone:</span> <span id="inspect-comp-phone"></span></div>
                             <div><span class="inspector-label">Location:</span> <span id="inspect-comp-location"></span>
                             </div>
+                            <div><span class="inspector-label">Language:</span> <span id="inspect-comp-language"
+                                    style="margin-top: 2px;"></span></div>
                         </div>
                         <h5 style="margin-top:12px; margin-bottom:8px; font-weight:600; color:var(--text-main);">
                             Respondent Info</h5>
@@ -458,6 +472,15 @@
                             </div>
                             <div><span class="inspector-label">Location:</span> <span id="inspect-resp-location"></span>
                             </div>
+                            <div><span class="inspector-label">Language:</span> <span id="inspect-resp-language"
+                                    style="margin-top: 2px;"></span></div>
+                        </div>
+                        <div id="inspector-staff-language-row" class="inspector-row-grid"
+                            style="margin-top:10px; margin-bottom:0;">
+                            <div><span class="inspector-label">Clerk Lang:</span> <span
+                                    id="inspect-clerk-language"></span></div>
+                            <div><span class="inspector-label">Judge Lang:</span> <span
+                                    id="inspect-judge-language"></span></div>
                         </div>
                     </div>
 

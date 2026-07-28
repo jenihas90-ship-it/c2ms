@@ -19,12 +19,14 @@ async function test() {
         complainant_country: 'USA',
         complainant_region: 'CA',
         complainant_woreda: 'Zone A',
+        complainant_language: 'Amharic',
         respondent_name: 'Jane Smith',
         respondent_phone: '555-0002',
         respondent_email: 'jane@example.com',
         respondent_country: 'USA',
         respondent_region: 'CA',
-        respondent_woreda: 'Zone B'
+        respondent_woreda: 'Zone B',
+        respondent_language: 'English'
     };
 
     const resComp = await fetch('http://localhost:3000/api/complaints', {
