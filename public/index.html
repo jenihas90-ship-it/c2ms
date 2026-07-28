@@ -34,8 +34,8 @@
     body.landing-page {
       min-height: 100vh;
       font-family: 'Inter', sans-serif;
-      background: #050d1a;
-      color: #fff;
+      background: #f5f7fa;
+      color: #1a1a2e;
       overflow-x: hidden;
     }
 
@@ -50,9 +50,10 @@
       align-items: center;
       justify-content: space-between;
       padding: 1rem 3rem;
-      background: rgba(5, 13, 26, 0.8);
+      background: rgba(255, 255, 255, 0.92);
       backdrop-filter: blur(16px);
-      border-bottom: 1px solid rgba(255, 255, 255, 0.07);
+      border-bottom: 1px solid rgba(0, 0, 0, 0.08);
+      box-shadow: 0 2px 16px rgba(0, 0, 0, 0.06);
     }
 
     .landing-logo {
@@ -70,8 +71,9 @@
       font-family: 'Outfit', sans-serif;
       font-size: 1.25rem;
       font-weight: 800;
-      background: linear-gradient(135deg, #fff, var(--gold));
+      background: linear-gradient(135deg, var(--primary), var(--gold));
       -webkit-background-clip: text;
+      background-clip: text;
       -webkit-text-fill-color: transparent;
     }
 
@@ -82,7 +84,7 @@
     }
 
     .landing-nav-links a {
-      color: rgba(255, 255, 255, 0.7);
+      color: rgba(30, 30, 60, 0.65);
       text-decoration: none;
       font-size: 0.9rem;
       font-weight: 500;
@@ -90,7 +92,7 @@
     }
 
     .landing-nav-links a:hover {
-      color: #fff;
+      color: #1a1a2e;
     }
 
     .nav-cta {
@@ -152,7 +154,9 @@
       width: 100%;
     }
 
-    .hero-text-block {}
+    .hero-text-block {
+      /* main hero text container */
+    }
 
     .hero-badge {
       display: inline-flex;
@@ -185,7 +189,7 @@
     }
 
     .hero-desc {
-      color: rgba(255, 255, 255, 0.72);
+      color: rgba(255, 255, 255, 0.9);
       font-size: 1.1rem;
       line-height: 1.75;
       max-width: 520px;
@@ -208,7 +212,7 @@
 
     .hero-stat-label {
       font-size: 0.78rem;
-      color: rgba(255, 255, 255, 0.55);
+      color: rgba(255, 255, 255, 0.8);
       margin-top: 0.1rem;
     }
 
@@ -260,12 +264,12 @@
 
     /* ── LOGIN CARD ── */
     .hero-login-card {
-      background: rgba(255, 255, 255, 0.05);
+      background: #fff;
       backdrop-filter: blur(20px);
-      border: 1px solid rgba(255, 255, 255, 0.12);
+      border: 1px solid rgba(0, 0, 0, 0.1);
       border-radius: 1.5rem;
       padding: 2rem;
-      box-shadow: 0 25px 60px rgba(0, 0, 0, 0.6);
+      box-shadow: 0 25px 60px rgba(0, 0, 0, 0.2);
     }
 
     .login-card-title {
@@ -273,15 +277,15 @@
       font-size: 1.3rem;
       font-weight: 700;
       margin-bottom: 0.3rem;
-      color: #fff;
+      color: #1a1a2e;
     }
 
     .login-card-sub {
       font-size: 0.82rem;
-      color: rgba(255, 255, 255, 0.5);
+      color: rgba(30, 30, 60, 0.55);
       margin-bottom: 1.5rem;
       padding-bottom: 1rem;
-      border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+      border-bottom: 1px solid rgba(0, 0, 0, 0.08);
     }
 
     .card-tab-row {
@@ -294,9 +298,9 @@
       flex: 1;
       padding: 0.55rem;
       border-radius: 8px;
-      border: 1px solid rgba(255, 255, 255, 0.12);
-      background: transparent;
-      color: rgba(255, 255, 255, 0.5);
+      border: 1px solid rgba(0, 0, 0, 0.1);
+      background: #f5f7fa;
+      color: rgba(30, 30, 60, 0.55);
       font-size: 0.88rem;
       font-weight: 600;
       cursor: pointer;
@@ -316,7 +320,7 @@
     .card-field label {
       display: block;
       font-size: 0.78rem;
-      color: rgba(255, 255, 255, 0.55);
+      color: rgba(30, 30, 60, 0.6);
       margin-bottom: 0.4rem;
       font-weight: 500;
     }
@@ -325,10 +329,10 @@
     .card-field select {
       width: 100%;
       padding: 0.65rem 0.9rem;
-      background: rgba(255, 255, 255, 0.06);
-      border: 1px solid rgba(255, 255, 255, 0.14);
+      background: #f5f7fa;
+      border: 1px solid rgba(0, 0, 0, 0.12);
       border-radius: 8px;
-      color: #fff;
+      color: #1a1a2e;
       font-size: 0.9rem;
       outline: none;
       transition: border-color 0.2s;
@@ -341,8 +345,8 @@
     }
 
     .card-field select option {
-      background: #1a2035;
-      color: #fff;
+      background: #fff;
+      color: #1a1a2e;
     }
 
     .card-submit {
@@ -372,7 +376,7 @@
 
     .demo-chips-label {
       font-size: 0.7rem;
-      color: rgba(255, 255, 255, 0.4);
+      color: rgba(30, 30, 60, 0.45);
       margin-bottom: 0.5rem;
       text-transform: uppercase;
       letter-spacing: 0.06em;
@@ -426,9 +430,9 @@
 
     /* ── FEATURE STRIP ── */
     .feature-strip {
-      background: rgba(255, 255, 255, 0.03);
-      border-top: 1px solid rgba(255, 255, 255, 0.07);
-      border-bottom: 1px solid rgba(255, 255, 255, 0.07);
+      background: #fff;
+      border-top: 1px solid rgba(0, 0, 0, 0.07);
+      border-bottom: 1px solid rgba(0, 0, 0, 0.07);
       padding: 1.5rem 3rem;
       display: flex;
       justify-content: center;
@@ -440,7 +444,7 @@
       display: flex;
       align-items: center;
       gap: 0.75rem;
-      color: rgba(255, 255, 255, 0.6);
+      color: rgba(30, 30, 60, 0.65);
       font-size: 0.9rem;
     }
 
@@ -453,6 +457,7 @@
       padding: 5rem 3rem;
       max-width: 1200px;
       margin: 0 auto;
+      background: transparent;
     }
 
     .section-eyebrow {
@@ -470,11 +475,11 @@
       font-weight: 800;
       line-height: 1.2;
       margin-bottom: 1rem;
-      color: #fff;
+      color: #1a1a2e;
     }
 
     .section-sub {
-      color: rgba(255, 255, 255, 0.6);
+      color: rgba(30, 30, 60, 0.6);
       font-size: 1rem;
       line-height: 1.7;
       max-width: 580px;
@@ -527,7 +532,7 @@
     /* ── WHY SECTION ── */
     .why-section {
       padding: 5rem 3rem;
-      background: linear-gradient(180deg, rgba(99, 102, 241, 0.04) 0%, transparent 100%);
+      background: #f0f2ff;
     }
 
     .why-inner {
@@ -543,16 +548,18 @@
     }
 
     .why-card {
-      background: rgba(255, 255, 255, 0.04);
-      border: 1px solid rgba(255, 255, 255, 0.08);
+      background: #fff;
+      border: 1px solid rgba(0, 0, 0, 0.07);
       border-radius: 1.25rem;
       padding: 2rem 1.75rem;
-      transition: transform 0.3s ease, border-color 0.3s ease;
+      box-shadow: 0 4px 20px rgba(0, 0, 0, 0.06);
+      transition: transform 0.3s ease, border-color 0.3s ease, box-shadow 0.3s ease;
     }
 
     .why-card:hover {
       transform: translateY(-5px);
       border-color: rgba(99, 102, 241, 0.3);
+      box-shadow: 0 12px 36px rgba(0, 0, 0, 0.12);
     }
 
     .why-card-icon {
@@ -572,11 +579,11 @@
       font-size: 1.15rem;
       font-weight: 700;
       margin-bottom: 0.6rem;
-      color: #fff;
+      color: #1a1a2e;
     }
 
     .why-card p {
-      color: rgba(255, 255, 255, 0.6);
+      color: rgba(30, 30, 60, 0.6);
       font-size: 0.9rem;
       line-height: 1.7;
     }
@@ -585,6 +592,7 @@
     .cta-section {
       padding: 6rem 3rem;
       text-align: center;
+      background: linear-gradient(135deg, #eef2ff, #f5f7fa);
     }
 
     .cta-inner {
@@ -597,10 +605,11 @@
       font-size: 2.5rem;
       font-weight: 800;
       margin-bottom: 1rem;
+      color: #1a1a2e;
     }
 
     .cta-inner p {
-      color: rgba(255, 255, 255, 0.6);
+      color: rgba(30, 30, 60, 0.6);
       font-size: 1.05rem;
       line-height: 1.7;
       margin-bottom: 2rem;
@@ -609,7 +618,8 @@
     /* ── FOOTER ── */
     .landing-footer {
       padding: 2rem 3rem;
-      border-top: 1px solid rgba(255, 255, 255, 0.07);
+      background: #fff;
+      border-top: 1px solid rgba(0, 0, 0, 0.07);
       display: flex;
       align-items: center;
       justify-content: space-between;
@@ -619,7 +629,7 @@
 
     .footer-copy {
       font-size: 0.82rem;
-      color: rgba(255, 255, 255, 0.4);
+      color: rgba(30, 30, 60, 0.45);
     }
 
     .footer-links {
@@ -629,12 +639,12 @@
 
     .footer-links a {
       font-size: 0.82rem;
-      color: rgba(255, 255, 255, 0.4);
+      color: rgba(30, 30, 60, 0.5);
       text-decoration: none;
     }
 
     .footer-links a:hover {
-      color: rgba(255, 255, 255, 0.7);
+      color: #1a1a2e;
     }
 
     /* ── TOAST ── */
