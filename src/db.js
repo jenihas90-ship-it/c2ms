@@ -258,8 +258,8 @@ async function initDatabase() {
     )
   `);
 
-  // Insert default administrator
-  const adminExists = await get("SELECT * FROM users WHERE role = 'ADMIN' LIMIT 1");
+  // Insert default administrators
+  const adminExists = await get("SELECT * FROM users WHERE username = 'admin' LIMIT 1");
   if (!adminExists) {
     const hashedPassword = bcrypt.hashSync('admin123', 10);
     await run(
@@ -270,23 +270,23 @@ async function initDatabase() {
   }
 
   // Insert default users
-  const userExists = await get("SELECT * FROM users WHERE role = 'CITIZEN' LIMIT 1");
+  const userExists = await get("SELECT * FROM users WHERE username = 'user' LIMIT 1");
   if (!userExists) {
     const hashedPassword = bcrypt.hashSync('user123', 10);
     await run("INSERT INTO users (username, email, password, role) VALUES (?, ?, ?, ?)", ['user', 'user@cms.com', hashedPassword, 'CITIZEN']);
   }
-  const clerkExists = await get("SELECT * FROM users WHERE role = 'CLERK' LIMIT 1");
+  const clerkExists = await get("SELECT * FROM users WHERE username = 'clerk' LIMIT 1");
   if (!clerkExists) {
     const hashedPassword = bcrypt.hashSync('clerk123', 10);
     await run("INSERT INTO users (username, email, password, role) VALUES (?, ?, ?, ?)", ['clerk', 'clerk@cms.com', hashedPassword, 'CLERK']);
   }
-  const judgeExists = await get("SELECT * FROM users WHERE role = 'JUDGE' LIMIT 1");
+  const judgeExists = await get("SELECT * FROM users WHERE username = 'judge' LIMIT 1");
   if (!judgeExists) {
     const hashedPassword = bcrypt.hashSync('judge123', 10);
     await run("INSERT INTO users (username, email, password, role) VALUES (?, ?, ?, ?)", ['judge', 'judge@cms.com', hashedPassword, 'JUDGE']);
   }
 
-  const respondentExists = await get("SELECT * FROM users WHERE role = 'RESPONDENT' LIMIT 1");
+  const respondentExists = await get("SELECT * FROM users WHERE username = 'respondent' LIMIT 1");
   if (!respondentExists) {
     const hashedPassword = bcrypt.hashSync('resp123', 10);
     await run("INSERT INTO users (username, email, password, role) VALUES (?, ?, ?, ?)", ['respondent', 'respondent@cms.com', hashedPassword, 'RESPONDENT']);

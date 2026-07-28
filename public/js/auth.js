@@ -66,7 +66,7 @@ async function handleRegister(event) {
     const username = document.getElementById('reg-username').value;
     const email = document.getElementById('reg-email').value;
     const password = document.getElementById('reg-password').value;
-    const role = document.querySelector('input[name="reg-role"]:checked').value;
+    const role = document.getElementById('reg-role').value;
     const submitBtn = event.target.querySelector('button[type="submit"]');
 
     if (password.length < 6) {
