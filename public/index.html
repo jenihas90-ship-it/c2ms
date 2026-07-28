@@ -7,163 +7,943 @@
   <meta name="description"
     content="Justice Connect - Court Complaint Management System. E-Filing platform, case tracking, and case management.">
   <title>Justice Connect | Court Complaint Management</title>
-  <!-- Google Fonts Outfit and Inter -->
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link
     href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600&family=Outfit:wght@400;500;700;800&display=swap"
     rel="stylesheet">
-  <!-- Stylesheets -->
   <link rel="stylesheet" href="/css/styles.css">
+  <style>
+    /* ── Landing page hero layout ── */
+    *,
+    *::before,
+    *::after {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    :root {
+      --gold: #d4a843;
+      --gold-light: #f0c96b;
+      --navy: #0a1628;
+      --navy-mid: #122040;
+      --primary: #6366f1;
+    }
+
+    body.landing-page {
+      min-height: 100vh;
+      font-family: 'Inter', sans-serif;
+      background: #050d1a;
+      color: #fff;
+      overflow-x: hidden;
+    }
+
+    /* ── Top Nav ── */
+    .landing-nav {
+      position: fixed;
+      top: 0;
+      left: 0;
+      right: 0;
+      z-index: 100;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 1rem 3rem;
+      background: rgba(5, 13, 26, 0.8);
+      backdrop-filter: blur(16px);
+      border-bottom: 1px solid rgba(255, 255, 255, 0.07);
+    }
+
+    .landing-logo {
+      display: flex;
+      align-items: center;
+      gap: 0.65rem;
+      text-decoration: none;
+    }
+
+    .landing-logo-icon {
+      font-size: 1.7rem;
+    }
+
+    .landing-logo-text {
+      font-family: 'Outfit', sans-serif;
+      font-size: 1.25rem;
+      font-weight: 800;
+      background: linear-gradient(135deg, #fff, var(--gold));
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+    }
+
+    .landing-nav-links {
+      display: flex;
+      align-items: center;
+      gap: 2rem;
+    }
+
+    .landing-nav-links a {
+      color: rgba(255, 255, 255, 0.7);
+      text-decoration: none;
+      font-size: 0.9rem;
+      font-weight: 500;
+      transition: color 0.2s;
+    }
+
+    .landing-nav-links a:hover {
+      color: #fff;
+    }
+
+    .nav-cta {
+      background: linear-gradient(135deg, var(--primary), #8b5cf6);
+      color: #fff !important;
+      padding: 0.5rem 1.4rem;
+      border-radius: 50px;
+      font-weight: 600 !important;
+      transition: transform 0.2s, box-shadow 0.2s !important;
+    }
+
+    .nav-cta:hover {
+      transform: translateY(-1px);
+      box-shadow: 0 8px 24px rgba(99, 102, 241, 0.4);
+    }
+
+    /* ── HERO SECTION ── */
+    .hero-section {
+      position: relative;
+      min-height: 100vh;
+      display: flex;
+      align-items: center;
+      overflow: hidden;
+    }
+
+    .hero-bg {
+      position: absolute;
+      inset: 0;
+      z-index: 0;
+    }
+
+    .hero-bg img {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+      object-position: center;
+    }
+
+    .hero-bg::after {
+      content: '';
+      position: absolute;
+      inset: 0;
+      background: linear-gradient(135deg,
+          rgba(5, 13, 26, 0.88) 0%,
+          rgba(10, 22, 40, 0.65) 50%,
+          rgba(5, 13, 26, 0.9) 100%);
+    }
+
+    .hero-content {
+      position: relative;
+      z-index: 1;
+      max-width: 1200px;
+      margin: 0 auto;
+      padding: 8rem 3rem 5rem;
+      display: grid;
+      grid-template-columns: 1fr 400px;
+      gap: 4rem;
+      align-items: center;
+      width: 100%;
+    }
+
+    .hero-text-block {}
+
+    .hero-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.5rem;
+      background: rgba(212, 168, 67, 0.15);
+      border: 1px solid rgba(212, 168, 67, 0.4);
+      color: var(--gold);
+      padding: 0.35rem 1rem;
+      border-radius: 50px;
+      font-size: 0.8rem;
+      font-weight: 600;
+      letter-spacing: 0.05em;
+      text-transform: uppercase;
+      margin-bottom: 1.5rem;
+    }
+
+    .hero-headline {
+      font-family: 'Outfit', sans-serif;
+      font-size: clamp(2.2rem, 5vw, 3.8rem);
+      font-weight: 800;
+      line-height: 1.1;
+      margin-bottom: 1.5rem;
+    }
+
+    .hero-headline .gold-word {
+      background: linear-gradient(135deg, var(--gold), var(--gold-light));
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+    }
+
+    .hero-desc {
+      color: rgba(255, 255, 255, 0.72);
+      font-size: 1.1rem;
+      line-height: 1.75;
+      max-width: 520px;
+      margin-bottom: 2.5rem;
+    }
+
+    .hero-stats {
+      display: flex;
+      gap: 2.5rem;
+      margin-bottom: 2.5rem;
+    }
+
+    .hero-stat-num {
+      font-family: 'Outfit', sans-serif;
+      font-size: 2rem;
+      font-weight: 800;
+      color: var(--gold);
+      display: block;
+    }
+
+    .hero-stat-label {
+      font-size: 0.78rem;
+      color: rgba(255, 255, 255, 0.55);
+      margin-top: 0.1rem;
+    }
+
+    .hero-actions {
+      display: flex;
+      gap: 1rem;
+      flex-wrap: wrap;
+    }
+
+    .btn-primary-hero {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.5rem;
+      padding: 0.85rem 2rem;
+      background: linear-gradient(135deg, var(--primary), #8b5cf6);
+      color: #fff;
+      text-decoration: none;
+      border-radius: 50px;
+      font-weight: 700;
+      font-size: 1rem;
+      transition: transform 0.25s, box-shadow 0.25s;
+      border: none;
+      cursor: pointer;
+    }
+
+    .btn-primary-hero:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 12px 32px rgba(99, 102, 241, 0.5);
+    }
+
+    .btn-secondary-hero {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.5rem;
+      padding: 0.85rem 2rem;
+      background: rgba(255, 255, 255, 0.08);
+      color: #fff;
+      text-decoration: none;
+      border-radius: 50px;
+      font-weight: 600;
+      font-size: 1rem;
+      border: 1px solid rgba(255, 255, 255, 0.2);
+      transition: background 0.25s;
+    }
+
+    .btn-secondary-hero:hover {
+      background: rgba(255, 255, 255, 0.14);
+    }
+
+    /* ── LOGIN CARD ── */
+    .hero-login-card {
+      background: rgba(255, 255, 255, 0.05);
+      backdrop-filter: blur(20px);
+      border: 1px solid rgba(255, 255, 255, 0.12);
+      border-radius: 1.5rem;
+      padding: 2rem;
+      box-shadow: 0 25px 60px rgba(0, 0, 0, 0.6);
+    }
+
+    .login-card-title {
+      font-family: 'Outfit', sans-serif;
+      font-size: 1.3rem;
+      font-weight: 700;
+      margin-bottom: 0.3rem;
+      color: #fff;
+    }
+
+    .login-card-sub {
+      font-size: 0.82rem;
+      color: rgba(255, 255, 255, 0.5);
+      margin-bottom: 1.5rem;
+      padding-bottom: 1rem;
+      border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+    }
+
+    .card-tab-row {
+      display: flex;
+      gap: 0.5rem;
+      margin-bottom: 1.5rem;
+    }
+
+    .card-tab {
+      flex: 1;
+      padding: 0.55rem;
+      border-radius: 8px;
+      border: 1px solid rgba(255, 255, 255, 0.12);
+      background: transparent;
+      color: rgba(255, 255, 255, 0.5);
+      font-size: 0.88rem;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+
+    .card-tab.active {
+      background: rgba(99, 102, 241, 0.25);
+      border-color: rgba(99, 102, 241, 0.5);
+      color: #c7d2fe;
+    }
+
+    .card-field {
+      margin-bottom: 1rem;
+    }
+
+    .card-field label {
+      display: block;
+      font-size: 0.78rem;
+      color: rgba(255, 255, 255, 0.55);
+      margin-bottom: 0.4rem;
+      font-weight: 500;
+    }
+
+    .card-field input,
+    .card-field select {
+      width: 100%;
+      padding: 0.65rem 0.9rem;
+      background: rgba(255, 255, 255, 0.06);
+      border: 1px solid rgba(255, 255, 255, 0.14);
+      border-radius: 8px;
+      color: #fff;
+      font-size: 0.9rem;
+      outline: none;
+      transition: border-color 0.2s;
+      font-family: 'Inter', sans-serif;
+    }
+
+    .card-field input:focus,
+    .card-field select:focus {
+      border-color: var(--primary);
+    }
+
+    .card-field select option {
+      background: #1a2035;
+      color: #fff;
+    }
+
+    .card-submit {
+      width: 100%;
+      padding: 0.8rem;
+      background: linear-gradient(135deg, var(--primary), #8b5cf6);
+      color: #fff;
+      border: none;
+      border-radius: 10px;
+      font-size: 0.95rem;
+      font-weight: 700;
+      cursor: pointer;
+      margin-top: 0.5rem;
+      transition: transform 0.2s, box-shadow 0.2s;
+    }
+
+    .card-submit:hover {
+      transform: translateY(-1px);
+      box-shadow: 0 8px 24px rgba(99, 102, 241, 0.4);
+    }
+
+    .demo-chips {
+      margin-top: 1rem;
+      padding-top: 0.75rem;
+      border-top: 1px solid rgba(255, 255, 255, 0.08);
+    }
+
+    .demo-chips-label {
+      font-size: 0.7rem;
+      color: rgba(255, 255, 255, 0.4);
+      margin-bottom: 0.5rem;
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+    }
+
+    .demo-chips-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 0.4rem;
+    }
+
+    .demo-chip {
+      padding: 0.35rem 0.6rem;
+      background: rgba(255, 255, 255, 0.05);
+      border: 1px solid rgba(255, 255, 255, 0.1);
+      border-radius: 6px;
+      font-size: 0.75rem;
+      color: rgba(255, 255, 255, 0.6);
+      cursor: pointer;
+      transition: all 0.15s;
+    }
+
+    .demo-chip:hover {
+      background: rgba(99, 102, 241, 0.2);
+      border-color: rgba(99, 102, 241, 0.4);
+      color: #c7d2fe;
+    }
+
+    .toast-card {
+      display: none;
+      margin-bottom: 0.75rem;
+      padding: 0.6rem 0.9rem;
+      border-radius: 8px;
+      font-size: 0.85rem;
+      font-weight: 500;
+    }
+
+    .toast-card.error {
+      background: rgba(239, 68, 68, 0.15);
+      border: 1px solid rgba(239, 68, 68, 0.4);
+      color: #fca5a5;
+      display: block;
+    }
+
+    .toast-card.success {
+      background: rgba(34, 197, 94, 0.15);
+      border: 1px solid rgba(34, 197, 94, 0.4);
+      color: #86efac;
+      display: block;
+    }
+
+    /* ── FEATURE STRIP ── */
+    .feature-strip {
+      background: rgba(255, 255, 255, 0.03);
+      border-top: 1px solid rgba(255, 255, 255, 0.07);
+      border-bottom: 1px solid rgba(255, 255, 255, 0.07);
+      padding: 1.5rem 3rem;
+      display: flex;
+      justify-content: center;
+      gap: 4rem;
+      flex-wrap: wrap;
+    }
+
+    .feature-item {
+      display: flex;
+      align-items: center;
+      gap: 0.75rem;
+      color: rgba(255, 255, 255, 0.6);
+      font-size: 0.9rem;
+    }
+
+    .feature-item-icon {
+      font-size: 1.3rem;
+    }
+
+    /* ── IMAGE GALLERY STRIP ── */
+    .img-gallery-strip {
+      padding: 5rem 3rem;
+      max-width: 1200px;
+      margin: 0 auto;
+    }
+
+    .section-eyebrow {
+      font-size: 0.75rem;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.12em;
+      color: var(--gold);
+      margin-bottom: 0.75rem;
+    }
+
+    .section-heading {
+      font-family: 'Outfit', sans-serif;
+      font-size: clamp(1.8rem, 3.5vw, 2.8rem);
+      font-weight: 800;
+      line-height: 1.2;
+      margin-bottom: 1rem;
+      color: #fff;
+    }
+
+    .section-sub {
+      color: rgba(255, 255, 255, 0.6);
+      font-size: 1rem;
+      line-height: 1.7;
+      max-width: 580px;
+    }
+
+    .gallery-grid {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      grid-template-rows: 220px 220px;
+      gap: 1rem;
+      margin-top: 2.5rem;
+    }
+
+    .gallery-grid .gal-item {
+      border-radius: 1rem;
+      overflow: hidden;
+      position: relative;
+    }
+
+    .gallery-grid .gal-item.featured {
+      grid-row: span 2;
+    }
+
+    .gallery-grid .gal-item img {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+      transition: transform 0.45s ease;
+    }
+
+    .gallery-grid .gal-item:hover img {
+      transform: scale(1.05);
+    }
+
+    .gal-item-overlay {
+      position: absolute;
+      inset: 0;
+      background: linear-gradient(to top, rgba(5, 13, 26, 0.7) 0%, transparent 60%);
+      display: flex;
+      align-items: flex-end;
+      padding: 1.25rem;
+    }
+
+    .gal-caption {
+      font-size: 0.85rem;
+      font-weight: 600;
+      color: #fff;
+    }
+
+    /* ── WHY SECTION ── */
+    .why-section {
+      padding: 5rem 3rem;
+      background: linear-gradient(180deg, rgba(99, 102, 241, 0.04) 0%, transparent 100%);
+    }
+
+    .why-inner {
+      max-width: 1200px;
+      margin: 0 auto;
+    }
+
+    .why-grid {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 1.5rem;
+      margin-top: 3rem;
+    }
+
+    .why-card {
+      background: rgba(255, 255, 255, 0.04);
+      border: 1px solid rgba(255, 255, 255, 0.08);
+      border-radius: 1.25rem;
+      padding: 2rem 1.75rem;
+      transition: transform 0.3s ease, border-color 0.3s ease;
+    }
+
+    .why-card:hover {
+      transform: translateY(-5px);
+      border-color: rgba(99, 102, 241, 0.3);
+    }
+
+    .why-card-icon {
+      width: 52px;
+      height: 52px;
+      background: linear-gradient(135deg, rgba(99, 102, 241, 0.25), rgba(139, 92, 246, 0.15));
+      border-radius: 14px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 1.5rem;
+      margin-bottom: 1.25rem;
+    }
+
+    .why-card h3 {
+      font-family: 'Outfit', sans-serif;
+      font-size: 1.15rem;
+      font-weight: 700;
+      margin-bottom: 0.6rem;
+      color: #fff;
+    }
+
+    .why-card p {
+      color: rgba(255, 255, 255, 0.6);
+      font-size: 0.9rem;
+      line-height: 1.7;
+    }
+
+    /* ── CTA SECTION ── */
+    .cta-section {
+      padding: 6rem 3rem;
+      text-align: center;
+    }
+
+    .cta-inner {
+      max-width: 700px;
+      margin: 0 auto;
+    }
+
+    .cta-inner h2 {
+      font-family: 'Outfit', sans-serif;
+      font-size: 2.5rem;
+      font-weight: 800;
+      margin-bottom: 1rem;
+    }
+
+    .cta-inner p {
+      color: rgba(255, 255, 255, 0.6);
+      font-size: 1.05rem;
+      line-height: 1.7;
+      margin-bottom: 2rem;
+    }
+
+    /* ── FOOTER ── */
+    .landing-footer {
+      padding: 2rem 3rem;
+      border-top: 1px solid rgba(255, 255, 255, 0.07);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      flex-wrap: wrap;
+      gap: 1rem;
+    }
+
+    .footer-copy {
+      font-size: 0.82rem;
+      color: rgba(255, 255, 255, 0.4);
+    }
+
+    .footer-links {
+      display: flex;
+      gap: 1.5rem;
+    }
+
+    .footer-links a {
+      font-size: 0.82rem;
+      color: rgba(255, 255, 255, 0.4);
+      text-decoration: none;
+    }
+
+    .footer-links a:hover {
+      color: rgba(255, 255, 255, 0.7);
+    }
+
+    /* ── TOAST ── */
+    #toast {
+      position: fixed;
+      bottom: 1.5rem;
+      right: 1.5rem;
+      z-index: 9999;
+      padding: 0.75rem 1.25rem;
+      border-radius: 10px;
+      font-size: 0.875rem;
+      font-weight: 500;
+      opacity: 0;
+      transform: translateY(10px);
+      transition: opacity 0.25s, transform 0.25s;
+      pointer-events: none;
+    }
+
+    #toast.visible {
+      opacity: 1;
+      transform: translateY(0);
+    }
+
+    #toast.success {
+      background: #1f3a26;
+      color: #6ee787;
+      border: 1px solid #3fb950;
+    }
+
+    #toast.error {
+      background: #3a1f1f;
+      color: #ff7b72;
+      border: 1px solid #e5534b;
+    }
+
+    @media (max-width: 768px) {
+      .hero-content {
+        grid-template-columns: 1fr;
+        padding: 7rem 1.5rem 3rem;
+      }
+
+      .hero-login-card {
+        display: none;
+      }
+
+      .gallery-grid {
+        grid-template-columns: 1fr 1fr;
+        grid-template-rows: auto;
+      }
+
+      .gallery-grid .gal-item.featured {
+        grid-row: span 1;
+      }
+
+      .why-grid {
+        grid-template-columns: 1fr;
+      }
+
+      .landing-nav {
+        padding: 1rem 1.5rem;
+      }
+
+      .landing-nav-links {
+        gap: 1rem;
+      }
+
+      .feature-strip {
+        gap: 1.5rem;
+        padding: 1.5rem;
+      }
+    }
+  </style>
 </head>
 
-<body class="auth-page">
-  <div class="glow-bg">
-    <div class="blob-1"></div>
-    <div class="blob-2"></div>
+<body class="landing-page">
+
+  <!-- ── Navigation ── -->
+  <nav class="landing-nav">
+    <a class="landing-logo" href="/">
+      <span class="landing-logo-icon">⚖️</span>
+      <span class="landing-logo-text">Justice Connect</span>
+    </a>
+    <div class="landing-nav-links">
+      <a href="/home.html">Home</a>
+      <a href="/about.html">About</a>
+      <a href="/" class="nav-cta">Sign In</a>
+    </div>
+  </nav>
+
+  <!-- ── HERO ── -->
+  <section class="hero-section">
+    <div class="hero-bg">
+      <img src="/images/hero_courthouse.png" alt="Grand Courthouse Building">
+    </div>
+
+    <div class="hero-content">
+      <div class="hero-text-block">
+        <div class="hero-badge">⚖️ Court Complaint Management System</div>
+        <h1 class="hero-headline">
+          Bringing <span class="gold-word">Justice</span><br>to Your Fingertips
+        </h1>
+        <p class="hero-desc">
+          File legal complaints, track case progress, and manage court documents with
+          transparency and speed. Accessible 24/7 from any browser — no queues, no paperwork.
+        </p>
+
+        <div class="hero-stats">
+          <div>
+            <span class="hero-stat-num">5</span>
+            <div class="hero-stat-label">User Roles</div>
+          </div>
+          <div>
+            <span class="hero-stat-num">100%</span>
+            <div class="hero-stat-label">Browser-Based</div>
+          </div>
+          <div>
+            <span class="hero-stat-num">24/7</span>
+            <div class="hero-stat-label">Always Online</div>
+          </div>
+        </div>
+
+        <div class="hero-actions">
+          <a href="/about.html" class="btn-secondary-hero">📖 Learn More</a>
+        </div>
+      </div>
+
+      <!-- Login Card embedded in hero -->
+      <div class="hero-login-card">
+        <div class="login-card-title">⚖️ Access Your Portal</div>
+        <div class="login-card-sub">Manage cases and legal matters online</div>
+
+        <div class="card-tab-row">
+          <button class="card-tab active" id="tab-login" onclick="switchTab('login')">Sign In</button>
+          <button class="card-tab" id="tab-register" onclick="switchTab('register')">Register</button>
+        </div>
+
+        <div id="card-toast" class="toast-card"></div>
+
+        <!-- Login Form -->
+        <form id="login-form" onsubmit="handleLogin(event)">
+          <div class="card-field">
+            <label for="login-identifier">Username or Email</label>
+            <input type="text" id="login-identifier" required placeholder="username or email">
+          </div>
+          <div class="card-field">
+            <label for="login-password">Password</label>
+            <input type="password" id="login-password" required placeholder="Your password">
+          </div>
+          <button type="submit" class="card-submit">Sign In to Dashboard →</button>
+
+          <div class="demo-chips">
+            <div class="demo-chips-label">Demo Accounts</div>
+            <div class="demo-chips-grid">
+              <span class="demo-chip" onclick="fillCreds('user','user123')">👤 Citizen</span>
+              <span class="demo-chip" onclick="fillCreds('clerk','clerk123')">📝 Clerk</span>
+              <span class="demo-chip" onclick="fillCreds('judge','judge123')">⚖️ Judge</span>
+              <span class="demo-chip" onclick="fillCreds('admin','admin123')">🛠️ Admin</span>
+              <span class="demo-chip" onclick="fillCreds('respondent','resp123')">🧑‍⚖️ Respondent</span>
+            </div>
+          </div>
+        </form>
+
+        <!-- Register Form -->
+        <form id="register-form" onsubmit="handleRegister(event)" style="display:none;">
+          <div class="card-field">
+            <label for="reg-username">Username</label>
+            <input type="text" id="reg-username" required placeholder="Choose a username">
+          </div>
+          <div class="card-field">
+            <label for="reg-email">Email</label>
+            <input type="email" id="reg-email" required placeholder="name@email.com">
+          </div>
+          <div class="card-field">
+            <label for="reg-password">Password</label>
+            <input type="password" id="reg-password" required placeholder="Min. 6 characters">
+          </div>
+          <div class="card-field">
+            <label for="reg-role">Role</label>
+            <select id="reg-role">
+              <option value="CITIZEN">👤 Citizen — File Complaints</option>
+              <option value="CLERK">📝 Registry Clerk</option>
+              <option value="JUDGE">⚖️ Judge</option>
+              <option value="ADMIN">🛠️ Administrator</option>
+              <option value="RESPONDENT">🧑‍⚖️ Respondent</option>
+            </select>
+          </div>
+          <button type="submit" class="card-submit">Create Account →</button>
+        </form>
+      </div>
+    </div>
+  </section>
+
+  <!-- ── Feature Strip ── -->
+  <div class="feature-strip">
+    <div class="feature-item"><span class="feature-item-icon">📋</span> E-Filing in Minutes</div>
+    <div class="feature-item"><span class="feature-item-icon">🔒</span> Secure & Confidential</div>
+    <div class="feature-item"><span class="feature-item-icon">📊</span> Real-Time Tracking</div>
+    <div class="feature-item"><span class="feature-item-icon">💬</span> Live Communication</div>
+    <div class="feature-item"><span class="feature-item-icon">📱</span> SMS Notifications</div>
   </div>
 
-  <main class="auth-container">
-    <!-- Header Section -->
-    <header class="auth-header">
-      <div class="logo">
-        <span class="logo-icon">⚖️</span>
-        <span class="logo-text">Justice Connect</span>
+  <!-- ── Courthouse Gallery ── -->
+  <section class="img-gallery-strip">
+    <div class="section-eyebrow">⚖️ Justice System</div>
+    <h2 class="section-heading">Where Law Meets<br>Technology</h2>
+    <p class="section-sub">
+      Justice Connect bridges the gap between citizens and the legal system, making court access transparent and
+      efficient for everyone.
+    </p>
+
+    <div class="gallery-grid">
+      <div class="gal-item featured">
+        <img src="/images/courtroom_interior.png" alt="Grand Courtroom Interior">
+        <div class="gal-item-overlay">
+          <span class="gal-caption">🏛️ Grand Courtrooms</span>
+        </div>
       </div>
-      <h1 class="auth-tagline">E-Filing Court Case Management</h1>
-      <p class="auth-desc">File legal complaints, track case progress, and manage court documents with transparency and
-        speed.</p>
-      <nav style="margin-top:10px;">
-        <a href="/home.html" style="color:var(--text-muted); margin-right:12px;">Home</a>
-        <a href="/about.html" style="color:var(--text-muted);">About</a>
-      </nav>
-    </header>
-
-    <!-- Glassmorphic Login / Signup Card -->
-    <section class="auth-card">
-      <div class="tab-buttons">
-        <button id="tab-login" class="tab-btn active" onclick="switchTab('login')">Sign In</button>
-        <button id="tab-register" class="tab-btn" onclick="switchTab('register')">Register</button>
+      <div class="gal-item">
+        <img src="/images/judge_reviewing.png" alt="Judge Reviewing Documents">
+        <div class="gal-item-overlay">
+          <span class="gal-caption">⚖️ Expert Judiciary</span>
+        </div>
       </div>
-
-      <!-- Toast Notification Container -->
-      <div id="toast" class="toast hidden"></div>
-
-      <!-- Login Form -->
-      <form id="login-form" class="auth-form" onsubmit="handleLogin(event)">
-        <div class="form-group">
-          <label for="login-identifier">Username or Email</label>
-          <div class="input-wrapper">
-            <input type="text" id="login-identifier" required placeholder="name@company.com or username">
-          </div>
+      <div class="gal-item">
+        <img src="/images/efiling_feature.png" alt="Digital Case Filing">
+        <div class="gal-item-overlay">
+          <span class="gal-caption">💻 Digital Filing</span>
         </div>
-
-        <div class="form-group">
-          <label for="login-password">Password</label>
-          <div class="input-wrapper">
-            <input type="password" id="login-password" required placeholder="Enter password (e.g. user123/admin123)">
-          </div>
+      </div>
+      <div class="gal-item">
+        <img src="/images/lady_justice.png" alt="Lady Justice">
+        <div class="gal-item-overlay">
+          <span class="gal-caption">🗽 Symbol of Justice</span>
         </div>
-
-        <button type="submit" class="submit-btn">
-          <span>Sign In to Dashboard</span>
-          <span class="btn-arrow">→</span>
-        </button>
-
-        <!-- Prepopulated Helper Creds -->
-        <div class="helper-creds">
-          <p><strong>Demo Logins:</strong></p>
-          <div class="helper-chips" style="display: grid; grid-template-columns: 1fr 1fr; gap: 0.5rem;">
-            <span class="chip" onclick="fillCreds('user', 'user123')">👤 Citizen: <b>user</b></span>
-            <span class="chip" onclick="fillCreds('clerk', 'clerk123')">📝 Clerk: <b>clerk</b></span>
-            <span class="chip" onclick="fillCreds('judge', 'judge123')">⚖️ Judge: <b>judge</b></span>
-            <span class="chip" onclick="fillCreds('admin', 'admin123')">🛠️ Admin: <b>admin</b></span>
-            <span class="chip" onclick="fillCreds('respondent', 'resp123')">🧑‍⚖️ Respondent: <b>respondent</b></span>
-          </div>
+      </div>
+      <div class="gal-item">
+        <img src="/images/team_collaboration.png" alt="Legal Team">
+        <div class="gal-item-overlay">
+          <span class="gal-caption">👥 Legal Professionals</span>
         </div>
-      </form>
+      </div>
+    </div>
+  </section>
 
-      <!-- Registration Form -->
-      <form id="register-form" class="auth-form hidden" onsubmit="handleRegister(event)">
-        <div class="form-group">
-          <label for="reg-username">Username</label>
-          <div class="input-wrapper">
-            <input type="text" id="reg-username" required placeholder="Choose username">
-          </div>
+  <!-- ── Why Section ── -->
+  <section class="why-section">
+    <div class="why-inner">
+      <div class="section-eyebrow">Why Justice Connect</div>
+      <h2 class="section-heading">Built for a Fairer,<br>More Accessible Legal System</h2>
+      <div class="why-grid">
+        <div class="why-card">
+          <div class="why-card-icon">🕐</div>
+          <h3>File Any Time, Anywhere</h3>
+          <p>Submit complaints 24/7 from any browser. No travel required, no office hours to respect. Your legal voice
+            is always available.</p>
         </div>
-
-        <div class="form-group">
-          <label for="reg-email">Email Address</label>
-          <div class="input-wrapper">
-            <input type="email" id="reg-email" required placeholder="name@company.com">
-          </div>
+        <div class="why-card">
+          <div class="why-card-icon">🔍</div>
+          <h3>Full Transparency</h3>
+          <p>Track the exact status of your case from filing to resolution. Every status change is timestamped and
+            visible in real time.</p>
         </div>
-
-        <div class="form-group">
-          <label for="reg-password">Password</label>
-          <div class="input-wrapper">
-            <input type="password" id="reg-password" required placeholder="Create password (min 6 characters)">
-          </div>
+        <div class="why-card">
+          <div class="why-card-icon">🛡️</div>
+          <h3>Secure & Confidential</h3>
+          <p>Enterprise-grade security with bcrypt password hashing, HTTP-only sessions, and role-based access control
+            on every endpoint.</p>
         </div>
+      </div>
+    </div>
+  </section>
 
-        <div class="form-group">
-          <label>Account Role</label>
-          <div class="role-selector"
-            style="display: grid; grid-template-columns: 1fr 1fr; gap: 0.8rem; margin-top: 0.4rem;">
-            <label class="role-option">
-              <input type="radio" name="reg-role" value="CITIZEN" checked>
-              <div class="role-card">
-                <span class="role-icon">👤</span>
-                <span class="role-title">Citizen</span>
-                <span class="role-subtitle">File complaints</span>
-              </div>
-            </label>
-            <label class="role-option">
-              <input type="radio" name="reg-role" value="CLERK">
-              <div class="role-card">
-                <span class="role-icon">📝</span>
-                <span class="role-title">Registry Clerk</span>
-                <span class="role-subtitle">Intake & setup</span>
-              </div>
-            </label>
-            <label class="role-option">
-              <input type="radio" name="reg-role" value="JUDGE">
-              <div class="role-card">
-                <span class="role-icon">⚖️</span>
-                <span class="role-title">Judge</span>
-                <span class="role-subtitle">Adjudication</span>
-              </div>
-            </label>
-            <label class="role-option">
-              <input type="radio" name="reg-role" value="ADMIN">
-              <div class="role-card">
-                <span class="role-icon">🛠️</span>
-                <span class="role-title">Admin</span>
-                <span class="role-subtitle">System management</span>
-              </div>
-            </label>
-            <label class="role-option">
-              <input type="radio" name="reg-role" value="RESPONDENT">
-              <div class="role-card">
-                <span class="role-icon">🧑‍⚖️</span>
-                <span class="role-title">Respondent</span>
-                <span class="role-subtitle">View &amp; respond to cases</span>
-              </div>
-            </label>
-          </div>
-        </div>
+  <!-- ── CTA ── -->
+  <section class="cta-section">
+    <div class="cta-inner">
+      <h2>Ready to File Your Case?</h2>
+      <p>Join thousands of citizens using Justice Connect to access the legal system online with ease and confidence.
+      </p>
+      <div style="display:flex; gap:1rem; justify-content:center; flex-wrap:wrap;">
+        <a href="/" class="btn-primary-hero">⚖️ Sign In Now</a>
+        <a href="/about.html" class="btn-secondary-hero">Learn About the System</a>
+      </div>
+    </div>
+  </section>
 
-        <button type="submit" class="submit-btn btn-secondary">
-          <span>Create Account</span>
-          <span class="btn-arrow">→</span>
-        </button>
-      </form>
-    </section>
-  </main>
+  <!-- ── Footer ── -->
+  <footer class="landing-footer">
+    <div class="footer-copy">© 2026 Justice Connect · Court Complaint Management System</div>
+    <div class="footer-links">
+      <a href="/">Sign In</a>
+      <a href="/about.html">About</a>
+      <a href="/home.html">Home</a>
+    </div>
+  </footer>
 
-  <!-- JS Handlers -->
+  <div id="toast"></div>
+
   <script src="/js/utils.js"></script>
   <script src="/js/auth.js"></script>
+  <script>
+    function switchTab(tab) {
+      const isLogin = tab === 'login';
+      document.getElementById('login-form').style.display = isLogin ? '' : 'none';
+      document.getElementById('register-form').style.display = isLogin ? 'none' : '';
+      document.getElementById('tab-login').classList.toggle('active', isLogin);
+      document.getElementById('tab-register').classList.toggle('active', !isLogin);
+      document.getElementById('card-toast').className = 'toast-card';
+    }
+  </script>
 </body>
 
 </html>
