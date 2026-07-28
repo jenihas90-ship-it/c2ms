@@ -144,23 +144,20 @@
     .hero-content {
       position: relative;
       z-index: 1;
-      max-width: 1200px;
+      max-width: 900px;
       margin: 0 auto;
       padding: 8rem 3rem 5rem;
-      display: grid;
-      grid-template-columns: 1fr 400px;
-      gap: 4rem;
+      text-align: center;
+      display: flex;
+      flex-direction: column;
       align-items: center;
       width: 100%;
-    }
-
-    .hero-text-block {
-      /* main hero text container */
     }
 
     .hero-badge {
       display: inline-flex;
       align-items: center;
+      justify-content: center;
       gap: 0.5rem;
       background: rgba(212, 168, 67, 0.15);
       border: 1px solid rgba(212, 168, 67, 0.4);
@@ -192,13 +189,14 @@
       color: rgba(255, 255, 255, 0.9);
       font-size: 1.1rem;
       line-height: 1.75;
-      max-width: 520px;
-      margin-bottom: 2.5rem;
+      max-width: 700px;
+      margin: 0 auto 2.5rem;
     }
 
     .hero-stats {
       display: flex;
-      gap: 2.5rem;
+      justify-content: center;
+      gap: 3.5rem;
       margin-bottom: 2.5rem;
     }
 
@@ -218,6 +216,7 @@
 
     .hero-actions {
       display: flex;
+      justify-content: center;
       gap: 1rem;
       flex-wrap: wrap;
     }
@@ -262,14 +261,66 @@
       background: rgba(255, 255, 255, 0.14);
     }
 
+    /* ── MODAL OVERLAY ── */
+    .modal-overlay {
+      position: fixed;
+      inset: 0;
+      background: rgba(0, 0, 0, 0.6);
+      backdrop-filter: blur(8px);
+      z-index: 9999;
+      display: none;
+      align-items: center;
+      justify-content: center;
+      padding: 1rem;
+      opacity: 0;
+      transition: opacity 0.3s;
+    }
+
+    .modal-overlay.active {
+      display: flex;
+      opacity: 1;
+    }
+
     /* ── LOGIN CARD ── */
     .hero-login-card {
       background: #fff;
       backdrop-filter: blur(20px);
       border: 1px solid rgba(0, 0, 0, 0.1);
       border-radius: 1.5rem;
-      padding: 2rem;
+      padding: 2.5rem 2rem;
+      width: 100%;
+      max-width: 440px;
       box-shadow: 0 25px 60px rgba(0, 0, 0, 0.2);
+      position: relative;
+      transform: scale(0.95);
+      transition: transform 0.3s;
+    }
+
+    .modal-overlay.active .hero-login-card {
+      transform: scale(1);
+    }
+
+    .close-modal {
+      position: absolute;
+      top: 1rem;
+      right: 1.25rem;
+      background: rgba(0, 0, 0, 0.05);
+      border: none;
+      border-radius: 50%;
+      width: 32px;
+      height: 32px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      cursor: pointer;
+      font-size: 1.1rem;
+      color: rgba(30, 30, 60, 0.6);
+      transition: background 0.2s;
+    }
+
+    .close-modal:hover {
+      background: rgba(0, 0, 0, 0.1);
+      color: #1a1a2e;
     }
 
     .login-card-title {
@@ -636,87 +687,92 @@
     .footer-links {
       display: flex;
       gap: 1.5rem;
-    }
 
-    .footer-links a {
-      font-size: 0.82rem;
-      color: rgba(30, 30, 60, 0.5);
-      text-decoration: none;
-    }
-
-    .footer-links a:hover {
-      color: #1a1a2e;
-    }
-
-    /* ── TOAST ── */
-    #toast {
-      position: fixed;
-      bottom: 1.5rem;
-      right: 1.5rem;
-      z-index: 9999;
-      padding: 0.75rem 1.25rem;
-      border-radius: 10px;
-      font-size: 0.875rem;
-      font-weight: 500;
-      opacity: 0;
-      transform: translateY(10px);
-      transition: opacity 0.25s, transform 0.25s;
-      pointer-events: none;
-    }
-
-    #toast.visible {
-      opacity: 1;
-      transform: translateY(0);
-    }
-
-    #toast.success {
-      background: #1f3a26;
-      color: #6ee787;
-      border: 1px solid #3fb950;
-    }
-
-    #toast.error {
-      background: #3a1f1f;
-      color: #ff7b72;
-      border: 1px solid #e5534b;
-    }
-
-    @media (max-width: 768px) {
-      .hero-content {
-        grid-template-columns: 1fr;
-        padding: 7rem 1.5rem 3rem;
+      .footer-links a {
+        font-size: 0.82rem;
+        color: rgba(30, 30, 60, 0.5);
+        text-decoration: none;
       }
 
-      .hero-login-card {
-        display: none;
+      .footer-links a:hover {
+        color: #1a1a2e;
       }
 
-      .gallery-grid {
-        grid-template-columns: 1fr 1fr;
-        grid-template-rows: auto;
+      /* ── TOAST ── */
+      #toast {
+        position: fixed;
+        bottom: 1.5rem;
+        right: 1.5rem;
+        z-index: 9999;
+        padding: 0.75rem 1.25rem;
+        border-radius: 10px;
+        font-size: 0.875rem;
+        font-weight: 500;
+        opacity: 0;
+        transform: translateY(10px);
+        transition: opacity 0.25s, transform 0.25s;
+        pointer-events: none;
       }
 
-      .gallery-grid .gal-item.featured {
-        grid-row: span 1;
+      #toast.visible {
+        opacity: 1;
+        transform: translateY(0);
       }
 
-      .why-grid {
-        grid-template-columns: 1fr;
+      #toast.success {
+        background: #1f3a26;
+        color: #6ee787;
+        border: 1px solid #3fb950;
       }
 
-      .landing-nav {
-        padding: 1rem 1.5rem;
+      #toast.error {
+        background: #3a1f1f;
+        color: #ff7b72;
+        border: 1px solid #e5534b;
       }
 
-      .landing-nav-links {
-        gap: 1rem;
+      @media (max-width: 768px) {
+        .hero-content {
+          grid-template-columns: 1fr;
+          padding: 7rem 1.5rem 3rem;
+        }
+
+        .hero-login-card {
+          display: none;
+        }
+
+        .gallery-grid {
+          grid-template-columns: 1fr 1fr;
+          grid-template-rows: auto;
+        }
+
+        .gallery-grid .gal-item.featured {
+          grid-row: span 1;
+        }
+
+        .why-grid {
+          grid-template-columns: 1fr;
+        }
+
+        .landing-nav {
+          padding: 1rem 1.5rem;
+        }
+
+        .landing-nav-links {
+          gap: 1rem;
+        }
+
+        .feature-strip {
+          gap: 1.5rem;
+          padding: 1.5rem;
+        }
       }
 
-      .feature-strip {
-        gap: 1.5rem;
-        padding: 1.5rem;
+      .landing-nav-links .nav-cta {
+        cursor: pointer;
+        border: none;
+        font-family: inherit;
       }
-    }
   </style>
 </head>
 
@@ -729,9 +785,9 @@
       <span class="landing-logo-text">Justice Connect</span>
     </a>
     <div class="landing-nav-links">
-      <a href="/home.html">Home</a>
-      <a href="/about.html">About</a>
-      <a href="/" class="nav-cta">Sign In</a>
+      <a href="#why">Why Choose Us</a>
+      <a href="/about.html">About & Team</a>
+      <button onclick="openAuthModal()" class="nav-cta">Sign In / Register →</button>
     </div>
   </nav>
 
@@ -768,75 +824,80 @@
         </div>
 
         <div class="hero-actions">
+          <button onclick="openAuthModal()" class="btn-primary-hero">Access Portal</button>
           <a href="/about.html" class="btn-secondary-hero">📖 Learn More</a>
         </div>
       </div>
-
-      <!-- Login Card embedded in hero -->
-      <div class="hero-login-card">
-        <div class="login-card-title">⚖️ Access Your Portal</div>
-        <div class="login-card-sub">Manage cases and legal matters online</div>
-
-        <div class="card-tab-row">
-          <button class="card-tab active" id="tab-login" onclick="switchTab('login')">Sign In</button>
-          <button class="card-tab" id="tab-register" onclick="switchTab('register')">Register</button>
-        </div>
-
-        <div id="card-toast" class="toast-card"></div>
-
-        <!-- Login Form -->
-        <form id="login-form" onsubmit="handleLogin(event)">
-          <div class="card-field">
-            <label for="login-identifier">Username or Email</label>
-            <input type="text" id="login-identifier" required placeholder="username or email">
-          </div>
-          <div class="card-field">
-            <label for="login-password">Password</label>
-            <input type="password" id="login-password" required placeholder="Your password">
-          </div>
-          <button type="submit" class="card-submit">Sign In to Dashboard →</button>
-
-          <div class="demo-chips">
-            <div class="demo-chips-label">Demo Accounts</div>
-            <div class="demo-chips-grid">
-              <span class="demo-chip" onclick="fillCreds('user','user123')">👤 Citizen</span>
-              <span class="demo-chip" onclick="fillCreds('clerk','clerk123')">📝 Clerk</span>
-              <span class="demo-chip" onclick="fillCreds('judge','judge123')">⚖️ Judge</span>
-              <span class="demo-chip" onclick="fillCreds('admin','admin123')">🛠️ Admin</span>
-              <span class="demo-chip" onclick="fillCreds('respondent','resp123')">🧑‍⚖️ Respondent</span>
-            </div>
-          </div>
-        </form>
-
-        <!-- Register Form -->
-        <form id="register-form" onsubmit="handleRegister(event)" style="display:none;">
-          <div class="card-field">
-            <label for="reg-username">Username</label>
-            <input type="text" id="reg-username" required placeholder="Choose a username">
-          </div>
-          <div class="card-field">
-            <label for="reg-email">Email</label>
-            <input type="email" id="reg-email" required placeholder="name@email.com">
-          </div>
-          <div class="card-field">
-            <label for="reg-password">Password</label>
-            <input type="password" id="reg-password" required placeholder="Min. 6 characters">
-          </div>
-          <div class="card-field">
-            <label for="reg-role">Role</label>
-            <select id="reg-role">
-              <option value="CITIZEN">👤 Citizen — File Complaints</option>
-              <option value="CLERK">📝 Registry Clerk</option>
-              <option value="JUDGE">⚖️ Judge</option>
-              <option value="ADMIN">🛠️ Administrator</option>
-              <option value="RESPONDENT">🧑‍⚖️ Respondent</option>
-            </select>
-          </div>
-          <button type="submit" class="card-submit">Create Account →</button>
-        </form>
-      </div>
     </div>
   </section>
+
+  <!-- Auth Modal -->
+  <div id="auth-modal" class="modal-overlay" onclick="closeAuthModalBackground(event)">
+    <div class="hero-login-card">
+      <button class="close-modal" onclick="closeAuthModal()">✕</button>
+      <div class="login-card-title">⚖️ Access Your Portal</div>
+      <div class="login-card-sub">Manage cases and legal matters online</div>
+
+      <div class="card-tab-row">
+        <button class="card-tab active" id="tab-login" onclick="switchTab('login')">Sign In</button>
+        <button class="card-tab" id="tab-register" onclick="switchTab('register')">Register</button>
+      </div>
+
+      <div id="card-toast" class="toast-card"></div>
+
+      <!-- Login Form -->
+      <form id="login-form" onsubmit="handleLogin(event)">
+        <div class="card-field">
+          <label for="login-identifier">Username or Email</label>
+          <input type="text" id="login-identifier" required placeholder="username or email">
+        </div>
+        <div class="card-field">
+          <label for="login-password">Password</label>
+          <input type="password" id="login-password" required placeholder="Your password">
+        </div>
+        <button type="submit" class="card-submit">Sign In to Dashboard →</button>
+
+        <div class="demo-chips">
+          <div class="demo-chips-label">Demo Accounts</div>
+          <div class="demo-chips-grid">
+            <span class="demo-chip" onclick="fillCreds('user','user123')">👤 Citizen</span>
+            <span class="demo-chip" onclick="fillCreds('clerk','clerk123')">📝 Clerk</span>
+            <span class="demo-chip" onclick="fillCreds('judge','judge123')">⚖️ Judge</span>
+            <span class="demo-chip" onclick="fillCreds('admin','admin123')">🛠️ Admin</span>
+            <span class="demo-chip" onclick="fillCreds('respondent','resp123')">🧑‍⚖️ Respondent</span>
+          </div>
+        </div>
+      </form>
+
+      <!-- Register Form -->
+      <form id="register-form" onsubmit="handleRegister(event)" style="display:none;">
+        <div class="card-field">
+          <label for="reg-username">Username</label>
+          <input type="text" id="reg-username" required placeholder="Choose a username">
+        </div>
+        <div class="card-field">
+          <label for="reg-email">Email</label>
+          <input type="email" id="reg-email" required placeholder="name@email.com">
+        </div>
+        <div class="card-field">
+          <label for="reg-password">Password</label>
+          <input type="password" id="reg-password" required placeholder="Min. 6 characters">
+        </div>
+        <div class="card-field">
+          <label for="reg-role">Role</label>
+          <select id="reg-role">
+            <option value="CITIZEN">👤 Citizen — File Complaints</option>
+            <option value="CLERK">📝 Registry Clerk</option>
+            <option value="JUDGE">⚖️ Judge</option>
+            <option value="ADMIN">🛠️ Administrator</option>
+            <option value="RESPONDENT">🧑‍⚖️ Respondent</option>
+          </select>
+        </div>
+        <button type="submit" class="card-submit">Create Account →</button>
+      </form>
+    </div>
+  </div>
+  </div>
 
   <!-- ── Feature Strip ── -->
   <div class="feature-strip">
@@ -925,7 +986,7 @@
       <p>Join thousands of citizens using Justice Connect to access the legal system online with ease and confidence.
       </p>
       <div style="display:flex; gap:1rem; justify-content:center; flex-wrap:wrap;">
-        <a href="/" class="btn-primary-hero">⚖️ Sign In Now</a>
+        <button onclick="openAuthModal()" class="btn-primary-hero">⚖️ Sign In Now</button>
         <a href="/about.html" class="btn-secondary-hero">Learn About the System</a>
       </div>
     </div>
@@ -935,9 +996,9 @@
   <footer class="landing-footer">
     <div class="footer-copy">© 2026 Justice Connect · Court Complaint Management System</div>
     <div class="footer-links">
-      <a href="/">Sign In</a>
+      <button style="background:none;border:none;color:inherit;font:inherit;cursor:pointer;padding:0;"
+        onclick="openAuthModal()">Sign In</button>
       <a href="/about.html">About</a>
-      <a href="/home.html">Home</a>
     </div>
   </footer>
 
@@ -954,6 +1015,31 @@
       document.getElementById('tab-register').classList.toggle('active', !isLogin);
       document.getElementById('card-toast').className = 'toast-card';
     }
+
+    const authModal = document.getElementById('auth-modal');
+
+    function openAuthModal() {
+      authModal.style.display = 'flex';
+      setTimeout(() => authModal.classList.add('active'), 10);
+    }
+
+    function closeAuthModal() {
+      authModal.classList.remove('active');
+      setTimeout(() => authModal.style.display = 'none', 300);
+    }
+
+    function closeAuthModalBackground(e) {
+      if (e.target === authModal) {
+        closeAuthModal();
+      }
+    }
+
+    window.addEventListener('DOMContentLoaded', () => {
+      if (window.location.search.includes('login=true')) {
+        openAuthModal();
+        history.replaceState(null, '', '/');
+      }
+    });
   </script>
 </body>
 
