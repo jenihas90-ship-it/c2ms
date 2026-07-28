@@ -177,6 +177,7 @@
       font-weight: 800;
       line-height: 1.1;
       margin-bottom: 1.5rem;
+      color: #fff;
     }
 
     .hero-headline .gold-word {
@@ -687,92 +688,93 @@
     .footer-links {
       display: flex;
       gap: 1.5rem;
+    }
 
-      .footer-links a {
-        font-size: 0.82rem;
-        color: rgba(30, 30, 60, 0.5);
-        text-decoration: none;
+    .footer-links a {
+      font-size: 0.82rem;
+      color: rgba(30, 30, 60, 0.5);
+      text-decoration: none;
+    }
+
+    .footer-links a:hover {
+      color: #1a1a2e;
+    }
+
+    /* ── TOAST ── */
+    #toast {
+      position: fixed;
+      bottom: 1.5rem;
+      right: 1.5rem;
+      z-index: 9999;
+      padding: 0.75rem 1.25rem;
+      border-radius: 10px;
+      font-size: 0.875rem;
+      font-weight: 500;
+      opacity: 0;
+      transform: translateY(10px);
+      transition: opacity 0.25s, transform 0.25s;
+      pointer-events: none;
+    }
+
+    #toast.visible {
+      opacity: 1;
+      transform: translateY(0);
+    }
+
+    #toast.success {
+      background: #1f3a26;
+      color: #6ee787;
+      border: 1px solid #3fb950;
+    }
+
+    #toast.error {
+      background: #3a1f1f;
+      color: #ff7b72;
+      border: 1px solid #e5534b;
+    }
+
+    @media (max-width: 768px) {
+      .hero-content {
+        grid-template-columns: 1fr;
+        padding: 7rem 1.5rem 3rem;
       }
 
-      .footer-links a:hover {
-        color: #1a1a2e;
+      .hero-login-card {
+        display: none;
       }
 
-      /* ── TOAST ── */
-      #toast {
-        position: fixed;
-        bottom: 1.5rem;
-        right: 1.5rem;
-        z-index: 9999;
-        padding: 0.75rem 1.25rem;
-        border-radius: 10px;
-        font-size: 0.875rem;
-        font-weight: 500;
-        opacity: 0;
-        transform: translateY(10px);
-        transition: opacity 0.25s, transform 0.25s;
-        pointer-events: none;
+      .gallery-grid {
+        grid-template-columns: 1fr 1fr;
+        grid-template-rows: auto;
       }
 
-      #toast.visible {
-        opacity: 1;
-        transform: translateY(0);
+      .gallery-grid .gal-item.featured {
+        grid-row: span 1;
       }
 
-      #toast.success {
-        background: #1f3a26;
-        color: #6ee787;
-        border: 1px solid #3fb950;
+      .why-grid {
+        grid-template-columns: 1fr;
       }
 
-      #toast.error {
-        background: #3a1f1f;
-        color: #ff7b72;
-        border: 1px solid #e5534b;
+      .landing-nav {
+        padding: 1rem 1.5rem;
       }
 
-      @media (max-width: 768px) {
-        .hero-content {
-          grid-template-columns: 1fr;
-          padding: 7rem 1.5rem 3rem;
-        }
-
-        .hero-login-card {
-          display: none;
-        }
-
-        .gallery-grid {
-          grid-template-columns: 1fr 1fr;
-          grid-template-rows: auto;
-        }
-
-        .gallery-grid .gal-item.featured {
-          grid-row: span 1;
-        }
-
-        .why-grid {
-          grid-template-columns: 1fr;
-        }
-
-        .landing-nav {
-          padding: 1rem 1.5rem;
-        }
-
-        .landing-nav-links {
-          gap: 1rem;
-        }
-
-        .feature-strip {
-          gap: 1.5rem;
-          padding: 1.5rem;
-        }
+      .landing-nav-links {
+        gap: 1rem;
       }
 
-      .landing-nav-links .nav-cta {
-        cursor: pointer;
-        border: none;
-        font-family: inherit;
+      .feature-strip {
+        gap: 1.5rem;
+        padding: 1.5rem;
       }
+    }
+
+    .landing-nav-links .nav-cta {
+      cursor: pointer;
+      border: none;
+      font-family: inherit;
+    }
   </style>
 </head>
 
