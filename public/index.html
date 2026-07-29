@@ -591,63 +591,73 @@
       color: #fff;
     }
 
-    /* ── WHY SECTION ── */
-    .why-section {
-      padding: 5rem 3rem;
-      background: #f0f2ff;
+    /* ── SOLUTION / WHY SECTION ── */
+    .solution-section {
+      padding: 6rem 3rem;
+      background: #fdfdfd;
+      border-top: 1px solid rgba(0, 0, 0, 0.05);
     }
 
-    .why-inner {
+    .solution-container {
       max-width: 1200px;
       margin: 0 auto;
-    }
-
-    .why-grid {
       display: grid;
-      grid-template-columns: repeat(3, 1fr);
-      gap: 1.5rem;
-      margin-top: 3rem;
-    }
-
-    .why-card {
-      background: #fff;
-      border: 1px solid rgba(0, 0, 0, 0.07);
-      border-radius: 1.25rem;
-      padding: 2rem 1.75rem;
-      box-shadow: 0 4px 20px rgba(0, 0, 0, 0.06);
-      transition: transform 0.3s ease, border-color 0.3s ease, box-shadow 0.3s ease;
-    }
-
-    .why-card:hover {
-      transform: translateY(-5px);
-      border-color: rgba(99, 102, 241, 0.3);
-      box-shadow: 0 12px 36px rgba(0, 0, 0, 0.12);
-    }
-
-    .why-card-icon {
-      width: 52px;
-      height: 52px;
-      background: linear-gradient(135deg, rgba(99, 102, 241, 0.25), rgba(139, 92, 246, 0.15));
-      border-radius: 14px;
-      display: flex;
+      grid-template-columns: 1fr 1fr;
+      gap: 4rem;
       align-items: center;
-      justify-content: center;
-      font-size: 1.5rem;
-      margin-bottom: 1.25rem;
     }
 
-    .why-card h3 {
+    .solution-image {
+      position: relative;
+      border-radius: 1.5rem;
+      overflow: hidden;
+      box-shadow: 0 25px 60px rgba(0, 0, 0, 0.15);
+    }
+
+    .solution-image img {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+      display: block;
+      transition: transform 0.5s ease;
+    }
+
+    .solution-image:hover img {
+      transform: scale(1.05);
+    }
+
+    .solution-text .section-eyebrow {
+      margin-bottom: 1rem;
+    }
+
+    .solution-text p {
+      color: rgba(30, 30, 60, 0.65);
+      font-size: 1.05rem;
+      line-height: 1.75;
+      margin-bottom: 2.5rem;
+    }
+
+    .solution-features {
+      display: flex;
+      flex-direction: column;
+      gap: 1.5rem;
+    }
+
+    .sol-feature {
+      display: flex;
+      flex-direction: column;
+    }
+
+    .sol-feature strong {
       font-family: 'Outfit', sans-serif;
       font-size: 1.15rem;
-      font-weight: 700;
-      margin-bottom: 0.6rem;
       color: #1a1a2e;
+      margin-bottom: 0.2rem;
     }
 
-    .why-card p {
-      color: rgba(30, 30, 60, 0.6);
-      font-size: 0.9rem;
-      line-height: 1.7;
+    .sol-feature span {
+      color: rgba(30, 30, 60, 0.55);
+      font-size: 0.95rem;
     }
 
     /* ── CTA SECTION ── */
@@ -757,8 +767,9 @@
         grid-row: span 1;
       }
 
-      .why-grid {
+      .solution-container {
         grid-template-columns: 1fr;
+        gap: 2.5rem;
       }
 
       .landing-nav {
@@ -927,28 +938,33 @@
   </section>
 
   <!-- ── Why Section ── -->
-  <section class="why-section">
-    <div class="why-inner">
-      <div class="section-eyebrow">Why Justice Connect</div>
-      <h2 class="section-heading">Built for a Fairer,<br>More Accessible Legal System</h2>
-      <div class="why-grid">
-        <div class="why-card">
-          <div class="why-card-icon">🕐</div>
-          <h3>File Any Time, Anywhere</h3>
-          <p>Submit complaints 24/7 from any browser. No travel required, no office hours to respect. Your legal voice
-            is always available.</p>
-        </div>
-        <div class="why-card">
-          <div class="why-card-icon">🔍</div>
-          <h3>Full Transparency</h3>
-          <p>Track the exact status of your case from filing to resolution. Every status change is timestamped and
-            visible in real time.</p>
-        </div>
-        <div class="why-card">
-          <div class="why-card-icon">🛡️</div>
-          <h3>Secure & Confidential</h3>
-          <p>Enterprise-grade security with bcrypt password hashing, HTTP-only sessions, and role-based access control
-            on every endpoint.</p>
+  <!-- ── Solution / Why Section ── -->
+  <section class="solution-section" id="why">
+    <div class="solution-container">
+      <div class="solution-image">
+        <img src="/images/lady_justice.png" alt="Lady Justice - Digital Solution">
+      </div>
+      <div class="solution-text">
+        <div class="section-eyebrow">Why Choose Us</div>
+        <h2 class="section-heading">A Modern Platform For<br>Accessible Justice</h2>
+        <p>The Court Complaint Management System (CCMS) is designed to replace confusing paperwork and long waiting
+          times with a streamlined, transparent digital workflow. We provide citizens with a clean unified interface to
+          manage all legal claims securely.</p>
+
+        <div class="solution-features">
+          <div class="sol-feature">
+            <strong>🚀 Swift & Paperless</strong>
+            <span>Submit complaints instantly from any web browser without ever visiting a courthouse in person.</span>
+          </div>
+          <div class="sol-feature">
+            <strong>🔒 Complete Security</strong>
+            <span>Enterprise-grade authentication ensures your sensitive case files and private data are completely
+              safe.</span>
+          </div>
+          <div class="sol-feature">
+            <strong>📱 Real-Time Updates</strong>
+            <span>Get automated text and email alerts whenever your case status changes, no guessing required.</span>
+          </div>
         </div>
       </div>
     </div>
