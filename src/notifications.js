@@ -144,13 +144,36 @@ async function notifyRespondentOfComplaint(complaintId) {
     const c = await db.get('SELECT * FROM complaints WHERE id = ?', [complaintId]);
     if (!c) return;
 
+    // ── REAL SMS TO RESPONDENT PHONE ──────────────────────────────────────
     if (c.respondent_phone) {
-      console.log(`[MOCK SMS] Sent to ${c.respondent_phone}: Notice: A complaint (#${c.id}) has been filed naming you as a respondent.`);
+      const orderType = 'Legal Complaint Notice';
+      const orderDetails = `A legal complaint titled "${c.title}" has been officially served against you at ${c.court_name || 'the court'}. Case ref: ${c.case_number || '#' + c.id}. Please login to the respondent portal immediately to review.`;
+
+      // Generate AI-personalised message (falls back to template if no Gemini key)
+      const messageText = await sms.generateSmsContent(c, orderDetails, orderType);
+
+      // Send via Twilio (or console log if Twilio not configured)
+      await sms.sendSms(c.respondent_phone, messageText);
+
+      // Log to sms_logs for audit trail & respondent portal display
+      try {
+        await db.run(
+          `INSERT INTO sms_logs (complaint_id, recipient_phone, message, status) VALUES (?, ?, ?, 'sent')`,
+          [complaintId, c.respondent_phone, messageText]
+        );
+      } catch (logErr) {
+        console.warn('[Serve SMS] Could not write to sms_logs:', logErr.message);
+      }
+
+      console.log(`[Serve SMS] ✅ SMS dispatched to ${c.respondent_phone} for complaint #${complaintId}`);
+    } else {
+      console.log(`[Serve SMS] No respondent phone on complaint #${complaintId} — SMS skipped.`);
     }
 
+    // ── EMAIL TO RESPONDENT ───────────────────────────────────────────────
     if (c.respondent_email) {
-      const subject = `Notice of Legal Complaint: #${c.id}`;
-      const text = `Dear ${c.defendant_name || 'Respondent'},\n\nA complaint titled "${c.title}" naming you as a respondent has been filed at ${c.court_name}.\n\nYou will be contacted by a clerk regarding proceedings.`;
+      const subject = `Court Notice: Legal Complaint Served — Case #${c.case_number || c.id}`;
+      const text = `Dear ${c.defendant_name || 'Respondent'},\n\nA complaint titled "${c.title}" naming you as a respondent has been officially served at ${c.court_name || 'the relevant court'}.\n\nCase Reference: ${c.case_number || '#' + c.id}\n\nPlease login to the respondent portal immediately to review the complaint details and respond accordingly.\n\nDo not ignore this notice — timely response is required by law.`;
       await sendMail({ to: c.respondent_email, subject, text });
     }
   } catch (err) {
