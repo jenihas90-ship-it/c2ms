@@ -1022,6 +1022,26 @@ async function serveComplaint() {
     }
 }
 
+// ===== Delete Complaint (Admin only) =====
+async function deleteComplaintAPI() {
+    if (!currentComplaintId) return;
+    if (!confirm('Are you sure you want to completely delete this complaint? This cannot be undone.')) {
+        return;
+    }
+
+    try {
+        await apiRequest(`/api/complaints/${currentComplaintId}`, {
+            method: 'DELETE'
+        });
+        showToast('Complaint deleted successfully', false);
+        closeDetailsInspector();
+        await refreshDashboardData();
+    } catch (err) {
+        showToast(err.message || 'Failed to delete complaint', true);
+    }
+}
+
+
 // State variables for the AI SMS modal judgment flow
 let _pendingJudgmentData = null;
 

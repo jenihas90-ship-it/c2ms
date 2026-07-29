@@ -791,10 +791,67 @@
       border: none;
       font-family: inherit;
     }
+
+    /* ── WELCOME MARQUEE BANNER ── */
+    .welcome-marquee-bar {
+      position: fixed;
+      top: 0;
+      left: 0;
+      right: 0;
+      z-index: 200;
+      background: linear-gradient(135deg, var(--navy), var(--navy-mid));
+      border-bottom: 2px solid var(--gold);
+      overflow: hidden;
+      white-space: nowrap;
+      padding: 0.45rem 0;
+    }
+
+    .welcome-marquee-inner {
+      display: inline-block;
+      animation: marqueeScroll 20s linear infinite;
+    }
+
+    .welcome-marquee-inner span {
+      font-family: 'Outfit', sans-serif;
+      font-size: 0.95rem;
+      font-weight: 700;
+      letter-spacing: 0.12em;
+      color: var(--gold);
+      padding: 0 4rem;
+      text-shadow: 0 0 12px rgba(212, 168, 67, 0.5);
+    }
+
+    @keyframes marqueeScroll {
+      0% {
+        transform: translateX(100vw);
+      }
+
+      100% {
+        transform: translateX(-100%);
+      }
+    }
+
+    /* Push nav down to account for marquee bar */
+    .landing-nav {
+      top: 36px !important;
+    }
+
+    /* Push hero content down too */
+    .hero-section {
+      padding-top: 36px;
+    }
   </style>
 </head>
 
 <body class="landing-page">
+
+  <!-- ── Welcome Marquee Banner ── -->
+  <div class="welcome-marquee-bar" aria-label="Welcome banner">
+    <div class="welcome-marquee-inner">
+      <span>⚖️ WELCOME TO COURT COMPLAINT MANAGEMENT SYSTEM &nbsp;&nbsp;&nbsp;⚖️ WELCOME TO COURT COMPLAINT MANAGEMENT
+        SYSTEM &nbsp;&nbsp;&nbsp;⚖️ WELCOME TO COURT COMPLAINT MANAGEMENT SYSTEM</span>
+    </div>
+  </div>
 
   <!-- ── Navigation ── -->
   <nav class="landing-nav">
@@ -803,8 +860,9 @@
       <span class="landing-logo-text">Justice Connect</span>
     </a>
     <div class="landing-nav-links">
-      <a href="#why">Why Choose Us</a>
-      <a href="/about.html">About & Team</a>
+      <a href="/">HOME</a>
+      <a href="#why">WHY CHOOSE US</a>
+      <a href="/about.html">ABOUT US</a>
       <button onclick="openAuthModal()" class="nav-cta">Sign In / Register →</button>
     </div>
   </nav>
