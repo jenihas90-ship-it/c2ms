@@ -41,10 +41,49 @@
       overflow-x: hidden;
     }
 
+    /* ── WELCOME MARQUEE BANNER ── */
+    .welcome-marquee-bar {
+      position: fixed;
+      top: 0;
+      left: 0;
+      right: 0;
+      z-index: 200;
+      background: linear-gradient(135deg, #0a1628, #122040);
+      border-bottom: 2px solid #d4a843;
+      overflow: hidden;
+      white-space: nowrap;
+      padding: 0.45rem 0;
+    }
+
+    .welcome-marquee-inner {
+      display: inline-block;
+      animation: marqueeScroll 20s linear infinite;
+    }
+
+    .welcome-marquee-inner span {
+      font-family: 'Outfit', sans-serif;
+      font-size: 0.95rem;
+      font-weight: 700;
+      letter-spacing: 0.12em;
+      color: #d4a843;
+      padding: 0 4rem;
+      text-shadow: 0 0 12px rgba(212, 168, 67, 0.5);
+    }
+
+    @keyframes marqueeScroll {
+      0% {
+        transform: translateX(100vw);
+      }
+
+      100% {
+        transform: translateX(-100%);
+      }
+    }
+
     /* ── NAV ── */
     .top-nav {
       position: fixed;
-      top: 0;
+      top: 36px;
       left: 0;
       right: 0;
       z-index: 100;
@@ -108,7 +147,7 @@
 
     /* ── PAGE WRAPPER ── */
     main {
-      padding-top: 5rem;
+      padding-top: 8rem;
     }
 
     /* ── HERO BANNER ── */
@@ -675,6 +714,14 @@
 </head>
 
 <body>
+  <!-- ── Welcome Marquee Banner ── -->
+  <div class="welcome-marquee-bar" aria-label="Welcome banner">
+    <div class="welcome-marquee-inner">
+      <span>⚖️ WELCOME TO COURT COMPLAINT MANAGEMENT SYSTEM &nbsp;&nbsp;&nbsp;⚖️ WELCOME TO COURT COMPLAINT MANAGEMENT
+        SYSTEM &nbsp;&nbsp;&nbsp;⚖️ WELCOME TO COURT COMPLAINT MANAGEMENT SYSTEM</span>
+    </div>
+  </div>
+
   <!-- ── Navigation ── -->
   <nav class="top-nav">
     <a class="nav-logo" href="/">
@@ -682,8 +729,9 @@
       <span class="nav-logo-text">Justice Connect</span>
     </a>
     <div class="nav-links">
-      <a href="/">Home</a>
-      <a href="/about.html" class="active">About</a>
+      <a href="/">HOME</a>
+      <a href="/#why">WHY CHOOSE US</a>
+      <a href="/about.html" class="active">ABOUT US</a>
       <a href="/?login=true" class="nav-cta">Sign In / Register →</a>
     </div>
   </nav>
