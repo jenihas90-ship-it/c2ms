@@ -840,10 +840,551 @@
     .hero-section {
       padding-top: 36px;
     }
+
+    /* ══ SCROLL REVEAL ══ */
+    [data-reveal] {
+      opacity: 0;
+      transform: translateY(40px);
+      transition: opacity 0.75s cubic-bezier(.16, 1, .3, 1), transform 0.75s cubic-bezier(.16, 1, .3, 1);
+    }
+
+    [data-reveal].revealed {
+      opacity: 1;
+      transform: translateY(0);
+    }
+
+    [data-reveal-delay="1"] {
+      transition-delay: 0.1s;
+    }
+
+    [data-reveal-delay="2"] {
+      transition-delay: 0.2s;
+    }
+
+    [data-reveal-delay="3"] {
+      transition-delay: 0.3s;
+    }
+
+    [data-reveal-delay="4"] {
+      transition-delay: 0.4s;
+    }
+
+    [data-reveal-delay="5"] {
+      transition-delay: 0.5s;
+    }
+
+    /* ══ SCROLL PROGRESS BAR ══ */
+    #scroll-progress {
+      position: fixed;
+      top: 0;
+      left: 0;
+      height: 3px;
+      background: linear-gradient(90deg, var(--gold), var(--primary));
+      z-index: 9999;
+      width: 0%;
+      transition: width 0.1s linear;
+      box-shadow: 0 0 8px rgba(212, 168, 67, 0.7);
+    }
+
+    /* ══ PARTICLE CANVAS ══ */
+    #particle-canvas {
+      position: absolute;
+      inset: 0;
+      z-index: 1;
+      pointer-events: none;
+    }
+
+    /* ══ PREMIUM HERO CONTENT ══ */
+    .hero-content-premium {
+      position: relative;
+      z-index: 2;
+      width: 100%;
+      max-width: 860px;
+      margin: 0 auto;
+      padding: 10rem 2rem 6rem;
+      text-align: center;
+    }
+
+    .hero-trust-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.5rem;
+      background: rgba(212, 168, 67, 0.12);
+      border: 1px solid rgba(212, 168, 67, 0.45);
+      color: var(--gold-light);
+      padding: 0.38rem 1.1rem;
+      border-radius: 50px;
+      font-size: 0.78rem;
+      font-weight: 700;
+      letter-spacing: 0.1em;
+      text-transform: uppercase;
+      margin-bottom: 1.8rem;
+      animation: fadeSlideDown 0.8s ease forwards;
+    }
+
+    .hero-title-premium {
+      font-family: 'Outfit', sans-serif;
+      font-size: clamp(2.6rem, 6vw, 5rem);
+      font-weight: 800;
+      line-height: 1.08;
+      color: #fff;
+      margin-bottom: 1.6rem;
+      text-shadow: 0 4px 30px rgba(0, 0, 0, 0.5);
+      animation: fadeSlideUp 0.9s 0.2s ease both;
+    }
+
+    .hero-title-premium .gold-text {
+      background: linear-gradient(135deg, var(--gold), var(--gold-light), #fff8dc);
+      -webkit-background-clip: text;
+      background-clip: text;
+      -webkit-text-fill-color: transparent;
+    }
+
+    .hero-subtitle-premium {
+      color: rgba(255, 255, 255, 0.72);
+      font-size: 1.15rem;
+      line-height: 1.8;
+      max-width: 620px;
+      margin: 0 auto 2.8rem;
+      animation: fadeSlideUp 0.9s 0.35s ease both;
+    }
+
+    .hero-stats-premium {
+      display: flex;
+      justify-content: center;
+      gap: 3rem;
+      margin-bottom: 3rem;
+      animation: fadeSlideUp 0.9s 0.5s ease both;
+    }
+
+    .hstat {
+      text-align: center;
+    }
+
+    .hstat-num {
+      font-family: 'Outfit', sans-serif;
+      font-size: 2.4rem;
+      font-weight: 800;
+      color: var(--gold);
+      display: block;
+      line-height: 1;
+    }
+
+    .hstat-label {
+      font-size: 0.75rem;
+      color: rgba(255, 255, 255, 0.55);
+      letter-spacing: 0.06em;
+      text-transform: uppercase;
+      margin-top: 0.3rem;
+    }
+
+    .hero-cta-row {
+      display: flex;
+      justify-content: center;
+      gap: 1rem;
+      flex-wrap: wrap;
+      animation: fadeSlideUp 0.9s 0.65s ease both;
+    }
+
+    .btn-gold {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.5rem;
+      padding: 0.9rem 2.2rem;
+      background: linear-gradient(135deg, var(--gold), #c49a30);
+      color: #0a1628;
+      font-weight: 800;
+      font-size: 1rem;
+      border-radius: 50px;
+      text-decoration: none;
+      border: none;
+      cursor: pointer;
+      transition: transform 0.25s, box-shadow 0.25s;
+      position: relative;
+      overflow: hidden;
+    }
+
+    .btn-gold::after {
+      content: '';
+      position: absolute;
+      top: -50%;
+      left: -60%;
+      width: 40%;
+      height: 200%;
+      background: rgba(255, 255, 255, 0.3);
+      transform: skewX(-20deg);
+      transition: left 0.5s;
+    }
+
+    .btn-gold:hover::after {
+      left: 130%;
+    }
+
+    .btn-gold:hover {
+      transform: translateY(-3px);
+      box-shadow: 0 16px 40px rgba(212, 168, 67, 0.5);
+    }
+
+    .btn-ghost-white {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.5rem;
+      padding: 0.9rem 2.2rem;
+      background: rgba(255, 255, 255, 0.1);
+      color: #fff;
+      font-weight: 600;
+      font-size: 1rem;
+      border-radius: 50px;
+      text-decoration: none;
+      border: 1px solid rgba(255, 255, 255, 0.25);
+      transition: background 0.25s, transform 0.25s;
+      backdrop-filter: blur(6px);
+    }
+
+    .btn-ghost-white:hover {
+      background: rgba(255, 255, 255, 0.2);
+      transform: translateY(-2px);
+    }
+
+    /* ══ HERO SCROLL INDICATOR ══ */
+    .hero-scroll-hint {
+      position: absolute;
+      bottom: 2rem;
+      left: 50%;
+      transform: translateX(-50%);
+      z-index: 2;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 0.4rem;
+      color: rgba(255, 255, 255, 0.4);
+      font-size: 0.7rem;
+      letter-spacing: 0.12em;
+      text-transform: uppercase;
+      animation: fadeSlideUp 1s 1.2s ease both;
+    }
+
+    .scroll-wheel {
+      width: 22px;
+      height: 36px;
+      border: 2px solid rgba(255, 255, 255, 0.3);
+      border-radius: 11px;
+      display: flex;
+      align-items: flex-start;
+      justify-content: center;
+      padding-top: 5px;
+    }
+
+    .scroll-dot {
+      width: 4px;
+      height: 8px;
+      background: rgba(255, 255, 255, 0.5);
+      border-radius: 2px;
+      animation: scrollDot 1.8s ease-in-out infinite;
+    }
+
+    @keyframes scrollDot {
+
+      0%,
+      100% {
+        transform: translateY(0);
+        opacity: 1;
+      }
+
+      60% {
+        transform: translateY(10px);
+        opacity: 0;
+      }
+    }
+
+    /* ══ PREMIUM FEATURE STRIP ══ */
+    .feature-strip {
+      background: linear-gradient(135deg, var(--navy), var(--navy-mid)) !important;
+      border-top: none !important;
+      border-bottom: 1px solid rgba(212, 168, 67, 0.2) !important;
+      padding: 2rem 3rem !important;
+    }
+
+    .feature-item {
+      flex-direction: column;
+      gap: 0.5rem !important;
+      color: rgba(255, 255, 255, 0.7) !important;
+      font-size: 0.82rem !important;
+      font-weight: 600;
+      letter-spacing: 0.04em;
+      text-transform: uppercase;
+      transition: color 0.2s;
+    }
+
+    .feature-item:hover {
+      color: var(--gold) !important;
+    }
+
+    .feature-item-icon {
+      font-size: 1.6rem !important;
+      display: block;
+      filter: drop-shadow(0 0 8px rgba(212, 168, 67, 0.4));
+    }
+
+    /* ══ PREMIUM GALLERY ══ */
+    .gallery-grid .gal-item img {
+      transition: transform 0.6s cubic-bezier(.16, 1, .3, 1) !important;
+    }
+
+    .gallery-grid .gal-item:hover img {
+      transform: scale(1.08) !important;
+    }
+
+    .gal-item-overlay {
+      background: linear-gradient(to top, rgba(5, 13, 26, 0.85) 0%, rgba(5, 13, 26, 0.1) 50%, transparent 100%) !important;
+    }
+
+    .gal-caption {
+      font-family: 'Outfit', sans-serif !important;
+      font-size: 0.95rem !important;
+      letter-spacing: 0.03em;
+    }
+
+    /* ══ PREMIUM WHY SECTION ══ */
+    .solution-section {
+      background: linear-gradient(160deg, #f0f4ff 0%, #f9fafb 100%) !important;
+      position: relative;
+    }
+
+    .solution-section::before {
+      content: '';
+      position: absolute;
+      inset: 0;
+      background-image: radial-gradient(circle, rgba(99, 102, 241, 0.06) 1px, transparent 1px);
+      background-size: 28px 28px;
+      pointer-events: none;
+    }
+
+    .sol-feature {
+      background: #fff;
+      border: 1px solid rgba(0, 0, 0, 0.07);
+      border-radius: 1rem;
+      padding: 1.5rem 1.75rem;
+      box-shadow: 0 4px 20px rgba(0, 0, 0, 0.05);
+      transition: transform 0.3s, box-shadow 0.3s, border-color 0.3s;
+    }
+
+    .sol-feature:hover {
+      transform: translateY(-4px);
+      box-shadow: 0 16px 40px rgba(99, 102, 241, 0.12);
+      border-color: rgba(99, 102, 241, 0.3);
+    }
+
+    .sol-feature strong {
+      font-size: 1.05rem !important;
+    }
+
+    /* ══ PREMIUM CTA ══ */
+    .cta-section {
+      background: linear-gradient(135deg, var(--navy) 0%, #1a1a4e 50%, var(--navy) 100%) !important;
+      background-size: 400% 400% !important;
+      animation: gradientShift 10s ease infinite !important;
+      position: relative;
+      overflow: hidden;
+    }
+
+    .cta-section::before {
+      content: '';
+      position: absolute;
+      width: 600px;
+      height: 600px;
+      border-radius: 50%;
+      background: radial-gradient(circle, rgba(212, 168, 67, 0.07) 0%, transparent 70%);
+      top: -200px;
+      left: -100px;
+      pointer-events: none;
+    }
+
+    .cta-section::after {
+      content: '';
+      position: absolute;
+      width: 500px;
+      height: 500px;
+      border-radius: 50%;
+      background: radial-gradient(circle, rgba(99, 102, 241, 0.08) 0%, transparent 70%);
+      bottom: -150px;
+      right: -100px;
+      pointer-events: none;
+    }
+
+    .cta-inner {
+      position: relative;
+      z-index: 1;
+    }
+
+    .cta-inner h2 {
+      color: #fff !important;
+      font-size: 3rem !important;
+    }
+
+    .cta-inner p {
+      color: rgba(255, 255, 255, 0.65) !important;
+    }
+
+    @keyframes gradientShift {
+
+      0%,
+      100% {
+        background-position: 0% 50%;
+      }
+
+      50% {
+        background-position: 100% 50%;
+      }
+    }
+
+    /* ══ PREMIUM DARK FOOTER ══ */
+    .landing-footer-premium {
+      background: var(--navy);
+      border-top: 1px solid rgba(212, 168, 67, 0.15);
+      padding: 4rem 3rem 2rem;
+    }
+
+    .footer-grid {
+      max-width: 1200px;
+      margin: 0 auto;
+      display: grid;
+      grid-template-columns: 2fr 1fr 1fr;
+      gap: 3rem;
+      padding-bottom: 3rem;
+      border-bottom: 1px solid rgba(255, 255, 255, 0.07);
+      margin-bottom: 2rem;
+    }
+
+    .footer-brand .landing-logo {
+      margin-bottom: 1rem;
+      display: flex;
+    }
+
+    .footer-brand .landing-logo-text {
+      font-size: 1.4rem !important;
+    }
+
+    .footer-brand p {
+      color: rgba(255, 255, 255, 0.45);
+      font-size: 0.875rem;
+      line-height: 1.75;
+      max-width: 300px;
+    }
+
+    .footer-col h5 {
+      font-family: 'Outfit', sans-serif;
+      font-size: 0.8rem;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.1em;
+      color: var(--gold);
+      margin-bottom: 1.2rem;
+    }
+
+    .footer-col a,
+    .footer-col button {
+      display: block;
+      color: rgba(255, 255, 255, 0.5);
+      text-decoration: none;
+      font-size: 0.875rem;
+      margin-bottom: 0.65rem;
+      transition: color 0.2s;
+      background: none;
+      border: none;
+      padding: 0;
+      cursor: pointer;
+      font-family: inherit;
+      text-align: left;
+    }
+
+    .footer-col a:hover,
+    .footer-col button:hover {
+      color: var(--gold);
+    }
+
+    .footer-bottom {
+      max-width: 1200px;
+      margin: 0 auto;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      flex-wrap: wrap;
+      gap: 1rem;
+    }
+
+    .footer-bottom-copy {
+      font-size: 0.8rem;
+      color: rgba(255, 255, 255, 0.3);
+    }
+
+    .footer-bottom-badges {
+      display: flex;
+      gap: 0.6rem;
+    }
+
+    .footer-badge {
+      background: rgba(212, 168, 67, 0.1);
+      border: 1px solid rgba(212, 168, 67, 0.25);
+      color: rgba(212, 168, 67, 0.8);
+      font-size: 0.7rem;
+      font-weight: 700;
+      padding: 0.3rem 0.8rem;
+      border-radius: 50px;
+      letter-spacing: 0.06em;
+    }
+
+    /* ══ SHARED KEYFRAMES ══ */
+    @keyframes fadeSlideDown {
+      from {
+        opacity: 0;
+        transform: translateY(-20px);
+      }
+
+      to {
+        opacity: 1;
+        transform: translateY(0);
+      }
+    }
+
+    @keyframes fadeSlideUp {
+      from {
+        opacity: 0;
+        transform: translateY(30px);
+      }
+
+      to {
+        opacity: 1;
+        transform: translateY(0);
+      }
+    }
+
+    /* ══ RESPONSIVE FIXES ══ */
+    @media (max-width: 768px) {
+      .hero-stats-premium {
+        gap: 1.5rem;
+      }
+
+      .hstat-num {
+        font-size: 1.8rem;
+      }
+
+      .footer-grid {
+        grid-template-columns: 1fr;
+        gap: 2rem;
+      }
+
+      .hero-content-premium {
+        padding: 9rem 1.5rem 5rem;
+      }
+    }
   </style>
 </head>
 
 <body class="landing-page">
+
+  <!-- Scroll progress -->
+  <div id="scroll-progress"></div>
 
   <!-- ── Welcome Marquee Banner ── -->
   <div class="welcome-marquee-bar" aria-label="Welcome banner">
@@ -872,7 +1413,43 @@
     <div class="hero-bg">
       <img src="/images/hero_courthouse.png" alt="Grand Courthouse Building">
     </div>
+    <canvas id="particle-canvas"></canvas>
 
+    <div class="hero-content-premium">
+      <div class="hero-trust-badge">⚖️ &nbsp;Ethiopia's #1 E-Justice Platform</div>
+      <h1 class="hero-title-premium">
+        Court Complaints,<br><span class="gold-text">Resolved Online</span>
+      </h1>
+      <p class="hero-subtitle-premium">
+        File, track, and manage legal complaints from anywhere — 100% digital,
+        secure, and built for every citizen.
+      </p>
+      <div class="hero-stats-premium">
+        <div class="hstat">
+          <span class="hstat-num" data-count="5">5</span>
+          <span class="hstat-label">User Roles</span>
+        </div>
+        <div class="hstat">
+          <span class="hstat-num" data-count="24">24</span>
+          <span class="hstat-label">hrs Online</span>
+        </div>
+        <div class="hstat">
+          <span class="hstat-num" data-suffix="%" data-count="100">100%</span>
+          <span class="hstat-label">Paperless</span>
+        </div>
+      </div>
+      <div class="hero-cta-row">
+        <button onclick="openAuthModal()" class="btn-gold">⚖️ &nbsp;Access Your Portal</button>
+        <a href="/about.html" class="btn-ghost-white">Learn More →</a>
+      </div>
+    </div>
+
+    <div class="hero-scroll-hint">
+      <div class="scroll-wheel">
+        <div class="scroll-dot"></div>
+      </div>
+      <span>Scroll</span>
+    </div>
   </section>
 
   <!-- Auth Modal -->
@@ -945,18 +1522,23 @@
 
   <!-- ── Feature Strip ── -->
   <div class="feature-strip">
-    <div class="feature-item"><span class="feature-item-icon">📋</span> E-Filing in Minutes</div>
-    <div class="feature-item"><span class="feature-item-icon">🔒</span> Secure & Confidential</div>
-    <div class="feature-item"><span class="feature-item-icon">📊</span> Real-Time Tracking</div>
-    <div class="feature-item"><span class="feature-item-icon">💬</span> Live Communication</div>
-    <div class="feature-item"><span class="feature-item-icon">📱</span> SMS Notifications</div>
+    <div class="feature-item" data-reveal data-reveal-delay="1"><span class="feature-item-icon">📋</span> E-Filing in
+      Minutes</div>
+    <div class="feature-item" data-reveal data-reveal-delay="2"><span class="feature-item-icon">🔒</span> Secure &amp;
+      Confidential</div>
+    <div class="feature-item" data-reveal data-reveal-delay="3"><span class="feature-item-icon">📊</span> Real-Time
+      Tracking</div>
+    <div class="feature-item" data-reveal data-reveal-delay="4"><span class="feature-item-icon">💬</span> Live
+      Communication</div>
+    <div class="feature-item" data-reveal data-reveal-delay="5"><span class="feature-item-icon">📱</span> SMS
+      Notifications</div>
   </div>
 
   <!-- ── Courthouse Gallery ── -->
-  <section class="img-gallery-strip">
-    <div class="section-eyebrow">⚖️ Justice System</div>
-    <h2 class="section-heading">Where Law Meets<br>Technology</h2>
-    <p class="section-sub">
+  <section class="img-gallery-strip" data-reveal>
+    <div class="section-eyebrow" data-reveal>⚖️ Justice System</div>
+    <h2 class="section-heading" data-reveal data-reveal-delay="1">Where Law Meets<br>Technology</h2>
+    <p class="section-sub" data-reveal data-reveal-delay="2">
       Justice Connect bridges the gap between citizens and the legal system, making court access transparent and
       efficient for everyone.
     </p>
@@ -997,12 +1579,12 @@
 
   <!-- ── Why Section ── -->
   <!-- ── Solution / Why Section ── -->
-  <section class="solution-section" id="why">
+  <section class="solution-section" id="why" data-reveal>
     <div class="solution-container">
-      <div class="solution-image">
+      <div class="solution-image" data-reveal>
         <img src="/images/lady_justice.png" alt="Lady Justice - Digital Solution">
       </div>
-      <div class="solution-text">
+      <div class="solution-text" data-reveal data-reveal-delay="2">
         <div class="section-eyebrow">Why Choose Us</div>
         <h2 class="section-heading">A Modern Platform For<br>Accessible Justice</h2>
         <p>The Court Complaint Management System (CCMS) is designed to replace confusing paperwork and long waiting
@@ -1011,7 +1593,7 @@
 
         <div class="solution-features">
           <div class="sol-feature">
-            <strong>🚀 Swift & Paperless</strong>
+            <strong>🚀 Swift &amp; Paperless</strong>
             <span>Submit complaints instantly from any web browser without ever visiting a courthouse in person.</span>
           </div>
           <div class="sol-feature">
@@ -1030,24 +1612,51 @@
 
   <!-- ── CTA ── -->
   <section class="cta-section">
-    <div class="cta-inner">
+    <div class="cta-inner" data-reveal>
       <h2>Ready to File Your Case?</h2>
       <p>Join thousands of citizens using Justice Connect to access the legal system online with ease and confidence.
       </p>
       <div style="display:flex; gap:1rem; justify-content:center; flex-wrap:wrap;">
-        <button onclick="openAuthModal()" class="btn-primary-hero">⚖️ Sign In Now</button>
-        <a href="/about.html" class="btn-secondary-hero">Learn About the System</a>
+        <button onclick="openAuthModal()" class="btn-gold">⚖️ Sign In Now</button>
+        <a href="/about.html" class="btn-ghost-white">Learn About the System</a>
       </div>
     </div>
   </section>
 
-  <!-- ── Footer ── -->
-  <footer class="landing-footer">
-    <div class="footer-copy">© 2026 Justice Connect · Court Complaint Management System</div>
-    <div class="footer-links">
-      <button style="background:none;border:none;color:inherit;font:inherit;cursor:pointer;padding:0;"
-        onclick="openAuthModal()">Sign In</button>
-      <a href="/about.html">About</a>
+  <!-- ── Premium Dark Footer ── -->
+  <footer class="landing-footer-premium">
+    <div class="footer-grid">
+      <div class="footer-brand">
+        <a class="landing-logo" href="/">
+          <span class="landing-logo-icon">⚖️</span>
+          <span class="landing-logo-text">Justice Connect</span>
+        </a>
+        <p>Ethiopia's premier Court Complaint Management System — making justice accessible, transparent, and efficient
+          for every citizen.</p>
+      </div>
+      <div class="footer-col">
+        <h5>Navigation</h5>
+        <a href="/">Home</a>
+        <a href="#why">Why Choose Us</a>
+        <a href="/about.html">About Us</a>
+        <button onclick="openAuthModal()">Sign In / Register</button>
+      </div>
+      <div class="footer-col">
+        <h5>Portals</h5>
+        <button onclick="openAuthModal()">Citizen Portal</button>
+        <button onclick="openAuthModal()">Clerk Portal</button>
+        <button onclick="openAuthModal()">Judge Portal</button>
+        <button onclick="openAuthModal()">Admin Portal</button>
+      </div>
+    </div>
+    <div class="footer-bottom">
+      <div class="footer-bottom-copy">© 2026 Justice Connect · Court Complaint Management System · All Rights Reserved
+      </div>
+      <div class="footer-bottom-badges">
+        <span class="footer-badge">🔒 Secure</span>
+        <span class="footer-badge">⚖️ Certified</span>
+        <span class="footer-badge">24/7 Online</span>
+      </div>
     </div>
   </footer>
 
@@ -1056,6 +1665,7 @@
   <script src="/js/utils.js"></script>
   <script src="/js/auth.js"></script>
   <script>
+    /* ── Auth Modal ── */
     function switchTab(tab) {
       const isLogin = tab === 'login';
       document.getElementById('login-form').style.display = isLogin ? '' : 'none';
@@ -1064,25 +1674,91 @@
       document.getElementById('tab-register').classList.toggle('active', !isLogin);
       document.getElementById('card-toast').className = 'toast-card';
     }
-
     const authModal = document.getElementById('auth-modal');
-
     function openAuthModal() {
       authModal.style.display = 'flex';
       setTimeout(() => authModal.classList.add('active'), 10);
     }
-
     function closeAuthModal() {
       authModal.classList.remove('active');
       setTimeout(() => authModal.style.display = 'none', 300);
     }
-
     function closeAuthModalBackground(e) {
-      if (e.target === authModal) {
-        closeAuthModal();
-      }
+      if (e.target === authModal) closeAuthModal();
     }
 
+    /* ── Scroll Progress Bar ── */
+    const progressBar = document.getElementById('scroll-progress');
+    window.addEventListener('scroll', () => {
+      const pct = (window.scrollY / (document.body.scrollHeight - window.innerHeight)) * 100;
+      progressBar.style.width = pct + '%';
+    });
+
+    /* ── Scroll Reveal ── */
+    const revealObserver = new IntersectionObserver((entries) => {
+      entries.forEach(e => { if (e.isIntersecting) { e.target.classList.add('revealed'); revealObserver.unobserve(e.target); } });
+    }, { threshold: 0.12 });
+    document.querySelectorAll('[data-reveal]').forEach(el => revealObserver.observe(el));
+
+    /* ── Particle Canvas ── */
+    (function () {
+      const canvas = document.getElementById('particle-canvas');
+      if (!canvas) return;
+      const ctx = canvas.getContext('2d');
+      let W, H, particles = [];
+      const GOLD = 'rgba(212,168,67,', WHITE = 'rgba(255,255,255,';
+      function resize() {
+        W = canvas.width = canvas.offsetWidth;
+        H = canvas.height = canvas.offsetHeight;
+      }
+      function Particle() {
+        this.x = Math.random() * W;
+        this.y = Math.random() * H;
+        this.vx = (Math.random() - 0.5) * 0.4;
+        this.vy = (Math.random() - 0.5) * 0.4;
+        this.r = Math.random() * 1.8 + 0.5;
+        this.color = Math.random() > 0.5 ? GOLD : WHITE;
+      }
+      Particle.prototype.update = function () {
+        this.x += this.vx; this.y += this.vy;
+        if (this.x < 0 || this.x > W) this.vx *= -1;
+        if (this.y < 0 || this.y > H) this.vy *= -1;
+      };
+      function init() {
+        resize();
+        particles = Array.from({ length: 80 }, () => new Particle());
+      }
+      function draw() {
+        ctx.clearRect(0, 0, W, H);
+        particles.forEach(p => {
+          p.update();
+          ctx.beginPath();
+          ctx.arc(p.x, p.y, p.r, 0, Math.PI * 2);
+          ctx.fillStyle = p.color + '0.7)';
+          ctx.fill();
+        });
+        for (let i = 0; i < particles.length; i++) {
+          for (let j = i + 1; j < particles.length; j++) {
+            const dx = particles[i].x - particles[j].x;
+            const dy = particles[i].y - particles[j].y;
+            const dist = Math.sqrt(dx * dx + dy * dy);
+            if (dist < 120) {
+              ctx.beginPath();
+              ctx.moveTo(particles[i].x, particles[i].y);
+              ctx.lineTo(particles[j].x, particles[j].y);
+              ctx.strokeStyle = GOLD + (0.12 * (1 - dist / 120)) + ')';
+              ctx.lineWidth = 0.6;
+              ctx.stroke();
+            }
+          }
+        }
+        requestAnimationFrame(draw);
+      }
+      window.addEventListener('resize', init);
+      init(); draw();
+    })();
+
+    /* ── Login trigger ── */
     window.addEventListener('DOMContentLoaded', () => {
       if (window.location.search.includes('login=true')) {
         openAuthModal();
