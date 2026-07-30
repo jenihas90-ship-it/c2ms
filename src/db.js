@@ -36,7 +36,16 @@ async function getDb() {
       const { blobs } = await list({ prefix: 'cms_vercel.sqlite' });
       if (blobs && blobs.length > 0) {
         const latestBlob = blobs[0];
-        const response = await fetch(latestBlob.url);
+        // CRITICAL: Vercel Blob URLs are heavily cached by the Edge CDN for several minutes.
+        // If we don't bust the cache, cold starts will download a stale snapshot and erase recent data!
+        const cacheBusterUrl = `${latestBlob.url}?t=${Date.now()}`;
+        const response = await fetch(cacheBusterUrl, {
+          cache: 'no-store',
+          headers: {
+            'Pragma': 'no-cache',
+            'Cache-Control': 'no-cache'
+          }
+        });
         const arrayBuffer = await response.arrayBuffer();
         fs.writeFileSync(DB_FILE, Buffer.from(arrayBuffer));
         console.log('[Persistence] Successfully restored database from Vercel Blob');
