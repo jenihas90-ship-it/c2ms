@@ -2,6 +2,7 @@ const bcrypt = require('bcryptjs');
 const fs = require('fs');
 const path = require('path');
 const os = require('os');
+const { put, list } = require('@vercel/blob');
 
 let db = null;
 let SQL = null;
@@ -25,6 +26,26 @@ async function getDb() {
     // Use the ASM.js build (pure JavaScript, no WASM file needed)
     const initSqlJs = require('sql.js/dist/sql-asm.js');
     SQL = await initSqlJs();
+  }
+
+  // Attempt to restore from Vercel Blob if running in serverless and token is present
+  if ((process.env.VERCEL || process.env.NOW_REGION) && process.env.BLOB_READ_WRITE_TOKEN) {
+    try {
+      if (!fs.existsSync(DB_FILE)) {
+        const { blobs } = await list({ prefix: 'cms_vercel.sqlite' });
+        if (blobs && blobs.length > 0) {
+          const latestBlob = blobs[0]; // addRandomSuffix: false means one file
+          const response = await fetch(latestBlob.url);
+          const arrayBuffer = await response.arrayBuffer();
+          fs.writeFileSync(DB_FILE, Buffer.from(arrayBuffer));
+          console.log('[Persistence] Successfully restored database from Vercel Blob');
+        } else {
+          console.log('[Persistence] No existing database found in Vercel Blob. Starting fresh.');
+        }
+      }
+    } catch (err) {
+      console.warn('[Persistence] Failed to restore from Vercel Blob:', err.message);
+    }
   }
 
   try {
@@ -54,12 +75,24 @@ async function run(sql, params = []) {
     // Persist to Vercel's /tmp filesystem
     if (DB_FILE && (sql.trim().toUpperCase().startsWith('INSERT') || sql.trim().toUpperCase().startsWith('UPDATE') || sql.trim().toUpperCase().startsWith('DELETE') || sql.trim().toUpperCase().startsWith('CREATE') || sql.trim().toUpperCase().startsWith('ALTER'))) {
       // Run the export and write asynchronously to avoid blocking the HTTP response
-      setTimeout(() => {
+      setTimeout(async () => {
         try {
-          const data = database.export();
-          fs.writeFile(DB_FILE, Buffer.from(data), (err) => {
+          const buffer = Buffer.from(database.export());
+
+          // 1. Write to local /tmp
+          fs.writeFile(DB_FILE, buffer, (err) => {
             if (err) console.warn('Could not persist to tmp:', err.message);
           });
+
+          // 2. Upload to Vercel Blob in background
+          if ((process.env.VERCEL || process.env.NOW_REGION) && process.env.BLOB_READ_WRITE_TOKEN) {
+            try {
+              await put('cms_vercel.sqlite', buffer, { access: 'public', addRandomSuffix: false });
+              console.log('[Persistence] Backed up database state to Vercel Blob.');
+            } catch (blobErr) {
+              console.warn('[Persistence] Could not upload to Blob:', blobErr.message);
+            }
+          }
         } catch (err) {
           console.warn('Could not export DB:', err.message);
         }
