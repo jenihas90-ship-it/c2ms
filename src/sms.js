@@ -7,7 +7,7 @@
  * For real SMS delivery, set TWILIO_ACCOUNT_SID, TWILIO_AUTH_TOKEN,
  * and TWILIO_FROM_PHONE. Otherwise messages are logged to console.
  */
-
+require('dotenv').config({ path: require('path').resolve(__dirname, '../.env') });
 const https = require('https');
 
 const GEMINI_API_KEY = process.env.GEMINI_API_KEY;
@@ -138,8 +138,13 @@ async function sendSms(to, message) {
         return;
     }
 
-    // Normalize phone: ensure it starts with +
-    const phone = to.startsWith('+') ? to : `+${to}`;
+    // Normalize phone: auto-format Ethiopian prefixes (09 or 07)
+    let phone = to.trim();
+    if (phone.startsWith('09') || phone.startsWith('07')) {
+        phone = '+251' + phone.substring(1);
+    } else if (!phone.startsWith('+')) {
+        phone = '+' + phone;
+    }
 
     if (TWILIO_ACCOUNT_SID && TWILIO_AUTH_TOKEN && TWILIO_FROM_PHONE) {
         await sendViaTwilio(phone, message);

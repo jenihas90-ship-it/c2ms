@@ -103,6 +103,20 @@ View the conversation: ${linkText}`;
         const respText = `A staff member (${author.username}) has posted a new message on the case where you are named as respondent (${c.title}).\n\nLogin to the respondent portal to view.`;
         await sendMail({ to: c.respondent_email, subject, text: respText });
       }
+
+      // Notify respondent via SMS (and log for dashboard display)
+      if (c.respondent_phone) {
+        const smsText = `New message on case #${c.case_number || c.id} from ${author.role.toLowerCase()} (${author.username}). Please login to the respondent portal to view.`;
+        try {
+          await sms.sendSms(c.respondent_phone, smsText);
+          await db.run(
+            `INSERT INTO sms_logs (complaint_id, recipient_phone, message, status) VALUES (?, ?, ?, 'sent')`,
+            [c.id, c.respondent_phone, smsText]
+          );
+        } catch (logErr) {
+          console.warn('[Remark SMS] error:', logErr.message);
+        }
+      }
     } else if (author.role === 'RESPONDENT') {
       // Notify complainant and all admins/clerks
       const text = `The respondent (${author.username}) has added a new message to complaint #${c.id}.
