@@ -97,14 +97,8 @@ router.post('/login', async (req, res) => {
 
 // Logout endpoint
 router.post('/logout', (req, res) => {
-    req.session.destroy((err) => {
-        if (err) {
-            console.error('Logout error:', err);
-            return res.status(500).json({ error: 'Failed to destroy session.' });
-        }
-        res.clearCookie('connect.sid');
-        res.json({ message: 'Logout successful.' });
-    });
+    req.session = null; // cookie-session: setting to null clears the cookie
+    res.json({ message: 'Logout successful.' });
 });
 
 // Get current user session
