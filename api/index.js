@@ -65,18 +65,23 @@ app.get('*', (req, res) => {
 });
 
 // Initialize database before handling requests
-let dbInitialized = false;
+let dbInitPromise = null;
 const originalHandler = app;
 
 module.exports = async (req, res) => {
-    if (!dbInitialized) {
-        try {
-            await db.initDatabase();
-            dbInitialized = true;
-        } catch (err) {
+    if (!dbInitPromise) {
+        dbInitPromise = db.initDatabase().catch(err => {
             console.error('Failed to initialize database:', err);
-            return res.status(500).json({ error: 'Database initialization failed' });
-        }
+            dbInitPromise = null; // allow retry on next request
+            throw err;
+        });
     }
+
+    try {
+        await dbInitPromise;
+    } catch (err) {
+        return res.status(500).json({ error: 'Database initialization failed: ' + err.message });
+    }
+
     return originalHandler(req, res);
 };

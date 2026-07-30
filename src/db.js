@@ -36,16 +36,18 @@ async function getDb() {
       const { blobs } = await list({ prefix: 'cms_vercel.sqlite' });
       if (blobs && blobs.length > 0) {
         const latestBlob = blobs[0];
-        // CRITICAL: Vercel Blob URLs are heavily cached by the Edge CDN for several minutes.
-        // If we don't bust the cache, cold starts will download a stale snapshot and erase recent data!
-        const cacheBusterUrl = `${latestBlob.url}?t=${Date.now()}`;
-        const response = await fetch(cacheBusterUrl, {
+        // Use downloadUrl which bypasses edge CDN cache, or fallback to url with cache-bust
+        const targetUrl = latestBlob.downloadUrl || `${latestBlob.url}?t=${Date.now()}`;
+
+        const response = await fetch(targetUrl, {
           cache: 'no-store',
-          headers: {
-            'Pragma': 'no-cache',
-            'Cache-Control': 'no-cache'
-          }
+          headers: { 'Pragma': 'no-cache', 'Cache-Control': 'no-cache' }
         });
+
+        if (!response.ok) {
+          throw new Error(`Blob fetch failed: ${response.status} ${response.statusText}`);
+        }
+
         const arrayBuffer = await response.arrayBuffer();
         fs.writeFileSync(DB_FILE, Buffer.from(arrayBuffer));
         console.log('[Persistence] Successfully restored database from Vercel Blob');
@@ -53,7 +55,11 @@ async function getDb() {
         console.log('[Persistence] No existing database found in Vercel Blob. Starting fresh.');
       }
     } catch (err) {
-      console.warn('[Persistence] Failed to restore from Vercel Blob:', err.message);
+      console.error('[Persistence] CRITICAL ERROR restoring from Vercel Blob:', err.message);
+      // We must not silently create a new DB if the blob exists but failed to download,
+      // otherwise forceBackup() will overwrite the blob with an empty DB!
+      // But we have to return a fallback or the app crashes. We'll throw so it doesn't corrupt.
+      throw new Error(`Failed to restore Vercel Blob DB. To prevent data wiping, app is stopped. Error: ${err.message}`);
     }
   }
 
@@ -65,7 +71,7 @@ async function getDb() {
       return db;
     }
   } catch (e) {
-    console.warn('Failed to load existing tmp DB, starting fresh.', e);
+    console.error('Failed to load existing tmp DB, starting fresh.', e);
   }
 
   db = new SQL.Database();
