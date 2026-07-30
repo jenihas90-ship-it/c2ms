@@ -1,22 +1,18 @@
-const http = require('http');
+const db = require('./src/db');
+const bcrypt = require('bcryptjs');
 
-async function test() {
-    console.log("Testing Registration...");
-    const regRes = await fetch('http://localhost:3000/api/auth/register', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ username: 'testrespz4', email: 'test4@example.com', password: 'password', role: 'RESPONDENT' })
-    });
-    console.log("REG STATUS:", regRes.status);
-    console.log("REG BODY:", await regRes.text());
+(async () => {
+    try {
+        console.log("Checking for default respondent...");
+        const res = await db.get("SELECT * FROM users WHERE username = 'respondent'");
+        console.log(res);
 
-    console.log("Testing Login...");
-    const logRes = await fetch('http://localhost:3000/api/auth/login', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ loginIdentifier: 'testrespz4', password: 'password' })
-    });
-    console.log("LOGIN STATUS:", logRes.status);
-    console.log("LOGIN BODY:", await logRes.text());
-}
-test();
+        if (res) {
+            const isMatch = await bcrypt.compare('resp123', res.password);
+            console.log("Password match for resp123: ", isMatch);
+        }
+
+    } catch (e) {
+        console.error(e);
+    }
+})();

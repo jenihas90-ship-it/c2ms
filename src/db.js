@@ -29,19 +29,19 @@ async function getDb() {
   }
 
   // Attempt to restore from Vercel Blob if running in serverless and token is present
+  // NOTE: We ALWAYS restore from Blob on cold-start (db === null), not just when tmp file is missing.
+  // This ensures real registered user data from Blob always overrides any stale /tmp file.
   if ((process.env.VERCEL || process.env.NOW_REGION) && process.env.BLOB_READ_WRITE_TOKEN) {
     try {
-      if (!fs.existsSync(DB_FILE)) {
-        const { blobs } = await list({ prefix: 'cms_vercel.sqlite' });
-        if (blobs && blobs.length > 0) {
-          const latestBlob = blobs[0]; // addRandomSuffix: false means one file
-          const response = await fetch(latestBlob.url);
-          const arrayBuffer = await response.arrayBuffer();
-          fs.writeFileSync(DB_FILE, Buffer.from(arrayBuffer));
-          console.log('[Persistence] Successfully restored database from Vercel Blob');
-        } else {
-          console.log('[Persistence] No existing database found in Vercel Blob. Starting fresh.');
-        }
+      const { blobs } = await list({ prefix: 'cms_vercel.sqlite' });
+      if (blobs && blobs.length > 0) {
+        const latestBlob = blobs[0];
+        const response = await fetch(latestBlob.url);
+        const arrayBuffer = await response.arrayBuffer();
+        fs.writeFileSync(DB_FILE, Buffer.from(arrayBuffer));
+        console.log('[Persistence] Successfully restored database from Vercel Blob');
+      } else {
+        console.log('[Persistence] No existing database found in Vercel Blob. Starting fresh.');
       }
     } catch (err) {
       console.warn('[Persistence] Failed to restore from Vercel Blob:', err.message);
