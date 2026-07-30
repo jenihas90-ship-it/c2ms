@@ -66,6 +66,23 @@ router.post('/adjudicate', requireRole(['JUDGE']), async (req, res) => {
     if (!complaint_id || !order_type || !order_details) {
         return res.status(400).json({ error: 'Missing required fields' });
     }
+
+    // Validate respondent reply if attempting to resolve or close
+    if (status === 'Resolved' || status === 'Closed') {
+        const respondentReply = await db.get(`
+            SELECT r.id 
+            FROM remarks r
+            JOIN users u ON r.user_id = u.id
+            WHERE r.complaint_id = ? AND u.role = 'RESPONDENT'
+            LIMIT 1
+        `, [complaint_id]);
+
+        if (!respondentReply) {
+            return res.status(400).json({
+                error: 'Cannot resolve case: The respondent has not provided a formal response or remark yet.'
+            });
+        }
+    }
     try {
         const judgeName = req.session.username;
         const orderDate = new Date().toISOString().split('T')[0];

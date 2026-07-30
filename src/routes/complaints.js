@@ -328,6 +328,23 @@ router.patch('/:id/status', requireRole(['ADMIN', 'CLERK']), async (req, res) =>
             if (!validStatuses.includes(status)) {
                 return res.status(403).json({ error: 'Invalid status or you do not have permission to set this status.' });
             }
+
+            // Prevent resolving/closing if respondent hasn't replied yet
+            if (status === 'Resolved' || status === 'Closed') {
+                const respondentReply = await db.get(`
+                    SELECT r.id 
+                    FROM remarks r
+                    JOIN users u ON r.user_id = u.id
+                    WHERE r.complaint_id = ? AND u.role = 'RESPONDENT'
+                    LIMIT 1
+                `, [complaintId]);
+
+                if (!respondentReply) {
+                    return res.status(400).json({
+                        error: 'Cannot resolve case: The respondent has not provided a formal response or remark yet.'
+                    });
+                }
+            }
             updates.push('status = ?');
             params.push(status);
         }
