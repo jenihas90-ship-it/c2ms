@@ -72,31 +72,26 @@ async function run(sql, params = []) {
     const id = result.length > 0 ? result[0].values[0][0] : 0;
     const changes = result.length > 0 ? result[0].values[0][1] : 0;
 
-    // Persist to Vercel's /tmp filesystem
+    // Persist to Vercel's /tmp filesystem synchronously and wait for blob on serverless
     if (DB_FILE && (sql.trim().toUpperCase().startsWith('INSERT') || sql.trim().toUpperCase().startsWith('UPDATE') || sql.trim().toUpperCase().startsWith('DELETE') || sql.trim().toUpperCase().startsWith('CREATE') || sql.trim().toUpperCase().startsWith('ALTER'))) {
-      // Run the export and write asynchronously to avoid blocking the HTTP response
-      setTimeout(async () => {
-        try {
-          const buffer = Buffer.from(database.export());
+      try {
+        const buffer = Buffer.from(database.export());
 
-          // 1. Write to local /tmp
-          fs.writeFile(DB_FILE, buffer, (err) => {
-            if (err) console.warn('Could not persist to tmp:', err.message);
-          });
+        // 1. Write to local /tmp synchronously
+        fs.writeFileSync(DB_FILE, buffer);
 
-          // 2. Upload to Vercel Blob in background
-          if ((process.env.VERCEL || process.env.NOW_REGION) && process.env.BLOB_READ_WRITE_TOKEN) {
-            try {
-              await put('cms_vercel.sqlite', buffer, { access: 'public', addRandomSuffix: false });
-              console.log('[Persistence] Backed up database state to Vercel Blob.');
-            } catch (blobErr) {
-              console.warn('[Persistence] Could not upload to Blob:', blobErr.message);
-            }
+        // 2. Upload to Vercel Blob and cleanly await it
+        if ((process.env.VERCEL || process.env.NOW_REGION) && process.env.BLOB_READ_WRITE_TOKEN) {
+          try {
+            await put('cms_vercel.sqlite', buffer, { access: 'public', addRandomSuffix: false });
+            console.log('[Persistence] Backed up database state to Vercel Blob.');
+          } catch (blobErr) {
+            console.warn('[Persistence] Could not upload to Blob:', blobErr.message);
           }
-        } catch (err) {
-          console.warn('Could not export DB:', err.message);
         }
-      }, 0);
+      } catch (err) {
+        console.warn('Could not export DB:', err.message);
+      }
     }
 
     return { id, changes };

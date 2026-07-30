@@ -74,8 +74,8 @@ router.post('/', requireLogin, upload.single('attachment'), async (req, res) => 
             ]
         );
 
-        // Fire-and-forget notification (do not block response)
-        notifications.notifyNewComplaint(result.id).catch(err => console.error('notifyNewComplaint failed', err));
+        // Await notification so Vercel doesn't kill the background task
+        await notifications.notifyNewComplaint(result.id).catch(err => console.error('notifyNewComplaint failed', err));
         // Respondent notification is now delayed until the Clerk 'Serves' the complaint.
 
         res.status(201).json({
@@ -292,8 +292,8 @@ router.post('/:id/remarks', requireLogin, async (req, res) => {
             [result.id]
         );
 
-        // Send notification email for new chat remark
-        notifications.notifyRemarkAdded(complaintId, remark.trim(), userId).catch(err => console.error('notifyRemarkAdded failed', err));
+        // Send notification email for new chat remark (await for Vercel)
+        await notifications.notifyRemarkAdded(complaintId, remark.trim(), userId).catch(err => console.error('notifyRemarkAdded failed', err));
 
         res.status(201).json({
             message: 'Remark added successfully!',
@@ -351,9 +351,9 @@ router.patch('/:id/status', requireRole(['ADMIN', 'CLERK']), async (req, res) =>
         const sql = `UPDATE complaints SET ${updates.join(', ')} WHERE id = ?`;
         await db.run(sql, params);
 
-        // Notify user of status change if status was updated
+        // Notify user of status change if status was updated (await for Vercel)
         if (status) {
-            notifications.notifyStatusChange(complaintId, status).catch(err => console.error('notifyStatusChange failed', err));
+            await notifications.notifyStatusChange(complaintId, status).catch(err => console.error('notifyStatusChange failed', err));
         }
 
         res.json({ message: 'Complaint updated successfully' });
