@@ -83,14 +83,12 @@ async function handleRegister(event) {
             body: JSON.stringify({ username, email, password, role })
         });
 
-        showToast('Registration successful! Please sign in.', false);
+        showToast('Registration successful! Redirecting…', false);
 
-        // Automatically switch back to sign-in tab & prepopulate
+        // Auto-login: server has already set the session, redirect directly
         setTimeout(() => {
-            switchTab('login');
-            document.getElementById('login-identifier').value = username;
-            document.getElementById('login-password').value = password;
-        }, 1500);
+            window.location.href = response.redirectUrl || '/dashboard.html';
+        }, 1200);
 
     } catch (error) {
         showToast(error.message || 'Registration failed. Try again.', true);

@@ -36,9 +36,17 @@ router.post('/register', async (req, res) => {
             [username, email, hashedPassword, userRole]
         );
 
+        // Auto-login: create session immediately after registration
+        req.session.userId = result.id;
+        req.session.username = username;
+        req.session.role = userRole;
+
+        const redirectUrl = userRole === 'RESPONDENT' ? '/respondent.html' : '/dashboard.html';
+
         res.status(201).json({
             message: 'Account created successfully!',
-            userId: result.id
+            userId: result.id,
+            redirectUrl
         });
     } catch (err) {
         console.error('Registration error:', err);
