@@ -159,8 +159,8 @@ async function forceBackup() {
 // Initialize tables
 async function initDatabase() {
   pauseBackup = true;
-  // Create Users Table
-  await run(`
+  try {
+    await run(`
     CREATE TABLE IF NOT EXISTS users (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
       username TEXT UNIQUE NOT NULL,
@@ -171,8 +171,8 @@ async function initDatabase() {
     )
   `);
 
-  // Create Complaints Table
-  await run(`
+    // Create Complaints Table
+    await run(`
     CREATE TABLE IF NOT EXISTS complaints (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
       user_id INTEGER NOT NULL,
@@ -213,26 +213,26 @@ async function initDatabase() {
     )
   `);
 
-  // Migration step: gracefully add new columns if upgrading existing local SQLite DB
-  const newCols = [
-    'complainant_phone TEXT', 'complainant_country TEXT', 'complainant_region TEXT', 'complainant_woreda TEXT',
-    'respondent_phone TEXT', 'respondent_email TEXT', 'respondent_country TEXT', 'respondent_region TEXT', 'respondent_woreda TEXT',
-    'is_served INTEGER DEFAULT 0',
-    'court_address TEXT NOT NULL DEFAULT ""',
-    'complainant_kebele TEXT', 'respondent_kebele TEXT',
-    'complainant_language TEXT', 'respondent_language TEXT', 'clerk_language TEXT', 'judge_language TEXT'
-  ];
-  for (const colDef of newCols) {
-    try {
-      // Will throw if column already exists
-      await run(`ALTER TABLE complaints ADD COLUMN ${colDef}`);
-    } catch (err) {
-      // Ignore "duplicate column name" error naturally.
+    // Migration step: gracefully add new columns if upgrading existing local SQLite DB
+    const newCols = [
+      'complainant_phone TEXT', 'complainant_country TEXT', 'complainant_region TEXT', 'complainant_woreda TEXT',
+      'respondent_phone TEXT', 'respondent_email TEXT', 'respondent_country TEXT', 'respondent_region TEXT', 'respondent_woreda TEXT',
+      'is_served INTEGER DEFAULT 0',
+      'court_address TEXT NOT NULL DEFAULT ""',
+      'complainant_kebele TEXT', 'respondent_kebele TEXT',
+      'complainant_language TEXT', 'respondent_language TEXT', 'clerk_language TEXT', 'judge_language TEXT'
+    ];
+    for (const colDef of newCols) {
+      try {
+        // Will throw if column already exists
+        await run(`ALTER TABLE complaints ADD COLUMN ${colDef}`);
+      } catch (err) {
+        // Ignore "duplicate column name" error naturally.
+      }
     }
-  }
 
-  // Create Remarks Table
-  await run(`
+    // Create Remarks Table
+    await run(`
     CREATE TABLE IF NOT EXISTS remarks (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
       complaint_id INTEGER NOT NULL,
@@ -244,8 +244,8 @@ async function initDatabase() {
     )
   `);
 
-  // Create Court Sessions Table
-  await run(`
+    // Create Court Sessions Table
+    await run(`
     CREATE TABLE IF NOT EXISTS court_sessions (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
       complaint_id INTEGER NOT NULL,
@@ -264,8 +264,8 @@ async function initDatabase() {
     )
   `);
 
-  // Create Case Notes Table (Confidential)
-  await run(`
+    // Create Case Notes Table (Confidential)
+    await run(`
     CREATE TABLE IF NOT EXISTS case_notes (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
       complaint_id INTEGER NOT NULL,
@@ -277,8 +277,8 @@ async function initDatabase() {
     )
   `);
 
-  // Create Case Orders/Judgments Table
-  await run(`
+    // Create Case Orders/Judgments Table
+    await run(`
     CREATE TABLE IF NOT EXISTS case_orders (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
       complaint_id INTEGER NOT NULL,
@@ -293,8 +293,8 @@ async function initDatabase() {
     )
   `);
 
-  // Create SMS Logs Table (audit trail for AI-generated SMS notifications)
-  await run(`
+    // Create SMS Logs Table (audit trail for AI-generated SMS notifications)
+    await run(`
     CREATE TABLE IF NOT EXISTS sms_logs (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
       complaint_id INTEGER NOT NULL,
@@ -306,8 +306,8 @@ async function initDatabase() {
     )
   `);
 
-  // Create In-App Notifications Table 
-  await run(`
+    // Create In-App Notifications Table 
+    await run(`
     CREATE TABLE IF NOT EXISTS in_app_notifications (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
       user_id INTEGER NOT NULL,
@@ -320,42 +320,45 @@ async function initDatabase() {
     )
   `);
 
-  // Insert default administrators
-  const adminExists = await get("SELECT * FROM users WHERE username = 'admin' LIMIT 1");
-  if (!adminExists) {
-    const hashedPassword = bcrypt.hashSync('admin123', 10);
-    await run(
-      "INSERT INTO users (username, email, password, role) VALUES (?, ?, ?, ?)",
-      ['admin', 'admin@cms.com', hashedPassword, 'ADMIN']
-    );
-    console.log('Default Admin user seeded.');
+    // Insert default administrators
+    const adminExists = await get("SELECT * FROM users WHERE username = 'admin' LIMIT 1");
+    if (!adminExists) {
+      const hashedPassword = bcrypt.hashSync('admin123', 10);
+      await run(
+        "INSERT INTO users (username, email, password, role) VALUES (?, ?, ?, ?)",
+        ['admin', 'admin@cms.com', hashedPassword, 'ADMIN']
+      );
+      console.log('Default Admin user seeded.');
+    }
+
+    // Insert default users
+    const userExists = await get("SELECT * FROM users WHERE username = 'user' LIMIT 1");
+    if (!userExists) {
+      const hashedPassword = bcrypt.hashSync('user123', 10);
+      await run("INSERT INTO users (username, email, password, role) VALUES (?, ?, ?, ?)", ['user', 'user@cms.com', hashedPassword, 'CITIZEN']);
+    }
+    const clerkExists = await get("SELECT * FROM users WHERE username = 'clerk' LIMIT 1");
+    if (!clerkExists) {
+      const hashedPassword = bcrypt.hashSync('clerk123', 10);
+      await run("INSERT INTO users (username, email, password, role) VALUES (?, ?, ?, ?)", ['clerk', 'clerk@cms.com', hashedPassword, 'CLERK']);
+    }
+    const judgeExists = await get("SELECT * FROM users WHERE username = 'judge' LIMIT 1");
+    if (!judgeExists) {
+      const hashedPassword = bcrypt.hashSync('judge123', 10);
+      await run("INSERT INTO users (username, email, password, role) VALUES (?, ?, ?, ?)", ['judge', 'judge@cms.com', hashedPassword, 'JUDGE']);
+    }
+
+    const respondentExists = await get("SELECT * FROM users WHERE username = 'respondent' LIMIT 1");
+    if (!respondentExists) {
+      const hashedPassword = bcrypt.hashSync('resp123', 10);
+      await run("INSERT INTO users (username, email, password, role) VALUES (?, ?, ?, ?)", ['respondent', 'respondent@cms.com', hashedPassword, 'RESPONDENT']);
+      console.log('Default Respondent user seeded.');
+    }
+
+  } finally {
+    pauseBackup = false;
   }
 
-  // Insert default users
-  const userExists = await get("SELECT * FROM users WHERE username = 'user' LIMIT 1");
-  if (!userExists) {
-    const hashedPassword = bcrypt.hashSync('user123', 10);
-    await run("INSERT INTO users (username, email, password, role) VALUES (?, ?, ?, ?)", ['user', 'user@cms.com', hashedPassword, 'CITIZEN']);
-  }
-  const clerkExists = await get("SELECT * FROM users WHERE username = 'clerk' LIMIT 1");
-  if (!clerkExists) {
-    const hashedPassword = bcrypt.hashSync('clerk123', 10);
-    await run("INSERT INTO users (username, email, password, role) VALUES (?, ?, ?, ?)", ['clerk', 'clerk@cms.com', hashedPassword, 'CLERK']);
-  }
-  const judgeExists = await get("SELECT * FROM users WHERE username = 'judge' LIMIT 1");
-  if (!judgeExists) {
-    const hashedPassword = bcrypt.hashSync('judge123', 10);
-    await run("INSERT INTO users (username, email, password, role) VALUES (?, ?, ?, ?)", ['judge', 'judge@cms.com', hashedPassword, 'JUDGE']);
-  }
-
-  const respondentExists = await get("SELECT * FROM users WHERE username = 'respondent' LIMIT 1");
-  if (!respondentExists) {
-    const hashedPassword = bcrypt.hashSync('resp123', 10);
-    await run("INSERT INTO users (username, email, password, role) VALUES (?, ?, ?, ?)", ['respondent', 'respondent@cms.com', hashedPassword, 'RESPONDENT']);
-    console.log('Default Respondent user seeded.');
-  }
-
-  pauseBackup = false;
   await forceBackup();
   console.log('Database initialized successfully.');
 }
