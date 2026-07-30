@@ -73,7 +73,7 @@ async function run(sql, params = []) {
     const changes = result.length > 0 ? result[0].values[0][1] : 0;
 
     // Persist to Vercel's /tmp filesystem synchronously and wait for blob on serverless
-    if (DB_FILE && (sql.trim().toUpperCase().startsWith('INSERT') || sql.trim().toUpperCase().startsWith('UPDATE') || sql.trim().toUpperCase().startsWith('DELETE') || sql.trim().toUpperCase().startsWith('CREATE') || sql.trim().toUpperCase().startsWith('ALTER'))) {
+    if (!pauseBackup && DB_FILE && (sql.trim().toUpperCase().startsWith('INSERT') || sql.trim().toUpperCase().startsWith('UPDATE') || sql.trim().toUpperCase().startsWith('DELETE') || sql.trim().toUpperCase().startsWith('CREATE') || sql.trim().toUpperCase().startsWith('ALTER'))) {
       try {
         const buffer = Buffer.from(database.export());
 
@@ -137,8 +137,28 @@ async function all(sql, params = []) {
   return rows;
 }
 
+// Manually trigger a backup to Vercel Blob
+async function forceBackup() {
+  const database = await getDb();
+  if (DB_FILE) {
+    try {
+      const buffer = Buffer.from(database.export());
+      fs.writeFileSync(DB_FILE, buffer);
+      if ((process.env.VERCEL || process.env.NOW_REGION) && process.env.BLOB_READ_WRITE_TOKEN) {
+        // Vercel Blob's put correctly handles Buffers
+        const { put } = require('@vercel/blob');
+        await put('cms_vercel.sqlite', buffer, { access: 'public', addRandomSuffix: false });
+        console.log('[Persistence] Forced backup to Vercel Blob.');
+      }
+    } catch (err) {
+      console.warn('Could not force backup DB:', err.message);
+    }
+  }
+}
+
 // Initialize tables
 async function initDatabase() {
+  pauseBackup = true;
   // Create Users Table
   await run(`
     CREATE TABLE IF NOT EXISTS users (
@@ -335,6 +355,8 @@ async function initDatabase() {
     console.log('Default Respondent user seeded.');
   }
 
+  pauseBackup = false;
+  await forceBackup();
   console.log('Database initialized successfully.');
 }
 
@@ -343,5 +365,6 @@ module.exports = {
   run,
   get,
   all,
-  initDatabase
+  initDatabase,
+  forceBackup
 };
