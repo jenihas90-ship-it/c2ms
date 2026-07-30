@@ -1,5 +1,5 @@
 const express = require('express');
-const session = require('express-session');
+const cookieSession = require('cookie-session');
 const path = require('path');
 const fs = require('fs');
 const db = require('./db');
@@ -20,17 +20,14 @@ app.use(express.urlencoded({ extended: true }));
 // Trust proxy for session cookies
 app.set('trust proxy', 1);
 
-// Session middleware configuration
+// Session middleware — cookie-session stores data client-side in a signed cookie.
 app.use(
-    session({
-        secret: 'cms-super-secret-key-12938481', // Change in production app
-        resave: false,
-        saveUninitialized: false,
-        cookie: {
-            maxAge: 1000 * 60 * 60 * 24, // 24 hours
-            secure: false, // Set to true if running over HTTPS
-            httpOnly: true
-        }
+    cookieSession({
+        name: 'cms_session',
+        secret: 'cms-super-secret-key-12938481',
+        maxAge: 1000 * 60 * 60 * 24 * 7, // 7 days
+        secure: false,
+        httpOnly: true
     })
 );
 

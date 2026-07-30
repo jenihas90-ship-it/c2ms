@@ -1,5 +1,5 @@
 const express = require('express');
-const session = require('express-session');
+const cookieSession = require('cookie-session');
 const path = require('path');
 const db = require('../src/db');
 
@@ -12,18 +12,16 @@ app.set('trust proxy', 1);
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
-// Session middleware configuration
+// Session middleware — cookie-session stores data client-side in a signed cookie.
+// This survives Vercel serverless cold starts with no server-side store required.
 app.use(
-    session({
+    cookieSession({
+        name: 'cms_session',
         secret: process.env.SESSION_SECRET || 'cms-super-secret-key-12938481',
-        resave: false,
-        saveUninitialized: false,
-        cookie: {
-            maxAge: 1000 * 60 * 60 * 24, // 24 hours
-            secure: process.env.NODE_ENV === 'production',
-            httpOnly: true,
-            sameSite: 'lax'
-        }
+        maxAge: 1000 * 60 * 60 * 24 * 7, // 7 days
+        secure: process.env.NODE_ENV === 'production',
+        httpOnly: true,
+        sameSite: 'lax'
     })
 );
 
