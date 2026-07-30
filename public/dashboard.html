@@ -75,8 +75,32 @@
                 <div class="topbar-title">
                     <h2 id="workspace-title">Overview</h2>
                 </div>
-                <div class="mobile-header-menu">
-                    <button class="logout-btn-mobile" onclick="handleLogout()">Logout</button>
+                <div style="display:flex; gap:1rem; align-items:center;">
+                    <!-- Notification Bell for Staff -->
+                    <div id="notification-bell-container" class="role-staff hidden"
+                        style="position:relative; cursor:pointer; margin-right: 15px;"
+                        onclick="toggleNotifications(event)">
+                        <span style="font-size:1.4rem;">🔔</span>
+                        <span id="unread-count"
+                            style="position:absolute; top:-5px; right:-8px; background:red; color:white; font-size:0.7rem; padding:2px 6px; border-radius:10px; display:none; font-weight:bold;">0</span>
+
+                        <!-- Dropdown -->
+                        <div id="notif-dropdown"
+                            style="display:none; position:absolute; right:-10px; top:35px; background:var(--sidebar-bg, #1e1e2e); border:1px solid var(--border, #3a3a4a); border-radius:8px; width:320px; max-height:400px; overflow-y:auto; z-index:100; box-shadow:0 10px 25px rgba(0,0,0,0.5);">
+                            <div
+                                style="padding:10px; border-bottom:1px solid var(--border); font-weight:bold; font-size:0.9rem; color:var(--text-main);">
+                                Notifications</div>
+                            <div id="notif-list" style="display:flex; flex-direction:column;">
+                                <div
+                                    style="padding:15px; font-size:0.85rem; color:var(--text-muted); text-align:center;">
+                                    No new notifications</div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="mobile-header-menu">
+                        <button class="logout-btn-mobile" onclick="handleLogout()">Logout</button>
+                    </div>
                 </div>
             </header>
 

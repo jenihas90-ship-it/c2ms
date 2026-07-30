@@ -286,6 +286,20 @@ async function initDatabase() {
     )
   `);
 
+  // Create In-App Notifications Table 
+  await run(`
+    CREATE TABLE IF NOT EXISTS in_app_notifications (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      user_id INTEGER NOT NULL,
+      message TEXT NOT NULL,
+      complaint_id INTEGER,
+      is_read INTEGER DEFAULT 0,
+      created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+      FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
+      FOREIGN KEY (complaint_id) REFERENCES complaints(id) ON DELETE CASCADE
+    )
+  `);
+
   // Insert default administrators
   const adminExists = await get("SELECT * FROM users WHERE username = 'admin' LIMIT 1");
   if (!adminExists) {

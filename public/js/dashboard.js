@@ -77,6 +77,11 @@ function setupDashboardView() {
 
     // Load stats & tickets
     refreshDashboardData();
+
+    // Start polling for notifications if Staff
+    if (isStaff) {
+        startNotificationPolling();
+    }
 }
 
 // Fetch stats and lists
@@ -1228,4 +1233,79 @@ function closeJitsiModal() {
         jitsiApi.dispose();
         jitsiApi = null;
     }
+}
+
+// ── In-App Notifications ──
+let notifPollTimer = null;
+
+function startNotificationPolling() {
+    fetchNotifications();
+    if (notifPollTimer) clearInterval(notifPollTimer);
+    notifPollTimer = setInterval(fetchNotifications, 15000);
+}
+
+async function fetchNotifications() {
+    try {
+        const notifications = await apiRequest('/api/notifications');
+        const unreadBadge = document.getElementById('unread-count');
+        const notifList = document.getElementById('notif-list');
+
+        const unreadCount = notifications.filter(n => !n.is_read).length;
+        if (unreadCount > 0) {
+            unreadBadge.textContent = unreadCount;
+            unreadBadge.style.display = 'block';
+        } else {
+            unreadBadge.style.display = 'none';
+        }
+
+        if (notifications.length === 0) {
+            notifList.innerHTML = '<div style="padding:15px; font-size:0.85rem; color:var(--text-muted); text-align:center;">No new notifications</div>';
+            return;
+        }
+
+        notifList.innerHTML = notifications.map(n => `
+            <div onclick="handleNotificationClick(${n.id}, ${n.complaint_id}, ${n.is_read})" style="padding:10px 15px; border-bottom:1px solid var(--border); cursor:pointer; background:${n.is_read ? 'transparent' : 'rgba(255, 255, 255, 0.05)'}; display:flex; justify-content:space-between; align-items:center;">
+                <div style="font-size:0.85rem;">
+                    <div style="font-weight:${n.is_read ? '400' : '600'}; color:var(--text-main); margin-bottom:4px;">${escapeHTML(n.message)}</div>
+                    <div style="font-size:0.75rem; color:var(--text-muted);">${formatDate(n.created_at)}</div>
+                </div>
+                ${!n.is_read ? '<div style="width:8px; height:8px; border-radius:50%; background:red;"></div>' : ''}
+            </div>
+        `).join('');
+    } catch (e) {
+        console.warn('Failed to fetch notifications', e);
+    }
+}
+
+function toggleNotifications(event) {
+    if (event) event.stopPropagation();
+    const dropdown = document.getElementById('notif-dropdown');
+    dropdown.style.display = dropdown.style.display === 'none' ? 'block' : 'none';
+}
+
+// Close dropdown if clicking outside
+document.addEventListener('click', (e) => {
+    const dropdown = document.getElementById('notif-dropdown');
+    const container = document.getElementById('notification-bell-container');
+    if (dropdown && container && !container.contains(e.target)) {
+        dropdown.style.display = 'none';
+    }
+});
+
+async function handleNotificationClick(notifId, complaintId, isRead) {
+    document.getElementById('notif-dropdown').style.display = 'none';
+
+    // Mark as read if not already
+    if (!isRead) {
+        try {
+            await apiRequest('/api/notifications/' + notifId + '/read', { method: 'PATCH' });
+            fetchNotifications(); // refresh badge
+        } catch (e) { console.error('Could not mark read', e); }
+    }
+
+    // Switch to complaints list and open it
+    switchNav('complaints');
+    setTimeout(() => {
+        openDetailsInspector(complaintId);
+    }, 200);
 }

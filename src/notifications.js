@@ -126,9 +126,17 @@ Message: ${excerpt}
 Review the conversation: ${linkText}`;
       await sendMail({ to: c.email, subject, text });
 
-      const staff = await db.all("SELECT email FROM users WHERE role IN ('ADMIN', 'CLERK', 'admin', 'clerk', 'admin')");
+      const staff = await db.all("SELECT id, email FROM users WHERE role IN ('ADMIN', 'CLERK', 'admin', 'clerk', 'JUDGE', 'judge')");
       for (const a of staff) {
         await sendMail({ to: a.email, subject, text });
+        try {
+          await db.run(
+            `INSERT INTO in_app_notifications (user_id, message, complaint_id) VALUES (?, ?, ?)`,
+            [a.id, `New message from Respondent on case #${c.case_number || c.id}`, c.id]
+          );
+        } catch (e) {
+          console.error("Failed to insert in_app_notification", e);
+        }
       }
     } else {
       // Author is CITIZEN (complainant). Notify all admins/clerks, and respondent
