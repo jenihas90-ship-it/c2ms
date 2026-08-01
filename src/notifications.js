@@ -105,21 +105,36 @@ View the conversation: ${linkText}`;
       }
 
       // Notify respondent via SMS (and log for dashboard display)
-      if (c.respondent_phone) {
-        const smsText = `New message on case #${c.case_number || c.id} from ${author.role.toLowerCase()} (${author.username}). Please login to the respondent portal to view.`;
+      // First try saved complaint phone, then look up from user account matching respondent_email
+      let respondentPhone = c.respondent_phone;
+      if (!respondentPhone && c.respondent_email) {
+        try {
+          const respUser = await db.get(
+            `SELECT id, username FROM users WHERE LOWER(email) = LOWER(?) AND role = 'RESPONDENT'`,
+            [c.respondent_email]
+          );
+          // users table doesn't store phone directly; phone is on complaint row only
+          if (respUser) {
+            console.log(`[Remark SMS] Found respondent user ${respUser.username} but no phone on file.`);
+          }
+        } catch (e) { /* silent */ }
+      }
+      if (respondentPhone) {
+        const smsText = `New message on case #${c.case_number || c.id} from ${author.role.toLowerCase()} ${author.username}. Login to the respondent portal to view and respond.`;
         let smsStatus = 'sent';
         let smsError = null;
         try {
-          await sms.sendSms(c.respondent_phone, smsText);
+          await sms.sendSms(respondentPhone, smsText);
+          console.log(`[Remark SMS] ✅ SMS dispatched to ${respondentPhone}`);
         } catch (smsErr) {
           smsStatus = 'failed';
           smsError = smsErr.message;
-          console.warn('[Remark SMS] Twilio error:', smsErr.message);
+          console.warn('[Remark SMS] ❌ Twilio error:', smsErr.message);
         }
         try {
           await db.run(
             `INSERT INTO sms_logs (complaint_id, recipient_phone, message, status) VALUES (?, ?, ?, ?)`,
-            [c.id, c.respondent_phone, smsText, smsStatus]
+            [c.id, respondentPhone, smsText, smsStatus]
           );
           if (smsError) {
             console.warn('[Remark SMS] SMS failed and logged with status=failed:', smsError);
@@ -127,6 +142,8 @@ View the conversation: ${linkText}`;
         } catch (logErr) {
           console.warn('[Remark SMS] Could not write to sms_logs:', logErr.message);
         }
+      } else {
+        console.log(`[Remark SMS] No respondent phone on complaint #${complaintId} — SMS skipped.`);
       }
     } else if (author.role === 'RESPONDENT') {
       // Notify complainant and all admins/clerks

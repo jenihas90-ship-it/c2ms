@@ -13,10 +13,14 @@ const https = require('https');
 const GEMINI_API_KEY = process.env.GEMINI_API_KEY;
 const GEMINI_MODEL = 'gemini-1.5-flash';
 
-// --- Twilio (optional) ---
-const TWILIO_ACCOUNT_SID = process.env.TWILIO_ACCOUNT_SID;
-const TWILIO_AUTH_TOKEN = process.env.TWILIO_AUTH_TOKEN;
-const TWILIO_FROM_PHONE = process.env.TWILIO_FROM_PHONE;
+// --- Twilio credentials are read at CALL TIME so hot-reloads and Vercel env vars always apply ---
+function getTwilioCreds() {
+    return {
+        accountSid: process.env.TWILIO_ACCOUNT_SID,
+        authToken: process.env.TWILIO_AUTH_TOKEN,
+        fromPhone: process.env.TWILIO_FROM_PHONE
+    };
+}
 
 /**
  * Build an AI-generated SMS message using Gemini.
@@ -134,50 +138,56 @@ function buildFallbackSms(complaint, orderDetails, orderType) {
  */
 async function sendSms(to, message) {
     if (!to) {
-        console.log('[AI SMS] No respondent phone number — skipping SMS send.');
+        console.log('[SMS] No respondent phone number — skipping SMS send.');
         return;
     }
 
     // Normalize phone: auto-format Ethiopian prefixes (09 or 07)
-    let phone = to.trim();
+    let phone = to.toString().trim();
     if (phone.startsWith('09') || phone.startsWith('07')) {
         phone = '+251' + phone.substring(1);
+    } else if (phone.startsWith('251') && !phone.startsWith('+')) {
+        phone = '+' + phone;
     } else if (!phone.startsWith('+')) {
         phone = '+' + phone;
     }
 
-    if (TWILIO_ACCOUNT_SID && TWILIO_AUTH_TOKEN && TWILIO_FROM_PHONE) {
-        await sendViaTwilio(phone, message);
+    // Read Twilio credentials at runtime (not module-load time)
+    const { accountSid, authToken, fromPhone } = getTwilioCreds();
+    console.log(`[SMS] Sending to ${phone} | Twilio configured: ${!!(accountSid && authToken && fromPhone)}`);
+
+    if (accountSid && authToken && fromPhone) {
+        await sendViaTwilio(phone, message, accountSid, authToken, fromPhone);
     } else {
         // Mock / console logging (default when no provider is configured)
-        console.log('');
         console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
-        console.log('[AI SMS] 📱 SMS would be sent to:', phone);
-        console.log('[AI SMS] Message:');
-        console.log(message);
+        console.log('[SMS] 📱 Mock SMS — Twilio not configured. Would send to:', phone);
+        console.log('[SMS] Message:', message);
+        console.log('[SMS] Missing:', !accountSid ? 'TWILIO_ACCOUNT_SID ' : '', !authToken ? 'TWILIO_AUTH_TOKEN ' : '', !fromPhone ? 'TWILIO_FROM_PHONE' : '');
         console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
-        console.log('');
     }
 }
 
 /**
  * Send via Twilio REST API.
  */
-function sendViaTwilio(to, body) {
+function sendViaTwilio(to, body, accountSid, authToken, fromPhone) {
     return new Promise((resolve, reject) => {
-        const params = new URLSearchParams({ To: to, From: TWILIO_FROM_PHONE, Body: body });
+        const params = new URLSearchParams({ To: to, From: fromPhone, Body: body });
         const postData = params.toString();
 
         const options = {
             hostname: 'api.twilio.com',
-            path: `/2010-04-01/Accounts/${TWILIO_ACCOUNT_SID}/Messages.json`,
+            path: `/2010-04-01/Accounts/${accountSid}/Messages.json`,
             method: 'POST',
             headers: {
                 'Content-Type': 'application/x-www-form-urlencoded',
-                'Authorization': 'Basic ' + Buffer.from(`${TWILIO_ACCOUNT_SID}:${TWILIO_AUTH_TOKEN}`).toString('base64'),
+                'Authorization': 'Basic ' + Buffer.from(`${accountSid}:${authToken}`).toString('base64'),
                 'Content-Length': Buffer.byteLength(postData)
             }
         };
+
+        console.log(`[Twilio] Sending SMS → ${to} via ${fromPhone}`);
 
         const req = https.request(options, (res) => {
             let data = '';
@@ -187,18 +197,25 @@ function sendViaTwilio(to, body) {
                     const parsed = JSON.parse(data);
                     if (res.statusCode >= 400) {
                         const errMsg = parsed.message || JSON.stringify(parsed);
-                        console.error('[Twilio] Error:', errMsg);
+                        console.error(`[Twilio] ❌ HTTP ${res.statusCode} Error: ${errMsg}`);
                         return reject(new Error('[Twilio] ' + errMsg));
                     }
-                    console.log('[Twilio] SMS sent. SID:', parsed.sid);
+                    console.log(`[Twilio] ✅ SMS sent! SID: ${parsed.sid}, Status: ${parsed.status}`);
                     resolve();
                 } catch (e) {
+                    console.error('[Twilio] Parse error:', e.message);
                     reject(e);
                 }
             });
         });
 
-        req.on('error', reject);
+        req.on('error', (err) => {
+            console.error('[Twilio] Network error:', err.message);
+            reject(err);
+        });
+        req.setTimeout(10000, () => {
+            req.destroy(new Error('Twilio request timed out after 10s'));
+        });
         req.write(postData);
         req.end();
     });
