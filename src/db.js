@@ -131,9 +131,54 @@ async function run(sql, params = []) {
   }
 }
 
+let lastRehydrateTime = 0;
+async function ensureComplaintsRehydrated(database) {
+  if (!process.env.BLOB_READ_WRITE_TOKEN) return;
+  const now = Date.now();
+  if (now - lastRehydrateTime < 2000) return;
+  lastRehydrateTime = now;
+
+  try {
+    const blobComplaints = await _readComplaintsBlob();
+    if (!blobComplaints || blobComplaints.length === 0) return;
+
+    for (const c of blobComplaints) {
+      if (!c || !c.id) continue;
+      const res = database.exec(`SELECT id FROM complaints WHERE id = ${c.id}`);
+      const exists = res.length > 0 && res[0].values.length > 0;
+
+      if (!exists) {
+        database.run(
+          `INSERT INTO complaints (
+            id, user_id, title, category, court_name, court_address, case_number, hearing_date,
+            plaintiff_name, defendant_name, parties, description, priority, status, assignment_status,
+            assigned_judge, attachment_path, complainant_phone, complainant_email, respondent_phone, respondent_email,
+            created_at, updated_at
+          ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+          [
+            c.id, c.user_id || 1, c.title || 'Untitled', c.category || 'Civil', c.court_name || 'Court',
+            c.court_address || 'Address', c.case_number || ('#' + c.id), c.hearing_date || null,
+            c.plaintiff_name || null, c.defendant_name || null, c.parties || null, c.description || '',
+            c.priority || 'Medium', c.status || 'Filed', c.assignment_status || 'Unassigned',
+            c.assigned_judge || null, c.attachment_path || null, c.complainant_phone || null,
+            c.complainant_email || null, c.respondent_phone || null, c.respondent_email || null,
+            c.created_at || new Date().toISOString(), c.updated_at || new Date().toISOString()
+          ]
+        );
+        console.log(`[Rehydrate] Inserted missing complaint #${c.id} into SQLite memory`);
+      }
+    }
+  } catch (e) {
+    console.warn('[Rehydrate] Warning:', e.message);
+  }
+}
+
 // Get single row
 async function get(sql, params = []) {
   const database = await getDb();
+  if (sql.includes('complaints')) {
+    await ensureComplaintsRehydrated(database);
+  }
   const stmt = database.prepare(sql);
   stmt.bind(params);
   let row = null;
@@ -152,6 +197,9 @@ async function get(sql, params = []) {
 // Get all rows
 async function all(sql, params = []) {
   const database = await getDb();
+  if (sql.includes('complaints')) {
+    await ensureComplaintsRehydrated(database);
+  }
   const stmt = database.prepare(sql);
   stmt.bind(params);
   const rows = [];
