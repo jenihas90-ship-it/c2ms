@@ -13,8 +13,12 @@ router.post('/serve', requireRole(['CLERK', 'ADMIN']), async (req, res) => {
     try {
         await db.run('UPDATE complaints SET is_served = 1, status = \'In Progress\' WHERE id = ?', [complaint_id]);
 
-        // Dispatch notifications now
-        notifications.notifyRespondentOfComplaint(complaint_id).catch(err => console.error('notifyRespondent failed', err));
+        // Await notification dispatch so Vercel does not terminate background task prematurely
+        try {
+            await notifications.notifyRespondentOfComplaint(complaint_id);
+        } catch (notifErr) {
+            console.error('notifyRespondent failed:', notifErr.message || notifErr);
+        }
 
         res.json({ message: 'Complaint has been served to the respondent.' });
     } catch (err) {

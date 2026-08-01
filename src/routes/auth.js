@@ -63,10 +63,11 @@ router.post('/login', async (req, res) => {
     }
 
     try {
-        // Look up user
+        // Look up user (case-insensitive for email or username)
+        const cleanIdentifier = loginIdentifier.trim();
         const user = await db.get(
-            'SELECT * FROM users WHERE username = ? OR email = ?',
-            [loginIdentifier, loginIdentifier]
+            'SELECT * FROM users WHERE LOWER(username) = LOWER(?) OR LOWER(email) = LOWER(?)',
+            [cleanIdentifier, cleanIdentifier]
         );
 
         if (!user) {

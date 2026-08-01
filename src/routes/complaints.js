@@ -74,6 +74,21 @@ router.post('/', requireLogin, upload.single('attachment'), async (req, res) => 
             ]
         );
 
+        // Write to the permanent ledger (append-only — never deleted, survives admin deletion)
+        await db.run(
+            `INSERT INTO filed_complaints_log (complaint_id, user_id, title) VALUES (?, ?, ?)`,
+            [result.id, userId, title]
+        ).catch(err => console.error('[Ledger] Failed to write to filed_complaints_log:', err.message));
+
+        // Increment permanent JSON blob counter (survives Vercel cold starts)
+        await db.incrementFiledCount().catch(err => console.error('[Stats] Failed to increment filed count:', err.message));
+
+        // Sync complaint object to cms_complaints.json in Vercel Blob
+        const newComplaint = await db.get('SELECT * FROM complaints WHERE id = ?', [result.id]);
+        if (newComplaint) {
+            await db.syncComplaintToBlob(newComplaint).catch(err => console.error('[Blob] Failed to sync new complaint:', err.message));
+        }
+
         // Await notification so Vercel doesn't kill the background task
         await notifications.notifyNewComplaint(result.id).catch(err => console.error('notifyNewComplaint failed', err));
         // Respondent notification is now delayed until the Clerk 'Serves' the complaint.
@@ -475,6 +490,11 @@ router.patch('/:id', requireLogin, async (req, res) => {
         const sql = `UPDATE complaints SET ${updates.join(', ')} WHERE id = ?`;
         await db.run(sql, params);
 
+        const updatedComplaint = await db.get('SELECT * FROM complaints WHERE id = ?', [complaintId]);
+        if (updatedComplaint) {
+            await db.syncComplaintToBlob(updatedComplaint).catch(err => console.error('[Blob] Failed to sync updated complaint:', err.message));
+        }
+
         res.json({ message: 'Complaint updated successfully' });
     } catch (err) {
         console.error('Admin update complaint error:', err);
@@ -492,6 +512,8 @@ router.delete('/:id', requireRole(['ADMIN']), async (req, res) => {
         }
 
         await db.run('DELETE FROM complaints WHERE id = ?', [complaintId]);
+        await db.deleteComplaintFromBlob(complaintId).catch(err => console.error('[Blob] Failed to delete complaint from blob:', err.message));
+
         res.json({ message: 'Complaint deleted successfully' });
     } catch (err) {
         console.error('Delete complaint error:', err);

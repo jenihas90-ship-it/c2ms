@@ -7,6 +7,17 @@ const requireRole = require('../middleware/roleCheck');
 const requireRespondent = requireRole(['RESPONDENT']);
 
 /**
+ * Normalise phone for comparison — treat 09XXXXXXXX and +2519XXXXXXXX as equal.
+ */
+function normalizePhone(phone) {
+    if (!phone) return '';
+    const p = String(phone).trim().replace(/\s+/g, '');
+    if (p.startsWith('+251')) return '0' + p.slice(4);
+    if (p.startsWith('251') && p.length > 9) return '0' + p.slice(3);
+    return p;
+}
+
+/**
  * GET /api/respondent/cases
  * Returns all complaints where the logged-in user's email or phone matches
  * the respondent_email or respondent_phone stored on the complaint.
@@ -16,17 +27,19 @@ router.get('/cases', requireRespondent, async (req, res) => {
         const user = await db.get('SELECT email, username FROM users WHERE id = ?', [req.session.userId]);
         if (!user) return res.status(404).json({ error: 'User not found.' });
 
+        const userPhone = normalizePhone(user.username);
+
         const cases = await db.all(
             `SELECT c.*, u.username as complainant_username, u.email as complainant_email
              FROM complaints c
              JOIN users u ON c.user_id = u.id
-             WHERE (c.respondent_email = ? OR c.respondent_phone = ?)
+             WHERE (c.respondent_email = ? OR c.respondent_phone = ? OR c.respondent_phone = ?)
              AND (c.is_served = 1 
                   OR c.id IN (SELECT complaint_id FROM case_orders)
                   OR c.id IN (SELECT complaint_id FROM remarks WHERE user_id IN (SELECT id FROM users WHERE role IN ('ADMIN', 'CLERK', 'JUDGE', 'admin', 'clerk', 'judge')))
                   OR c.user_id IN (SELECT id FROM users WHERE role IN ('ADMIN', 'CLERK', 'JUDGE', 'admin', 'clerk', 'judge')))
              ORDER BY c.created_at DESC`,
-            [user.email, user.username]
+            [user.email, user.username, userPhone]
         );
 
         res.json({ cases, respondentEmail: user.email });
@@ -43,7 +56,7 @@ router.get('/cases', requireRespondent, async (req, res) => {
 router.get('/case/:id', requireRespondent, async (req, res) => {
     const complaintId = req.params.id;
     try {
-        const user = await db.get('SELECT email FROM users WHERE id = ?', [req.session.userId]);
+        const user = await db.get('SELECT email, username FROM users WHERE id = ?', [req.session.userId]);
 
         const complaint = await db.get(
             `SELECT c.*, u.username as complainant_username, u.email as complainant_email
@@ -55,11 +68,34 @@ router.get('/case/:id', requireRespondent, async (req, res) => {
 
         if (!complaint) return res.status(404).json({ error: 'Case not found.' });
 
-        // Security: respondent can only view cases they are named in
-        const isNamed = (complaint.respondent_email && complaint.respondent_email === user.email) ||
-            (complaint.respondent_phone && complaint.respondent_phone === req.session.username);
+        // Security: respondent can view the case if:
+        // 1. Their email matches, OR
+        // 2. Their username (phone) matches respondent_phone (with normalization), OR
+        // 3. The case is accessible to them via the same broad logic used in the case list
+        const userPhone = normalizePhone(user.username);
+        const complaintPhone = normalizePhone(complaint.respondent_phone);
 
-        if (!isNamed) {
+        const isNamed =
+            (complaint.respondent_email && complaint.respondent_email === user.email) ||
+            (complaint.respondent_phone && (normalizePhone(complaint.respondent_phone) === userPhone || complaint.respondent_phone === user.username));
+
+        // Fallback: check via the same conditions as the cases list (remark from staff, or case_order, or is_served)
+        let hasAccess = isNamed;
+        if (!hasAccess) {
+            const accessCheck = await db.get(
+                `SELECT c.id FROM complaints c
+                 WHERE c.id = ?
+                 AND (c.respondent_email = ? OR c.respondent_phone = ? OR c.respondent_phone = ?)
+                 AND (c.is_served = 1
+                      OR c.id IN (SELECT complaint_id FROM case_orders)
+                      OR c.id IN (SELECT complaint_id FROM remarks WHERE user_id IN (SELECT id FROM users WHERE role IN ('ADMIN','CLERK','JUDGE','admin','clerk','judge')))
+                 )`,
+                [complaintId, user.email, user.username, userPhone]
+            );
+            hasAccess = !!accessCheck;
+        }
+
+        if (!hasAccess) {
             return res.status(403).json({ error: 'You are not the named respondent on this case.' });
         }
 
@@ -113,7 +149,7 @@ router.post('/case/:id/respond', requireRespondent, async (req, res) => {
     }
 
     try {
-        const user = await db.get('SELECT email FROM users WHERE id = ?', [req.session.userId]);
+        const user = await db.get('SELECT email, username FROM users WHERE id = ?', [req.session.userId]);
 
         const complaint = await db.get('SELECT id, respondent_email, respondent_phone, status FROM complaints WHERE id = ?', [complaintId]);
         if (!complaint) return res.status(404).json({ error: 'Case not found.' });
@@ -122,8 +158,10 @@ router.post('/case/:id/respond', requireRespondent, async (req, res) => {
             return res.status(403).json({ error: 'Court rules do not allow responses on inactive cases (Resolved/Closed/Rejected).' });
         }
 
-        const isNamed = (complaint.respondent_email && complaint.respondent_email === user.email) ||
-            (complaint.respondent_phone && complaint.respondent_phone === req.session.username);
+        const userPhone = normalizePhone(user.username);
+        const isNamed =
+            (complaint.respondent_email && complaint.respondent_email === user.email) ||
+            (complaint.respondent_phone && (normalizePhone(complaint.respondent_phone) === userPhone || complaint.respondent_phone === user.username));
 
         if (!isNamed) {
             return res.status(403).json({ error: 'You are not the named respondent on this case.' });
@@ -139,8 +177,12 @@ router.post('/case/:id/respond', requireRespondent, async (req, res) => {
             [result.id]
         );
 
-        // Send notification email for new chat remark
-        notifications.notifyRemarkAdded(complaintId, remark.trim(), req.session.userId).catch(err => console.error('notifyRemarkAdded failed', err));
+        // Await notification email/SMS for new chat remark so Vercel does not terminate prematurely
+        try {
+            await notifications.notifyRemarkAdded(complaintId, remark.trim(), req.session.userId);
+        } catch (notifErr) {
+            console.error('notifyRemarkAdded failed:', notifErr.message || notifErr);
+        }
 
         res.status(201).json({ message: 'Response submitted.', remark: newRemark });
     } catch (err) {
@@ -173,16 +215,18 @@ router.get('/notifications', requireRespondent, async (req, res) => {
         const user = await db.get('SELECT email, username FROM users WHERE id = ?', [req.session.userId]);
         if (!user) return res.status(404).json({ error: 'User not found.' });
 
+        const userPhone = normalizePhone(user.username);
+
         // Get all served cases for this respondent
         const cases = await db.all(
             `SELECT id, title, case_number, court_name, status FROM complaints
-             WHERE (respondent_email = ? OR respondent_phone = ?)
+             WHERE (respondent_email = ? OR respondent_phone = ? OR respondent_phone = ?)
              AND (is_served = 1 
                   OR id IN (SELECT complaint_id FROM case_orders)
                   OR id IN (SELECT complaint_id FROM remarks WHERE user_id IN (SELECT id FROM users WHERE role IN ('ADMIN', 'CLERK', 'JUDGE', 'admin', 'clerk', 'judge')))
                   OR user_id IN (SELECT id FROM users WHERE role IN ('ADMIN', 'CLERK', 'JUDGE', 'admin', 'clerk', 'judge')))
              ORDER BY created_at DESC`,
-            [user.email, user.username]
+            [user.email, user.username, userPhone]
         );
 
         if (cases.length === 0) {

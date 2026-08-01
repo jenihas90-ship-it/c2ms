@@ -1059,7 +1059,122 @@
         </div>
         <div id="jitsi-container" style="flex:1; width:100%; height:100%;"></div>
     </div>
-    <!-- ===== END JITSI MEET MODAL ===== -->
+    <!-- ===== RESPONDENT SIGN IN MODAL ===== -->
+    <div id="resp-auth-overlay" style="
+        position: fixed; inset: 0; z-index: 99999;
+        background: rgba(10, 14, 26, 0.88);
+        backdrop-filter: blur(12px);
+        display: none;
+        align-items: center;
+        justify-content: center;
+        padding: 1.5rem;
+    ">
+        <div style="
+            background: #ffffff;
+            border-radius: 20px;
+            padding: 2.5rem 2rem;
+            width: 100%;
+            max-width: 440px;
+            box-shadow: 0 30px 70px rgba(0,0,0,0.5);
+            color: #1a1a2e;
+            font-family: 'Inter', sans-serif;
+            position: relative;
+        ">
+            <div style="text-align: center; margin-bottom: 1.5rem;">
+                <div style="font-size: 2.5rem; margin-bottom: 0.5rem;">⚖️</div>
+                <h2 style="font-size: 1.4rem; font-weight: 800; color: #0f172a; margin-bottom: 0.3rem;">Respondent
+                    Portal</h2>
+                <p style="font-size: 0.85rem; color: #64748b;">Sign in with your registered Username or Email to access
+                    your case proceedings.</p>
+            </div>
+
+            <!-- Tab Switcher -->
+            <div style="display: flex; background: #f1f5f9; padding: 4px; border-radius: 10px; margin-bottom: 1.5rem;">
+                <button id="resp-tab-login" onclick="switchRespAuthTab('login')" style="
+                    flex: 1; padding: 0.55rem; border: none; border-radius: 8px;
+                    background: #ffffff; color: #0f172a; font-weight: 700; font-size: 0.85rem;
+                    cursor: pointer; box-shadow: 0 2px 6px rgba(0,0,0,0.06); transition: all 0.2s;
+                ">Sign In</button>
+                <button id="resp-tab-register" onclick="switchRespAuthTab('register')" style="
+                    flex: 1; padding: 0.55rem; border: none; border-radius: 8px;
+                    background: transparent; color: #64748b; font-weight: 600; font-size: 0.85rem;
+                    cursor: pointer; transition: all 0.2s;
+                ">Register</button>
+            </div>
+
+            <!-- Sign In Form -->
+            <form id="resp-login-form" onsubmit="handleRespLogin(event)">
+                <div style="margin-bottom: 1rem;">
+                    <label
+                        style="display: block; font-size: 0.78rem; font-weight: 600; color: #475569; margin-bottom: 0.4rem;">Username
+                        or Email</label>
+                    <input type="text" id="resp-login-id" required placeholder="Enter your username or email" style="
+                        width: 100%; padding: 0.75rem 1rem; border-radius: 10px; border: 1px solid #cbd5e1;
+                        font-size: 0.9rem; outline: none; background: #f8fafc; color: #0f172a;
+                    ">
+                </div>
+                <div style="margin-bottom: 1.25rem;">
+                    <label
+                        style="display: block; font-size: 0.78rem; font-weight: 600; color: #475569; margin-bottom: 0.4rem;">Password</label>
+                    <input type="password" id="resp-login-pass" required placeholder="••••••••" style="
+                        width: 100%; padding: 0.75rem 1rem; border-radius: 10px; border: 1px solid #cbd5e1;
+                        font-size: 0.9rem; outline: none; background: #f8fafc; color: #0f172a;
+                    ">
+                </div>
+                <button type="submit" id="resp-login-btn" style="
+                    width: 100%; padding: 0.85rem; border-radius: 10px; border: none;
+                    background: linear-gradient(135deg, #7c69ef, #5a47d1); color: #ffffff;
+                    font-weight: 700; font-size: 0.95rem; cursor: pointer;
+                    box-shadow: 0 8px 20px rgba(124, 105, 239, 0.35); transition: transform 0.15s;
+                ">🔐 Sign In to Respondent Portal</button>
+            </form>
+
+            <!-- Register Form (hidden initially) -->
+            <form id="resp-register-form" onsubmit="handleRespRegister(event)" style="display: none;">
+                <div style="margin-bottom: 0.85rem;">
+                    <label
+                        style="display: block; font-size: 0.78rem; font-weight: 600; color: #475569; margin-bottom: 0.3rem;">Username</label>
+                    <input type="text" id="resp-reg-username" required placeholder="Choose a username" style="
+                        width: 100%; padding: 0.65rem 0.9rem; border-radius: 10px; border: 1px solid #cbd5e1;
+                        font-size: 0.88rem; outline: none; background: #f8fafc; color: #0f172a;
+                    ">
+                </div>
+                <div style="margin-bottom: 0.85rem;">
+                    <label
+                        style="display: block; font-size: 0.78rem; font-weight: 600; color: #475569; margin-bottom: 0.3rem;">Email
+                        Address</label>
+                    <input type="email" id="resp-reg-email" required placeholder="name@example.com" style="
+                        width: 100%; padding: 0.65rem 0.9rem; border-radius: 10px; border: 1px solid #cbd5e1;
+                        font-size: 0.88rem; outline: none; background: #f8fafc; color: #0f172a;
+                    ">
+                </div>
+                <div style="margin-bottom: 1rem;">
+                    <label
+                        style="display: block; font-size: 0.78rem; font-weight: 600; color: #475569; margin-bottom: 0.3rem;">Password</label>
+                    <input type="password" id="resp-reg-password" required placeholder="At least 6 characters" style="
+                        width: 100%; padding: 0.65rem 0.9rem; border-radius: 10px; border: 1px solid #cbd5e1;
+                        font-size: 0.88rem; outline: none; background: #f8fafc; color: #0f172a;
+                    ">
+                </div>
+                <button type="submit" id="resp-reg-btn" style="
+                    width: 100%; padding: 0.85rem; border-radius: 10px; border: none;
+                    background: linear-gradient(135deg, #7c69ef, #5a47d1); color: #ffffff;
+                    font-weight: 700; font-size: 0.95rem; cursor: pointer;
+                    box-shadow: 0 8px 20px rgba(124, 105, 239, 0.35);
+                ">✨ Register as Respondent</button>
+            </form>
+
+            <!-- Quick Demo Button -->
+            <div style="margin-top: 1.25rem; padding-top: 1rem; border-top: 1px solid #e2e8f0; text-align: center;">
+                <button onclick="prefillRespDemo()" style="
+                    background: #f1f5f9; border: 1px solid #cbd5e1; border-radius: 8px;
+                    padding: 0.4rem 0.8rem; font-size: 0.78rem; font-weight: 600; color: #334155;
+                    cursor: pointer; width: 100%; transition: background 0.15s;
+                ">💡 Quick Demo: Autofill Default Respondent (`respondent` / `resp123`)</button>
+            </div>
+        </div>
+    </div>
+    <!-- ===== END RESPONDENT SIGN IN MODAL ===== -->
 
     <!-- Scripts -->
     <script src="/js/utils.js"></script>
@@ -1069,18 +1184,114 @@
         let currentCaseId = null;
         let panelPollTimer = null;
 
-        // ── Bootstrap ──
-        (async () => {
-            currentUser = await checkAuthSession(false);
-            if (!currentUser) return;
-            if (currentUser.role !== 'RESPONDENT') {
-                window.location.href = '/dashboard.html';
+        // ── Auth & Tab Switchers ──
+        function switchRespAuthTab(tab) {
+            const isLogin = tab === 'login';
+            document.getElementById('resp-login-form').style.display = isLogin ? 'block' : 'none';
+            document.getElementById('resp-register-form').style.display = isLogin ? 'none' : 'block';
+
+            document.getElementById('resp-tab-login').style.background = isLogin ? '#ffffff' : 'transparent';
+            document.getElementById('resp-tab-login').style.color = isLogin ? '#0f172a' : '#64748b';
+            document.getElementById('resp-tab-login').style.fontWeight = isLogin ? '700' : '600';
+            document.getElementById('resp-tab-login').style.boxShadow = isLogin ? '0 2px 6px rgba(0,0,0,0.06)' : 'none';
+
+            document.getElementById('resp-tab-register').style.background = isLogin ? 'transparent' : '#ffffff';
+            document.getElementById('resp-tab-register').style.color = isLogin ? '#64748b' : '#0f172a';
+            document.getElementById('resp-tab-register').style.fontWeight = isLogin ? '600' : '700';
+            document.getElementById('resp-tab-register').style.boxShadow = isLogin ? 'none' : '0 2px 6px rgba(0,0,0,0.06)';
+        }
+
+        function prefillRespDemo() {
+            switchRespAuthTab('login');
+            document.getElementById('resp-login-id').value = 'respondent';
+            document.getElementById('resp-login-pass').value = 'resp123';
+            showToast('Prefilled default respondent credentials!');
+        }
+
+        async function handleRespLogin(e) {
+            e.preventDefault();
+            const loginIdentifier = document.getElementById('resp-login-id').value.trim();
+            const password = document.getElementById('resp-login-pass').value;
+            const btn = document.getElementById('resp-login-btn');
+            btn.disabled = true;
+
+            try {
+                const res = await apiRequest('/api/auth/login', {
+                    method: 'POST',
+                    body: JSON.stringify({ loginIdentifier, password })
+                });
+
+                showToast('Sign in successful!');
+                if (res.user && res.user.role === 'RESPONDENT') {
+                    currentUser = res.user;
+                    document.getElementById('resp-auth-overlay').style.display = 'none';
+                    initPortal();
+                } else {
+                    window.location.href = res.redirectUrl || '/dashboard.html';
+                }
+            } catch (err) {
+                showToast(err.message || 'Invalid username/email or password.', true);
+            } finally {
+                btn.disabled = false;
+            }
+        }
+
+        async function handleRespRegister(e) {
+            e.preventDefault();
+            const username = document.getElementById('resp-reg-username').value.trim();
+            const email = document.getElementById('resp-reg-email').value.trim();
+            const password = document.getElementById('resp-reg-password').value;
+            const btn = document.getElementById('resp-reg-btn');
+
+            if (password.length < 6) {
+                showToast('Password must be at least 6 characters long.', true);
                 return;
             }
+
+            btn.disabled = true;
+            try {
+                const res = await apiRequest('/api/auth/register', {
+                    method: 'POST',
+                    body: JSON.stringify({ username, email, password, role: 'RESPONDENT' })
+                });
+
+                showToast('Account registered successfully!');
+                currentUser = { id: res.userId, username, role: 'RESPONDENT' };
+                document.getElementById('resp-auth-overlay').style.display = 'none';
+                initPortal();
+            } catch (err) {
+                showToast(err.message || 'Registration failed.', true);
+            } finally {
+                btn.disabled = false;
+            }
+        }
+
+        function initPortal() {
+            if (!currentUser) return;
             document.getElementById('sidebar-name').textContent = currentUser.username;
             document.getElementById('sidebar-avatar').textContent = currentUser.username[0].toUpperCase();
             document.getElementById('welcome-name').textContent = currentUser.username;
-            await loadCases();
+            loadCases();
+        }
+
+        // ── Bootstrap Check ──
+        (async () => {
+            try {
+                const data = await apiRequest('/api/auth/me');
+                if (data.loggedIn && data.user) {
+                    if (data.user.role !== 'RESPONDENT') {
+                        window.location.href = '/dashboard.html';
+                        return;
+                    }
+                    currentUser = data.user;
+                    initPortal();
+                } else {
+                    // Show Respondent Sign In Modal if unauthenticated
+                    document.getElementById('resp-auth-overlay').style.display = 'flex';
+                }
+            } catch (err) {
+                document.getElementById('resp-auth-overlay').style.display = 'flex';
+            }
         })();
 
         // ── Navigation ──

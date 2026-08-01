@@ -119,7 +119,8 @@ async function loadAdminStats() {
         const stats = await apiRequest('/api/admin/stats');
 
         // Populate cards
-        document.getElementById('metric-total-val').textContent = stats.summary.total;
+        // metric-total-val shows permanent "ever filed" count from the append-only ledger
+        document.getElementById('metric-total-val').textContent = stats.summary.totalFiled ?? stats.summary.total;
         document.getElementById('metric-pending-val').textContent = stats.summary.pending;
         document.getElementById('metric-progress-val').textContent = stats.summary.inProgress;
         document.getElementById('metric-resolved-val').textContent = stats.summary.resolved;
@@ -200,28 +201,7 @@ function renderPriorityAnalytics(breakdown) {
     });
 }
 
-// Client side accumulator for Complainant specific dashboard
-async function calculateComplainantMetrics() {
-    try {
-        const list = await apiRequest('/api/complaints');
-
-        const counts = { total: 0, pending: 0, progress: 0, resolved: 0 };
-        counts.total = list.length;
-
-        list.forEach(c => {
-            if (c.status === 'Pending') counts.pending++;
-            else if (c.status === 'In Progress') counts.progress++;
-            else if (c.status === 'Resolved') counts.resolved++;
-        });
-
-        document.getElementById('metric-total-val').textContent = counts.total;
-        document.getElementById('metric-pending-val').textContent = counts.pending;
-        document.getElementById('metric-progress-val').textContent = counts.progress;
-        document.getElementById('metric-resolved-val').textContent = counts.resolved;
-    } catch (error) {
-        console.error('Local counter compile error:', error);
-    }
-}
+// (duplicate calculateComplainantMetrics removed — using correct version above)
 
 // Fetch lists of complaints matching filter requirements
 async function loadComplaintsList() {

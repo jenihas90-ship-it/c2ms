@@ -8,9 +8,12 @@ const requireRole = require('../middleware/roleCheck');
 router.get('/stats', requireRole(['ADMIN', 'CLERK', 'JUDGE']), async (req, res) => {
     try {
         const totalCount = await db.get('SELECT COUNT(*) as val FROM complaints');
-        const pendingCount = await db.get("SELECT COUNT(*) as val FROM complaints WHERE status = 'Pending'");
-        const progressCount = await db.get("SELECT COUNT(*) as val FROM complaints WHERE status = 'In Progress'");
+        const pendingCount = await db.get("SELECT COUNT(*) as val FROM complaints WHERE status IN ('Pending', 'Filed')");
+        const progressCount = await db.get("SELECT COUNT(*) as val FROM complaints WHERE status IN ('In Progress', 'Under Review', 'Scheduled')");
         const resolvedCount = await db.get("SELECT COUNT(*) as val FROM complaints WHERE status = 'Resolved'");
+
+        // Permanent ever-filed count — reads from blob-backed storage (or fallback ledger table)
+        const totalFiledVal = await db.getFiledCount();
 
         const categoryBreakdown = await db.all(
             'SELECT category, COUNT(*) as count FROM complaints GROUP BY category'
@@ -32,6 +35,7 @@ router.get('/stats', requireRole(['ADMIN', 'CLERK', 'JUDGE']), async (req, res) 
         res.json({
             summary: {
                 total: totalCount.val || 0,
+                totalFiled: totalFiledVal || 0,
                 pending: pendingCount.val || 0,
                 inProgress: progressCount.val || 0,
                 resolved: resolvedCount.val || 0

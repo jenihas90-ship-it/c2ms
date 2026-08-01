@@ -28,14 +28,24 @@ async function getDb() {
     SQL = await initSqlJs();
   }
 
-  // Attempt to restore from Vercel Blob if running in serverless and token is present
-  // NOTE: We ALWAYS restore from Blob on cold-start (db === null), not just when tmp file is missing.
-  // This ensures real registered user data from Blob always overrides any stale /tmp file.
-  if ((process.env.VERCEL || process.env.NOW_REGION) && process.env.BLOB_READ_WRITE_TOKEN) {
+  // Attempt to restore from Vercel Blob ONLY if no local /tmp DB file exists yet.
+  // This prevents cold starts from re-applying an older Blob snapshot over a valid /tmp file
+  // that a previous request in the same Vercel worker already wrote with newer data.
+  const tmpFileExists = DB_FILE && fs.existsSync(DB_FILE);
+
+  if (!tmpFileExists && (process.env.VERCEL || process.env.NOW_REGION) && process.env.BLOB_READ_WRITE_TOKEN) {
     try {
       const { blobs } = await list({ prefix: 'cms_vercel.sqlite' });
       if (blobs && blobs.length > 0) {
-        const latestBlob = blobs[0];
+        // Sort descending by uploadedAt / createdAt so we ALWAYS restore the newest DB snapshot
+        const sortedBlobs = blobs.sort((a, b) => {
+          const tA = new Date(a.uploadedAt || a.createdAt || 0).getTime();
+          const tB = new Date(b.uploadedAt || b.createdAt || 0).getTime();
+          return tB - tA;
+        });
+        const latestBlob = sortedBlobs[0];
+        console.log(`[Persistence] Restoring database from Vercel Blob (found ${blobs.length} blob(s), selecting latest uploaded at ${latestBlob.uploadedAt || latestBlob.createdAt})`);
+
         // Use downloadUrl which bypasses edge CDN cache, or fallback to url with cache-bust
         const targetUrl = latestBlob.downloadUrl || `${latestBlob.url}?t=${Date.now()}`;
 
@@ -95,14 +105,20 @@ async function run(sql, params = []) {
         // 1. Write to local /tmp synchronously
         fs.writeFileSync(DB_FILE, buffer);
 
-        // 2. Upload to Vercel Blob and cleanly await it
+        // 2. Upload to Vercel Blob with retry (up to 3 attempts)
         if ((process.env.VERCEL || process.env.NOW_REGION) && process.env.BLOB_READ_WRITE_TOKEN) {
-          try {
-            await put('cms_vercel.sqlite', buffer, { access: 'public', addRandomSuffix: false });
-            console.log('[Persistence] Backed up database state to Vercel Blob.');
-          } catch (blobErr) {
-            console.warn('[Persistence] Could not upload to Blob:', blobErr.message);
+          let uploaded = false;
+          for (let attempt = 1; attempt <= 3 && !uploaded; attempt++) {
+            try {
+              await put('cms_vercel.sqlite', buffer, { access: 'public', addRandomSuffix: false });
+              console.log(`[Persistence] Backed up database to Vercel Blob (attempt ${attempt}).`);
+              uploaded = true;
+            } catch (blobErr) {
+              console.warn(`[Persistence] Blob upload attempt ${attempt} failed:`, blobErr.message);
+              if (attempt < 3) await new Promise(r => setTimeout(r, 300 * attempt));
+            }
           }
+          if (!uploaded) console.error('[Persistence] CRITICAL: All 3 blob upload attempts failed. Data may be lost on cold start!');
         }
       } catch (err) {
         console.warn('Could not export DB:', err.message);
@@ -170,6 +186,141 @@ async function forceBackup() {
     }
   }
 }
+
+// ─────────────────────────────────────────────────────────
+//  PERMANENT FILED-COMPLAINT COUNTER
+//  Stored as a tiny JSON blob (cms_stats.json) — completely
+//  independent of the SQLite blob. Survives cold starts even
+//  when the full DB restore fails.
+// ─────────────────────────────────────────────────────────
+const STATS_BLOB_KEY = 'cms_stats.json';
+
+async function _readStatsBlob() {
+  if (!process.env.BLOB_READ_WRITE_TOKEN) return null;
+  try {
+    const { blobs } = await list({ prefix: STATS_BLOB_KEY });
+    if (!blobs || blobs.length === 0) return null;
+    const targetUrl = blobs[0].downloadUrl || `${blobs[0].url}?t=${Date.now()}`;
+    const res = await fetch(targetUrl, {
+      cache: 'no-store',
+      headers: { 'Pragma': 'no-cache', 'Cache-Control': 'no-cache' }
+    });
+    if (!res.ok) return null;
+    return await res.json();
+  } catch (e) {
+    console.warn('[Stats] Could not read cms_stats.json:', e.message);
+    return null;
+  }
+}
+
+async function _writeStatsBlob(data) {
+  if (!process.env.BLOB_READ_WRITE_TOKEN) return;
+  try {
+    const json = JSON.stringify(data);
+    await put(STATS_BLOB_KEY, json, { access: 'public', addRandomSuffix: false, contentType: 'application/json' });
+  } catch (e) {
+    console.warn('[Stats] Could not write cms_stats.json:', e.message);
+  }
+}
+
+// Returns the permanent "ever filed" count.
+// On Vercel: reads from cms_stats.json blob (survives cold starts).
+// Fallback: counts from SQLite filed_complaints_log table.
+async function getFiledCount() {
+  // Try blob-backed counter first (most reliable on Vercel)
+  if (process.env.BLOB_READ_WRITE_TOKEN) {
+    const stats = await _readStatsBlob();
+    if (stats && typeof stats.totalFiled === 'number') {
+      return stats.totalFiled;
+    }
+  }
+  // Fallback: SQLite ledger (works locally and on fresh deploys)
+  try {
+    const row = await get('SELECT COUNT(*) as val FROM filed_complaints_log');
+    return row ? (row.val || 0) : 0;
+  } catch (e) {
+    return 0;
+  }
+}
+
+// Atomically increments the permanent filed count by 1.
+// Called every time a new complaint is successfully created.
+async function incrementFiledCount() {
+  if (!process.env.BLOB_READ_WRITE_TOKEN) return; // local: SQLite ledger is enough
+  try {
+    const current = await _readStatsBlob() || { totalFiled: 0 };
+    const next = { ...current, totalFiled: (current.totalFiled || 0) + 1, updatedAt: new Date().toISOString() };
+    await _writeStatsBlob(next);
+    console.log('[Stats] totalFiled incremented to', next.totalFiled);
+  } catch (e) {
+    console.warn('[Stats] Could not increment totalFiled:', e.message);
+  }
+}
+
+// ─────────────────────────────────────────────────────────
+//  PERMANENT COMPLAINTS BACKUP BLOB (cms_complaints.json)
+// ─────────────────────────────────────────────────────────
+const COMPLAINTS_BLOB_KEY = 'cms_complaints.json';
+
+async function _readComplaintsBlob() {
+  if (!process.env.BLOB_READ_WRITE_TOKEN) return [];
+  try {
+    const { blobs } = await list({ prefix: COMPLAINTS_BLOB_KEY });
+    if (!blobs || blobs.length === 0) return [];
+    const sorted = blobs.sort((a, b) => new Date(b.uploadedAt || 0) - new Date(a.uploadedAt || 0));
+    const targetUrl = sorted[0].downloadUrl || `${sorted[0].url}?t=${Date.now()}`;
+    const res = await fetch(targetUrl, {
+      cache: 'no-store',
+      headers: { 'Pragma': 'no-cache', 'Cache-Control': 'no-cache' }
+    });
+    if (!res.ok) return [];
+    const data = await res.json();
+    return Array.isArray(data) ? data : [];
+  } catch (e) {
+    console.warn('[Blob] Could not read cms_complaints.json:', e.message);
+    return [];
+  }
+}
+
+async function _writeComplaintsBlob(complaintsList) {
+  if (!process.env.BLOB_READ_WRITE_TOKEN) return;
+  try {
+    const json = JSON.stringify(complaintsList);
+    await put(COMPLAINTS_BLOB_KEY, json, { access: 'public', addRandomSuffix: false, contentType: 'application/json' });
+    console.log('[Blob] cms_complaints.json updated with', complaintsList.length, 'complaints.');
+  } catch (e) {
+    console.warn('[Blob] Could not write cms_complaints.json:', e.message);
+  }
+}
+
+async function syncComplaintToBlob(complaintObj) {
+  if (!process.env.BLOB_READ_WRITE_TOKEN || !complaintObj || !complaintObj.id) return;
+  try {
+    const list = await _readComplaintsBlob();
+    const idx = list.findIndex(c => String(c.id) === String(complaintObj.id));
+    if (idx >= 0) {
+      list[idx] = { ...list[idx], ...complaintObj, updatedAt: new Date().toISOString() };
+    } else {
+      list.push({ ...complaintObj, createdAt: complaintObj.created_at || new Date().toISOString() });
+    }
+    await _writeComplaintsBlob(list);
+  } catch (e) {
+    console.warn('[Blob] Failed to sync complaint to blob:', e.message);
+  }
+}
+
+async function deleteComplaintFromBlob(complaintId) {
+  if (!process.env.BLOB_READ_WRITE_TOKEN || !complaintId) return;
+  try {
+    const list = await _readComplaintsBlob();
+    const filtered = list.filter(c => String(c.id) !== String(complaintId));
+    await _writeComplaintsBlob(filtered);
+    console.log('[Blob] Deleted complaint', complaintId, 'from cms_complaints.json');
+  } catch (e) {
+    console.warn('[Blob] Failed to delete complaint from blob:', e.message);
+  }
+}
+
 
 // Initialize tables
 async function initDatabase() {
@@ -308,6 +459,17 @@ async function initDatabase() {
     )
   `);
 
+    // Create Filed Complaints Ledger Table (append-only — NEVER deleted, survives admin deletion)
+    await run(`
+    CREATE TABLE IF NOT EXISTS filed_complaints_log (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      complaint_id INTEGER NOT NULL,
+      user_id INTEGER NOT NULL,
+      title TEXT NOT NULL,
+      filed_at DATETIME DEFAULT CURRENT_TIMESTAMP
+    )
+  `);
+
     // Create SMS Logs Table (audit trail for AI-generated SMS notifications)
     await run(`
     CREATE TABLE IF NOT EXISTS sms_logs (
@@ -384,5 +546,9 @@ module.exports = {
   get,
   all,
   initDatabase,
-  forceBackup
+  forceBackup,
+  getFiledCount,
+  incrementFiledCount,
+  syncComplaintToBlob,
+  deleteComplaintFromBlob
 };

@@ -186,10 +186,11 @@ function sendViaTwilio(to, body) {
                 try {
                     const parsed = JSON.parse(data);
                     if (res.statusCode >= 400) {
-                        console.error('[Twilio] Error:', parsed.message || JSON.stringify(parsed));
-                    } else {
-                        console.log('[Twilio] SMS sent. SID:', parsed.sid);
+                        const errMsg = parsed.message || JSON.stringify(parsed);
+                        console.error('[Twilio] Error:', errMsg);
+                        return reject(new Error('[Twilio] ' + errMsg));
                     }
+                    console.log('[Twilio] SMS sent. SID:', parsed.sid);
                     resolve();
                 } catch (e) {
                     reject(e);

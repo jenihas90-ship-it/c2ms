@@ -67,22 +67,6 @@ router.post('/adjudicate', requireRole(['JUDGE']), async (req, res) => {
         return res.status(400).json({ error: 'Missing required fields' });
     }
 
-    // Validate respondent reply if attempting to resolve or close
-    if (status === 'Resolved' || status === 'Closed') {
-        const respondentReply = await db.get(`
-            SELECT r.id 
-            FROM remarks r
-            JOIN users u ON r.user_id = u.id
-            WHERE r.complaint_id = ? AND u.role = 'RESPONDENT'
-            LIMIT 1
-        `, [complaint_id]);
-
-        if (!respondentReply) {
-            return res.status(400).json({
-                error: 'Cannot resolve case: The respondent has not provided a formal response or remark yet.'
-            });
-        }
-    }
     try {
         const judgeName = req.session.username;
         const orderDate = new Date().toISOString().split('T')[0];
@@ -103,16 +87,17 @@ router.post('/adjudicate', requireRole(['JUDGE']), async (req, res) => {
             [complaint_id, req.session.userId, `[System Notice] Judgment / Order Issued (${order_type}):\n${order_details}`]
         );
 
-        // Fire-and-forget: AI-generated SMS to respondent
-        notifications.notifyRespondentJudgmentSms(complaint_id, order_details, order_type, custom_sms_text)
-            .then(result => {
-                if (result.success) {
-                    console.log(`[AI SMS] Judgment SMS dispatched to ${result.phone}`);
-                } else {
-                    console.log('[AI SMS] SMS skipped:', result.error);
-                }
-            })
-            .catch(err => console.error('[AI SMS] Dispatch failed:', err.message || err));
+        // Await AI-generated SMS & notification to respondent so Vercel serverless functions do not terminate prematurely
+        try {
+            const smsResult = await notifications.notifyRespondentJudgmentSms(complaint_id, order_details, order_type, custom_sms_text);
+            if (smsResult && smsResult.success) {
+                console.log(`[AI SMS] Judgment SMS dispatched to ${smsResult.phone || 'respondent'}`);
+            } else if (smsResult) {
+                console.log('[AI SMS] SMS skipped:', smsResult.error);
+            }
+        } catch (smsErr) {
+            console.error('[AI SMS] Dispatch failed:', smsErr.message || smsErr);
+        }
 
         res.json({ message: 'Judgment/Order saved successfully. SMS notification dispatched to respondent.' });
     } catch (err) {

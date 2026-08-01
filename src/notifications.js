@@ -107,14 +107,25 @@ View the conversation: ${linkText}`;
       // Notify respondent via SMS (and log for dashboard display)
       if (c.respondent_phone) {
         const smsText = `New message on case #${c.case_number || c.id} from ${author.role.toLowerCase()} (${author.username}). Please login to the respondent portal to view.`;
+        let smsStatus = 'sent';
+        let smsError = null;
         try {
           await sms.sendSms(c.respondent_phone, smsText);
+        } catch (smsErr) {
+          smsStatus = 'failed';
+          smsError = smsErr.message;
+          console.warn('[Remark SMS] Twilio error:', smsErr.message);
+        }
+        try {
           await db.run(
-            `INSERT INTO sms_logs (complaint_id, recipient_phone, message, status) VALUES (?, ?, ?, 'sent')`,
-            [c.id, c.respondent_phone, smsText]
+            `INSERT INTO sms_logs (complaint_id, recipient_phone, message, status) VALUES (?, ?, ?, ?)`,
+            [c.id, c.respondent_phone, smsText, smsStatus]
           );
+          if (smsError) {
+            console.warn('[Remark SMS] SMS failed and logged with status=failed:', smsError);
+          }
         } catch (logErr) {
-          console.warn('[Remark SMS] error:', logErr.message);
+          console.warn('[Remark SMS] Could not write to sms_logs:', logErr.message);
         }
       }
     } else if (author.role === 'RESPONDENT') {
@@ -175,19 +186,24 @@ async function notifyRespondentOfComplaint(complaintId) {
       const messageText = await sms.generateSmsContent(c, orderDetails, orderType);
 
       // Send via Twilio (or console log if Twilio not configured)
-      await sms.sendSms(c.respondent_phone, messageText);
+      let serveStatus = 'sent';
+      try {
+        await sms.sendSms(c.respondent_phone, messageText);
+        console.log(`[Serve SMS] ✅ SMS dispatched to ${c.respondent_phone} for complaint #${complaintId}`);
+      } catch (smsErr) {
+        serveStatus = 'failed';
+        console.warn(`[Serve SMS] ❌ Twilio error for complaint #${complaintId}:`, smsErr.message);
+      }
 
       // Log to sms_logs for audit trail & respondent portal display
       try {
         await db.run(
-          `INSERT INTO sms_logs (complaint_id, recipient_phone, message, status) VALUES (?, ?, ?, 'sent')`,
-          [complaintId, c.respondent_phone, messageText]
+          `INSERT INTO sms_logs (complaint_id, recipient_phone, message, status) VALUES (?, ?, ?, ?)`,
+          [complaintId, c.respondent_phone, messageText, serveStatus]
         );
       } catch (logErr) {
         console.warn('[Serve SMS] Could not write to sms_logs:', logErr.message);
       }
-
-      console.log(`[Serve SMS] ✅ SMS dispatched to ${c.respondent_phone} for complaint #${complaintId}`);
     } else {
       console.log(`[Serve SMS] No respondent phone on complaint #${complaintId} — SMS skipped.`);
     }
@@ -231,12 +247,20 @@ async function notifyRespondentJudgmentSms(complaintId, orderDetails, orderType,
 
     // Send SMS (Twilio if configured, else console log)
     if (c.respondent_phone) {
-      await sms.sendSms(c.respondent_phone, messageText);
+      let smsStatus = 'sent';
+      let smsError = null;
+      try {
+        await sms.sendSms(c.respondent_phone, messageText);
+      } catch (smsErr) {
+        smsStatus = 'failed';
+        smsError = smsErr.message;
+        console.warn('[AI SMS] Twilio error:', smsErr.message);
+      }
       // Log to sms_logs table for audit trail
       try {
         await db.run(
-          `INSERT INTO sms_logs (complaint_id, recipient_phone, message, status) VALUES (?, ?, ?, 'sent')`,
-          [complaintId, c.respondent_phone, messageText]
+          `INSERT INTO sms_logs (complaint_id, recipient_phone, message, status) VALUES (?, ?, ?, ?)`,
+          [complaintId, c.respondent_phone, messageText, smsStatus]
         );
       } catch (logErr) {
         console.warn('[AI SMS] Could not log to sms_logs:', logErr.message);
@@ -248,6 +272,22 @@ async function notifyRespondentJudgmentSms(complaintId, orderDetails, orderType,
       const subject = `Court Judgment Issued: Case #${c.case_number || c.id}`;
       const text = `Dear ${c.defendant_name || 'Respondent'},\n\nA ${orderType} has been issued by the court regarding complaint "${c.title}".\n\nJudgment Details:\n${orderDetails}\n\nLogin to the respondent portal to view your case updates.`;
       await sendMail({ to: c.respondent_email, subject, text });
+    }
+
+    // Insert In-App Notification for Respondent user (if user account exists for this respondent)
+    try {
+      const respUser = await db.get(
+        `SELECT id FROM users WHERE (email = ? AND email != '') OR (username = ? AND username != '')`,
+        [c.respondent_email || '', c.respondent_phone || '']
+      );
+      if (respUser) {
+        await db.run(
+          `INSERT INTO in_app_notifications (user_id, message, complaint_id) VALUES (?, ?, ?)`,
+          [respUser.id, `Court Notice: A ${orderType} has been issued on case #${c.case_number || c.id}`, c.id]
+        );
+      }
+    } catch (inAppErr) {
+      console.warn('[AI SMS] Could not insert in_app_notification for respondent:', inAppErr.message);
     }
 
     return { success: true, message: messageText };
