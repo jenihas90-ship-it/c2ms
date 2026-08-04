@@ -148,240 +148,239 @@ async function ensureComplaintsRehydrated(database) {
       const exists = res.length > 0 && res[0].values.length > 0;
 
       if (!exists) {
-        if (!exists) {
-          // Filter out keys that might be problematic or not standard columns if necessary
-          // But since we selected * from complaints before syncing, c should map perfectly to valid columns
-          const validKeys = Object.keys(c);
-          if (validKeys.length > 0) {
-            const placeholders = validKeys.map(() => '?').join(', ');
-            const values = validKeys.map(k => c[k]);
+        // Filter out keys that might be problematic or not standard columns if necessary
+        // But since we selected * from complaints before syncing, c should map perfectly to valid columns
+        const validKeys = Object.keys(c);
+        if (validKeys.length > 0) {
+          const placeholders = validKeys.map(() => '?').join(', ');
+          const values = validKeys.map(k => c[k]);
 
+          try {
+            database.run(`INSERT INTO complaints (${validKeys.join(', ')}) VALUES (${placeholders})`, values);
+            console.log(`[Rehydrate] Inserted missing complaint #${c.id} into SQLite memory`);
+          } catch (insertErr) {
+            console.warn(`[Rehydrate] Failed to insert missing complaint #${c.id}: ${insertErr.message}`);
+            // Fallback attempt with minimal required fields just in case of schema drift
             try {
-              database.run(`INSERT INTO complaints (${validKeys.join(', ')}) VALUES (${placeholders})`, values);
-              console.log(`[Rehydrate] Inserted missing complaint #${c.id} into SQLite memory`);
-            } catch (insertErr) {
-              console.warn(`[Rehydrate] Failed to insert missing complaint #${c.id}: ${insertErr.message}`);
-              // Fallback attempt with minimal required fields just in case of schema drift
-              try {
-                database.run(
-                  `INSERT INTO complaints (id, user_id, title, category, description, priority, status) VALUES (?, ?, ?, ?, ?, ?, ?)`,
-                  [c.id, c.user_id || 1, c.title || 'Unknown', c.category || 'Other', c.description || '', c.priority || 'Medium', c.status || 'Filed']
-                );
-                console.log(`[Rehydrate] Inserted missing complaint #${c.id} with minimal fallback`);
-              } catch (fallbackErr) {
-                console.warn(`[Rehydrate] Fallback also failed: ${fallbackErr.message}`);
-              }
+              database.run(
+                `INSERT INTO complaints (id, user_id, title, category, description, priority, status) VALUES (?, ?, ?, ?, ?, ?, ?)`,
+                [c.id, c.user_id || 1, c.title || 'Unknown', c.category || 'Other', c.description || '', c.priority || 'Medium', c.status || 'Filed']
+              );
+              console.log(`[Rehydrate] Inserted missing complaint #${c.id} with minimal fallback`);
+            } catch (fallbackErr) {
+              console.warn(`[Rehydrate] Fallback also failed: ${fallbackErr.message}`);
             }
           }
         }
       }
-    } catch (e) {
-      console.warn('[Rehydrate] Overall Warning:', e.message);
     }
+  } catch (e) {
+    console.warn('[Rehydrate] Overall Warning:', e.message);
   }
+}
 
 // Get single row
 async function get(sql, params = []) {
-    const database = await getDb();
-    if (sql.includes('complaints')) {
-      await ensureComplaintsRehydrated(database);
-    }
-    const stmt = database.prepare(sql);
-    stmt.bind(params);
-    let row = null;
-    if (stmt.step()) {
-      const columns = stmt.getColumnNames();
-      const values = stmt.get();
-      row = {};
-      columns.forEach((col, i) => {
-        row[col] = values[i];
-      });
-    }
-    stmt.free();
-    return row;
+  const database = await getDb();
+  if (sql.includes('complaints')) {
+    await ensureComplaintsRehydrated(database);
   }
-
-  // Get all rows
-  async function all(sql, params = []) {
-    const database = await getDb();
-    if (sql.includes('complaints')) {
-      await ensureComplaintsRehydrated(database);
-    }
-    const stmt = database.prepare(sql);
-    stmt.bind(params);
-    const rows = [];
-    while (stmt.step()) {
-      const columns = stmt.getColumnNames();
-      const values = stmt.get();
-      const row = {};
-      columns.forEach((col, i) => {
-        row[col] = values[i];
-      });
-      rows.push(row);
-    }
-    stmt.free();
-    return rows;
+  const stmt = database.prepare(sql);
+  stmt.bind(params);
+  let row = null;
+  if (stmt.step()) {
+    const columns = stmt.getColumnNames();
+    const values = stmt.get();
+    row = {};
+    columns.forEach((col, i) => {
+      row[col] = values[i];
+    });
   }
+  stmt.free();
+  return row;
+}
 
-  // Manually trigger a backup to Vercel Blob
-  async function forceBackup() {
-    const database = await getDb();
-    if (DB_FILE) {
-      try {
-        const buffer = Buffer.from(database.export());
-        fs.writeFileSync(DB_FILE, buffer);
-        if ((process.env.VERCEL || process.env.NOW_REGION) && process.env.BLOB_READ_WRITE_TOKEN) {
-          // Vercel Blob's put correctly handles Buffers
-          const { put } = require('@vercel/blob');
-          await put('cms_vercel.sqlite', buffer, { access: 'public', addRandomSuffix: false });
-          console.log('[Persistence] Forced backup to Vercel Blob.');
-        }
-      } catch (err) {
-        console.warn('Could not force backup DB:', err.message);
+// Get all rows
+async function all(sql, params = []) {
+  const database = await getDb();
+  if (sql.includes('complaints')) {
+    await ensureComplaintsRehydrated(database);
+  }
+  const stmt = database.prepare(sql);
+  stmt.bind(params);
+  const rows = [];
+  while (stmt.step()) {
+    const columns = stmt.getColumnNames();
+    const values = stmt.get();
+    const row = {};
+    columns.forEach((col, i) => {
+      row[col] = values[i];
+    });
+    rows.push(row);
+  }
+  stmt.free();
+  return rows;
+}
+
+// Manually trigger a backup to Vercel Blob
+async function forceBackup() {
+  const database = await getDb();
+  if (DB_FILE) {
+    try {
+      const buffer = Buffer.from(database.export());
+      fs.writeFileSync(DB_FILE, buffer);
+      if ((process.env.VERCEL || process.env.NOW_REGION) && process.env.BLOB_READ_WRITE_TOKEN) {
+        // Vercel Blob's put correctly handles Buffers
+        const { put } = require('@vercel/blob');
+        await put('cms_vercel.sqlite', buffer, { access: 'public', addRandomSuffix: false });
+        console.log('[Persistence] Forced backup to Vercel Blob.');
       }
+    } catch (err) {
+      console.warn('Could not force backup DB:', err.message);
     }
   }
+}
 
-  // ─────────────────────────────────────────────────────────
-  //  PERMANENT FILED-COMPLAINT COUNTER
-  //  Stored as a tiny JSON blob (cms_stats.json) — completely
-  //  independent of the SQLite blob. Survives cold starts even
-  //  when the full DB restore fails.
-  // ─────────────────────────────────────────────────────────
-  const STATS_BLOB_KEY = 'cms_stats.json';
+// ─────────────────────────────────────────────────────────
+//  PERMANENT FILED-COMPLAINT COUNTER
+//  Stored as a tiny JSON blob (cms_stats.json) — completely
+//  independent of the SQLite blob. Survives cold starts even
+//  when the full DB restore fails.
+// ─────────────────────────────────────────────────────────
+const STATS_BLOB_KEY = 'cms_stats.json';
 
-  async function _readStatsBlob() {
-    if (!process.env.BLOB_READ_WRITE_TOKEN) return null;
-    try {
-      const { blobs } = await list({ prefix: STATS_BLOB_KEY });
-      if (!blobs || blobs.length === 0) return null;
-      const targetUrl = blobs[0].downloadUrl || `${blobs[0].url}?t=${Date.now()}`;
-      const res = await fetch(targetUrl, {
-        cache: 'no-store',
-        headers: { 'Pragma': 'no-cache', 'Cache-Control': 'no-cache' }
-      });
-      if (!res.ok) return null;
-      return await res.json();
-    } catch (e) {
-      console.warn('[Stats] Could not read cms_stats.json:', e.message);
-      return null;
+async function _readStatsBlob() {
+  if (!process.env.BLOB_READ_WRITE_TOKEN) return null;
+  try {
+    const { blobs } = await list({ prefix: STATS_BLOB_KEY });
+    if (!blobs || blobs.length === 0) return null;
+    const targetUrl = blobs[0].downloadUrl || `${blobs[0].url}?t=${Date.now()}`;
+    const res = await fetch(targetUrl, {
+      cache: 'no-store',
+      headers: { 'Pragma': 'no-cache', 'Cache-Control': 'no-cache' }
+    });
+    if (!res.ok) return null;
+    return await res.json();
+  } catch (e) {
+    console.warn('[Stats] Could not read cms_stats.json:', e.message);
+    return null;
+  }
+}
+
+async function _writeStatsBlob(data) {
+  if (!process.env.BLOB_READ_WRITE_TOKEN) return;
+  try {
+    const json = JSON.stringify(data);
+    await put(STATS_BLOB_KEY, json, { access: 'public', addRandomSuffix: false, contentType: 'application/json' });
+  } catch (e) {
+    console.warn('[Stats] Could not write cms_stats.json:', e.message);
+  }
+}
+
+// Returns the permanent "ever filed" count.
+// On Vercel: reads from cms_stats.json blob (survives cold starts).
+// Fallback: counts from SQLite filed_complaints_log table.
+async function getFiledCount() {
+  // Try blob-backed counter first (most reliable on Vercel)
+  if (process.env.BLOB_READ_WRITE_TOKEN) {
+    const stats = await _readStatsBlob();
+    if (stats && typeof stats.totalFiled === 'number') {
+      return stats.totalFiled;
     }
   }
-
-  async function _writeStatsBlob(data) {
-    if (!process.env.BLOB_READ_WRITE_TOKEN) return;
-    try {
-      const json = JSON.stringify(data);
-      await put(STATS_BLOB_KEY, json, { access: 'public', addRandomSuffix: false, contentType: 'application/json' });
-    } catch (e) {
-      console.warn('[Stats] Could not write cms_stats.json:', e.message);
-    }
+  // Fallback: SQLite ledger (works locally and on fresh deploys)
+  try {
+    const row = await get('SELECT COUNT(*) as val FROM filed_complaints_log');
+    return row ? (row.val || 0) : 0;
+  } catch (e) {
+    return 0;
   }
+}
 
-  // Returns the permanent "ever filed" count.
-  // On Vercel: reads from cms_stats.json blob (survives cold starts).
-  // Fallback: counts from SQLite filed_complaints_log table.
-  async function getFiledCount() {
-    // Try blob-backed counter first (most reliable on Vercel)
-    if (process.env.BLOB_READ_WRITE_TOKEN) {
-      const stats = await _readStatsBlob();
-      if (stats && typeof stats.totalFiled === 'number') {
-        return stats.totalFiled;
-      }
-    }
-    // Fallback: SQLite ledger (works locally and on fresh deploys)
-    try {
-      const row = await get('SELECT COUNT(*) as val FROM filed_complaints_log');
-      return row ? (row.val || 0) : 0;
-    } catch (e) {
-      return 0;
-    }
+// Atomically increments the permanent filed count by 1.
+// Called every time a new complaint is successfully created.
+async function incrementFiledCount() {
+  if (!process.env.BLOB_READ_WRITE_TOKEN) return; // local: SQLite ledger is enough
+  try {
+    const current = await _readStatsBlob() || { totalFiled: 0 };
+    const next = { ...current, totalFiled: (current.totalFiled || 0) + 1, updatedAt: new Date().toISOString() };
+    await _writeStatsBlob(next);
+    console.log('[Stats] totalFiled incremented to', next.totalFiled);
+  } catch (e) {
+    console.warn('[Stats] Could not increment totalFiled:', e.message);
   }
+}
 
-  // Atomically increments the permanent filed count by 1.
-  // Called every time a new complaint is successfully created.
-  async function incrementFiledCount() {
-    if (!process.env.BLOB_READ_WRITE_TOKEN) return; // local: SQLite ledger is enough
-    try {
-      const current = await _readStatsBlob() || { totalFiled: 0 };
-      const next = { ...current, totalFiled: (current.totalFiled || 0) + 1, updatedAt: new Date().toISOString() };
-      await _writeStatsBlob(next);
-      console.log('[Stats] totalFiled incremented to', next.totalFiled);
-    } catch (e) {
-      console.warn('[Stats] Could not increment totalFiled:', e.message);
-    }
+// ─────────────────────────────────────────────────────────
+//  PERMANENT COMPLAINTS BACKUP BLOB (cms_complaints.json)
+// ─────────────────────────────────────────────────────────
+const COMPLAINTS_BLOB_KEY = 'cms_complaints.json';
+
+async function _readComplaintsBlob() {
+  if (!process.env.BLOB_READ_WRITE_TOKEN) return [];
+  try {
+    const { blobs } = await list({ prefix: COMPLAINTS_BLOB_KEY });
+    if (!blobs || blobs.length === 0) return [];
+    const sorted = blobs.sort((a, b) => new Date(b.uploadedAt || 0) - new Date(a.uploadedAt || 0));
+    const targetUrl = sorted[0].downloadUrl || `${sorted[0].url}?t=${Date.now()}`;
+    const res = await fetch(targetUrl, {
+      cache: 'no-store',
+      headers: { 'Pragma': 'no-cache', 'Cache-Control': 'no-cache' }
+    });
+    if (!res.ok) return [];
+    const data = await res.json();
+    return Array.isArray(data) ? data : [];
+  } catch (e) {
+    console.warn('[Blob] Could not read cms_complaints.json:', e.message);
+    return [];
   }
+}
 
-  // ─────────────────────────────────────────────────────────
-  //  PERMANENT COMPLAINTS BACKUP BLOB (cms_complaints.json)
-  // ─────────────────────────────────────────────────────────
-  const COMPLAINTS_BLOB_KEY = 'cms_complaints.json';
-
-  async function _readComplaintsBlob() {
-    if (!process.env.BLOB_READ_WRITE_TOKEN) return [];
-    try {
-      const { blobs } = await list({ prefix: COMPLAINTS_BLOB_KEY });
-      if (!blobs || blobs.length === 0) return [];
-      const sorted = blobs.sort((a, b) => new Date(b.uploadedAt || 0) - new Date(a.uploadedAt || 0));
-      const targetUrl = sorted[0].downloadUrl || `${sorted[0].url}?t=${Date.now()}`;
-      const res = await fetch(targetUrl, {
-        cache: 'no-store',
-        headers: { 'Pragma': 'no-cache', 'Cache-Control': 'no-cache' }
-      });
-      if (!res.ok) return [];
-      const data = await res.json();
-      return Array.isArray(data) ? data : [];
-    } catch (e) {
-      console.warn('[Blob] Could not read cms_complaints.json:', e.message);
-      return [];
-    }
+async function _writeComplaintsBlob(complaintsList) {
+  if (!process.env.BLOB_READ_WRITE_TOKEN) return;
+  try {
+    const json = JSON.stringify(complaintsList);
+    await put(COMPLAINTS_BLOB_KEY, json, { access: 'public', addRandomSuffix: false, contentType: 'application/json' });
+    console.log('[Blob] cms_complaints.json updated with', complaintsList.length, 'complaints.');
+  } catch (e) {
+    console.warn('[Blob] Could not write cms_complaints.json:', e.message);
   }
+}
 
-  async function _writeComplaintsBlob(complaintsList) {
-    if (!process.env.BLOB_READ_WRITE_TOKEN) return;
-    try {
-      const json = JSON.stringify(complaintsList);
-      await put(COMPLAINTS_BLOB_KEY, json, { access: 'public', addRandomSuffix: false, contentType: 'application/json' });
-      console.log('[Blob] cms_complaints.json updated with', complaintsList.length, 'complaints.');
-    } catch (e) {
-      console.warn('[Blob] Could not write cms_complaints.json:', e.message);
+async function syncComplaintToBlob(complaintObj) {
+  if (!process.env.BLOB_READ_WRITE_TOKEN || !complaintObj || !complaintObj.id) return;
+  try {
+    const list = await _readComplaintsBlob();
+    const idx = list.findIndex(c => String(c.id) === String(complaintObj.id));
+    if (idx >= 0) {
+      list[idx] = { ...list[idx], ...complaintObj, updatedAt: new Date().toISOString() };
+    } else {
+      list.push({ ...complaintObj, createdAt: complaintObj.created_at || new Date().toISOString() });
     }
+    await _writeComplaintsBlob(list);
+  } catch (e) {
+    console.warn('[Blob] Failed to sync complaint to blob:', e.message);
   }
+}
 
-  async function syncComplaintToBlob(complaintObj) {
-    if (!process.env.BLOB_READ_WRITE_TOKEN || !complaintObj || !complaintObj.id) return;
-    try {
-      const list = await _readComplaintsBlob();
-      const idx = list.findIndex(c => String(c.id) === String(complaintObj.id));
-      if (idx >= 0) {
-        list[idx] = { ...list[idx], ...complaintObj, updatedAt: new Date().toISOString() };
-      } else {
-        list.push({ ...complaintObj, createdAt: complaintObj.created_at || new Date().toISOString() });
-      }
-      await _writeComplaintsBlob(list);
-    } catch (e) {
-      console.warn('[Blob] Failed to sync complaint to blob:', e.message);
-    }
+async function deleteComplaintFromBlob(complaintId) {
+  if (!process.env.BLOB_READ_WRITE_TOKEN || !complaintId) return;
+  try {
+    const list = await _readComplaintsBlob();
+    const filtered = list.filter(c => String(c.id) !== String(complaintId));
+    await _writeComplaintsBlob(filtered);
+    console.log('[Blob] Deleted complaint', complaintId, 'from cms_complaints.json');
+  } catch (e) {
+    console.warn('[Blob] Failed to delete complaint from blob:', e.message);
   }
-
-  async function deleteComplaintFromBlob(complaintId) {
-    if (!process.env.BLOB_READ_WRITE_TOKEN || !complaintId) return;
-    try {
-      const list = await _readComplaintsBlob();
-      const filtered = list.filter(c => String(c.id) !== String(complaintId));
-      await _writeComplaintsBlob(filtered);
-      console.log('[Blob] Deleted complaint', complaintId, 'from cms_complaints.json');
-    } catch (e) {
-      console.warn('[Blob] Failed to delete complaint from blob:', e.message);
-    }
-  }
+}
 
 
-  // Initialize tables
-  async function initDatabase() {
-    pauseBackup = true;
-    try {
-      await run(`
+// Initialize tables
+async function initDatabase() {
+  pauseBackup = true;
+  try {
+    await run(`
     CREATE TABLE IF NOT EXISTS users (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
       username TEXT UNIQUE NOT NULL,
@@ -392,8 +391,8 @@ async function get(sql, params = []) {
     )
   `);
 
-      // Create Complaints Table
-      await run(`
+    // Create Complaints Table
+    await run(`
     CREATE TABLE IF NOT EXISTS complaints (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
       user_id INTEGER NOT NULL,
@@ -438,27 +437,27 @@ async function get(sql, params = []) {
     )
   `);
 
-      // Migration step: gracefully add new columns if upgrading existing local SQLite DB
-      const newCols = [
-        'complainant_phone TEXT', 'complainant_country TEXT', 'complainant_region TEXT', 'complainant_woreda TEXT',
-        'respondent_phone TEXT', 'respondent_email TEXT', 'respondent_country TEXT', 'respondent_region TEXT', 'respondent_woreda TEXT',
-        'is_served INTEGER DEFAULT 0',
-        'court_address TEXT NOT NULL DEFAULT ""',
-        'court_fee_required INTEGER DEFAULT 0', 'court_fee_amount REAL', 'court_fee_paid INTEGER DEFAULT 0', 'court_fee_receipt TEXT',
-        'complainant_kebele TEXT', 'respondent_kebele TEXT',
-        'complainant_language TEXT', 'respondent_language TEXT', 'clerk_language TEXT', 'judge_language TEXT'
-      ];
-      for (const colDef of newCols) {
-        try {
-          // Will throw if column already exists
-          await run(`ALTER TABLE complaints ADD COLUMN ${colDef}`);
-        } catch (err) {
-          // Ignore "duplicate column name" error naturally.
-        }
+    // Migration step: gracefully add new columns if upgrading existing local SQLite DB
+    const newCols = [
+      'complainant_phone TEXT', 'complainant_country TEXT', 'complainant_region TEXT', 'complainant_woreda TEXT',
+      'respondent_phone TEXT', 'respondent_email TEXT', 'respondent_country TEXT', 'respondent_region TEXT', 'respondent_woreda TEXT',
+      'is_served INTEGER DEFAULT 0',
+      'court_address TEXT NOT NULL DEFAULT ""',
+      'court_fee_required INTEGER DEFAULT 0', 'court_fee_amount REAL', 'court_fee_paid INTEGER DEFAULT 0', 'court_fee_receipt TEXT',
+      'complainant_kebele TEXT', 'respondent_kebele TEXT',
+      'complainant_language TEXT', 'respondent_language TEXT', 'clerk_language TEXT', 'judge_language TEXT'
+    ];
+    for (const colDef of newCols) {
+      try {
+        // Will throw if column already exists
+        await run(`ALTER TABLE complaints ADD COLUMN ${colDef}`);
+      } catch (err) {
+        // Ignore "duplicate column name" error naturally.
       }
+    }
 
-      // Create Remarks Table
-      await run(`
+    // Create Remarks Table
+    await run(`
     CREATE TABLE IF NOT EXISTS remarks (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
       complaint_id INTEGER NOT NULL,
@@ -470,8 +469,8 @@ async function get(sql, params = []) {
     )
   `);
 
-      // Create Court Sessions Table
-      await run(`
+    // Create Court Sessions Table
+    await run(`
     CREATE TABLE IF NOT EXISTS court_sessions (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
       complaint_id INTEGER NOT NULL,
@@ -490,8 +489,8 @@ async function get(sql, params = []) {
     )
   `);
 
-      // Create Case Notes Table (Confidential)
-      await run(`
+    // Create Case Notes Table (Confidential)
+    await run(`
     CREATE TABLE IF NOT EXISTS case_notes (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
       complaint_id INTEGER NOT NULL,
@@ -503,8 +502,8 @@ async function get(sql, params = []) {
     )
   `);
 
-      // Create Case Orders/Judgments Table
-      await run(`
+    // Create Case Orders/Judgments Table
+    await run(`
     CREATE TABLE IF NOT EXISTS case_orders (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
       complaint_id INTEGER NOT NULL,
@@ -519,8 +518,8 @@ async function get(sql, params = []) {
     )
   `);
 
-      // Create Filed Complaints Ledger Table (append-only — NEVER deleted, survives admin deletion)
-      await run(`
+    // Create Filed Complaints Ledger Table (append-only — NEVER deleted, survives admin deletion)
+    await run(`
     CREATE TABLE IF NOT EXISTS filed_complaints_log (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
       complaint_id INTEGER NOT NULL,
@@ -530,8 +529,8 @@ async function get(sql, params = []) {
     )
   `);
 
-      // Create SMS Logs Table (audit trail for AI-generated SMS notifications)
-      await run(`
+    // Create SMS Logs Table (audit trail for AI-generated SMS notifications)
+    await run(`
     CREATE TABLE IF NOT EXISTS sms_logs (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
       complaint_id INTEGER NOT NULL,
@@ -543,8 +542,8 @@ async function get(sql, params = []) {
     )
   `);
 
-      // Create In-App Notifications Table 
-      await run(`
+    // Create In-App Notifications Table 
+    await run(`
     CREATE TABLE IF NOT EXISTS in_app_notifications (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
       user_id INTEGER NOT NULL,
@@ -557,58 +556,58 @@ async function get(sql, params = []) {
     )
   `);
 
-      // Insert default administrators
-      const adminExists = await get("SELECT * FROM users WHERE username = 'admin' LIMIT 1");
-      if (!adminExists) {
-        const hashedPassword = bcrypt.hashSync('admin123', 10);
-        await run(
-          "INSERT INTO users (username, email, password, role) VALUES (?, ?, ?, ?)",
-          ['admin', 'admin@cms.com', hashedPassword, 'ADMIN']
-        );
-        console.log('Default Admin user seeded.');
-      }
-
-      // Insert default users
-      const userExists = await get("SELECT * FROM users WHERE username = 'user' LIMIT 1");
-      if (!userExists) {
-        const hashedPassword = bcrypt.hashSync('user123', 10);
-        await run("INSERT INTO users (username, email, password, role) VALUES (?, ?, ?, ?)", ['user', 'user@cms.com', hashedPassword, 'CITIZEN']);
-      }
-      const clerkExists = await get("SELECT * FROM users WHERE username = 'clerk' LIMIT 1");
-      if (!clerkExists) {
-        const hashedPassword = bcrypt.hashSync('clerk123', 10);
-        await run("INSERT INTO users (username, email, password, role) VALUES (?, ?, ?, ?)", ['clerk', 'clerk@cms.com', hashedPassword, 'CLERK']);
-      }
-      const judgeExists = await get("SELECT * FROM users WHERE username = 'judge' LIMIT 1");
-      if (!judgeExists) {
-        const hashedPassword = bcrypt.hashSync('judge123', 10);
-        await run("INSERT INTO users (username, email, password, role) VALUES (?, ?, ?, ?)", ['judge', 'judge@cms.com', hashedPassword, 'JUDGE']);
-      }
-
-      const respondentExists = await get("SELECT * FROM users WHERE username = 'respondent' LIMIT 1");
-      if (!respondentExists) {
-        const hashedPassword = bcrypt.hashSync('resp123', 10);
-        await run("INSERT INTO users (username, email, password, role) VALUES (?, ?, ?, ?)", ['respondent', 'respondent@cms.com', hashedPassword, 'RESPONDENT']);
-        console.log('Default Respondent user seeded.');
-      }
-
-    } finally {
-      pauseBackup = false;
+    // Insert default administrators
+    const adminExists = await get("SELECT * FROM users WHERE username = 'admin' LIMIT 1");
+    if (!adminExists) {
+      const hashedPassword = bcrypt.hashSync('admin123', 10);
+      await run(
+        "INSERT INTO users (username, email, password, role) VALUES (?, ?, ?, ?)",
+        ['admin', 'admin@cms.com', hashedPassword, 'ADMIN']
+      );
+      console.log('Default Admin user seeded.');
     }
 
-    await forceBackup();
-    console.log('Database initialized successfully.');
+    // Insert default users
+    const userExists = await get("SELECT * FROM users WHERE username = 'user' LIMIT 1");
+    if (!userExists) {
+      const hashedPassword = bcrypt.hashSync('user123', 10);
+      await run("INSERT INTO users (username, email, password, role) VALUES (?, ?, ?, ?)", ['user', 'user@cms.com', hashedPassword, 'CITIZEN']);
+    }
+    const clerkExists = await get("SELECT * FROM users WHERE username = 'clerk' LIMIT 1");
+    if (!clerkExists) {
+      const hashedPassword = bcrypt.hashSync('clerk123', 10);
+      await run("INSERT INTO users (username, email, password, role) VALUES (?, ?, ?, ?)", ['clerk', 'clerk@cms.com', hashedPassword, 'CLERK']);
+    }
+    const judgeExists = await get("SELECT * FROM users WHERE username = 'judge' LIMIT 1");
+    if (!judgeExists) {
+      const hashedPassword = bcrypt.hashSync('judge123', 10);
+      await run("INSERT INTO users (username, email, password, role) VALUES (?, ?, ?, ?)", ['judge', 'judge@cms.com', hashedPassword, 'JUDGE']);
+    }
+
+    const respondentExists = await get("SELECT * FROM users WHERE username = 'respondent' LIMIT 1");
+    if (!respondentExists) {
+      const hashedPassword = bcrypt.hashSync('resp123', 10);
+      await run("INSERT INTO users (username, email, password, role) VALUES (?, ?, ?, ?)", ['respondent', 'respondent@cms.com', hashedPassword, 'RESPONDENT']);
+      console.log('Default Respondent user seeded.');
+    }
+
+  } finally {
+    pauseBackup = false;
   }
 
-  module.exports = {
-    getDb,
-    run,
-    get,
-    all,
-    initDatabase,
-    forceBackup,
-    getFiledCount,
-    incrementFiledCount,
-    syncComplaintToBlob,
-    deleteComplaintFromBlob
-  };
+  await forceBackup();
+  console.log('Database initialized successfully.');
+}
+
+module.exports = {
+  getDb,
+  run,
+  get,
+  all,
+  initDatabase,
+  forceBackup,
+  getFiledCount,
+  incrementFiledCount,
+  syncComplaintToBlob,
+  deleteComplaintFromBlob
+};
