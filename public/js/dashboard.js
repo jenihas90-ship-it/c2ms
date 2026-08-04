@@ -683,6 +683,7 @@ async function handleFileComplaint(event) {
     const respondentLanguage = document.getElementById('comp-respondent-language')?.value || '';
 
     const fileInput = document.getElementById('comp-attachment');
+    const certInput = document.getElementById('comp-low-income-cert');
     const submitBtn = event.target.querySelector('button[type="submit"]');
 
     const formData = new FormData();
@@ -714,6 +715,10 @@ async function handleFileComplaint(event) {
 
     if (fileInput.files.length > 0) {
         formData.append('attachment', fileInput.files[0]);
+    }
+
+    if (certInput && certInput.files && certInput.files.length > 0) {
+        formData.append('low_income_cert', certInput.files[0]);
     }
 
     try {

@@ -153,8 +153,9 @@ async function ensureComplaintsRehydrated(database) {
             id, user_id, title, category, court_name, court_address, case_number, hearing_date,
             plaintiff_name, defendant_name, parties, description, priority, status, assignment_status,
             assigned_judge, attachment_path, complainant_phone, complainant_email, respondent_phone, respondent_email,
+            court_fee_required, court_fee_amount, court_fee_paid, court_fee_receipt,
             created_at, updated_at
-          ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+          ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
           [
             c.id, c.user_id || 1, c.title || 'Untitled', c.category || 'Civil', c.court_name || 'Court',
             c.court_address || 'Address', c.case_number || ('#' + c.id), c.hearing_date || null,
@@ -162,6 +163,7 @@ async function ensureComplaintsRehydrated(database) {
             c.priority || 'Medium', c.status || 'Filed', c.assignment_status || 'Unassigned',
             c.assigned_judge || null, c.attachment_path || null, c.complainant_phone || null,
             c.complainant_email || null, c.respondent_phone || null, c.respondent_email || null,
+            c.court_fee_required || 0, c.court_fee_amount || 0, c.court_fee_paid || 0, c.court_fee_receipt || null,
             c.created_at || new Date().toISOString(), c.updated_at || new Date().toISOString()
           ]
         );
@@ -420,6 +422,10 @@ async function initDatabase() {
       respondent_language TEXT,
       clerk_language TEXT,
       judge_language TEXT,
+      court_fee_required INTEGER DEFAULT 0,
+      court_fee_amount REAL DEFAULT 0,
+      court_fee_paid INTEGER DEFAULT 0,
+      court_fee_receipt TEXT,
       is_served INTEGER DEFAULT 0,
       created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
       updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
@@ -433,6 +439,7 @@ async function initDatabase() {
       'respondent_phone TEXT', 'respondent_email TEXT', 'respondent_country TEXT', 'respondent_region TEXT', 'respondent_woreda TEXT',
       'is_served INTEGER DEFAULT 0',
       'court_address TEXT NOT NULL DEFAULT ""',
+      'court_fee_required INTEGER DEFAULT 0', 'court_fee_amount REAL', 'court_fee_paid INTEGER DEFAULT 0', 'court_fee_receipt TEXT',
       'complainant_kebele TEXT', 'respondent_kebele TEXT',
       'complainant_language TEXT', 'respondent_language TEXT', 'clerk_language TEXT', 'judge_language TEXT'
     ];

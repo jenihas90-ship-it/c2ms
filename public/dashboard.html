@@ -259,6 +259,12 @@
                                     <textarea id="comp-court-address" required rows="2"
                                         placeholder="Physical address of the court"></textarea>
                                 </div>
+                                <div
+                                    style="margin-top:0.75rem; padding:0.8rem 1rem; border:1px solid rgba(229,201,66,0.25); background:rgba(229,201,66,0.08); border-radius:8px; font-size:0.9rem; color:var(--text-main); line-height:1.6;">
+                                    <strong>Court Fees:</strong> According to the court rules, you must pay the required
+                                    fee in full, or if you are low-income, you may present a certificate of indigency
+                                    (poverty certificate) to request to be served free of charge.
+                                </div>
                                 <div class="inspector-row-grid">
                                     <div class="form-group">
                                         <label for="comp-case-number">Case Number (if known)</label>
@@ -389,6 +395,32 @@
 
                             <!-- STEP 4: Documents Upload & Review -->
                             <div id="wizard-step-4" class="wizard-step hidden">
+                                <div
+                                    style="margin-bottom:1.5rem; padding:1.2rem; background:rgba(212, 168, 67, 0.08); border:1px solid rgba(212, 168, 67, 0.3); border-radius:10px;">
+                                    <h5
+                                        style="margin-bottom:0.6rem; color:var(--text-main); font-weight:700; font-size:1rem;">
+                                        ⚖️ Court Fees & Waivers</h5>
+                                    <p
+                                        style="font-size:0.9rem; color:var(--text-muted); margin-bottom:1rem; line-height:1.5;">
+                                        According to court rules, required fees must be paid in full. If you meet the
+                                        criteria for low income, you may apply for a fee waiver by uploading a poverty
+                                        certificate (certificate of indigency).</p>
+                                    <label
+                                        style="display:flex; align-items:flex-start; gap:0.6rem; font-size:0.95rem; font-weight:600; cursor:pointer; color:var(--text-main);">
+                                        <input type="checkbox" id="comp-low-income-check"
+                                            onchange="document.getElementById('low-income-upload-section').classList.toggle('hidden', !this.checked)"
+                                            style="margin-top:0.25rem;">
+                                        I am requesting a court fee waiver (Low Income)
+                                    </label>
+                                    <div id="low-income-upload-section" class="hidden"
+                                        style="margin-top:1.2rem; padding-top:1.2rem; border-top:1px dashed rgba(212, 168, 67, 0.3);">
+                                        <label
+                                            style="font-size:0.85rem; display:block; margin-bottom:0.5rem; font-weight:600;">Upload
+                                            Low Income Free Certificate (Required for waiver)</label>
+                                        <input type="file" id="comp-low-income-cert" accept=".pdf,.jpeg,.jpg,.png"
+                                            style="width:100%; padding:0.5rem; background:var(--input-bg, #fff); border:1px solid rgba(0,0,0,0.1); border-radius:6px; font-size:0.85rem;">
+                                    </div>
+                                </div>
                                 <h4>Step 4: Evidence & Document Upload</h4>
                                 <div class="form-group">
                                     <label>Add Evidence (Optional)</label>

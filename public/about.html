@@ -728,13 +728,44 @@
       <span class="nav-logo-icon">⚖️</span>
       <span class="nav-logo-text">Justice Connect</span>
     </a>
-    <div class="nav-links">
-      <a href="/">HOME</a>
-      <a href="/#why">WHY CHOOSE US</a>
-      <a href="/about.html" class="active">ABOUT US</a>
-      <a href="/?login=true" class="nav-cta">Sign In / Register →</a>
-    </div>
+    <button class="hamburger-menu-btn" onclick="toggleHamburgerMenu()"
+      style="background:none; border:none; font-size:2rem; cursor:pointer; color:var(--text);">☰</button>
   </nav>
+
+  <!-- Hamburger Menu Overlay -->
+  <div id="hamburger-overlay" style="display:none; position:fixed; inset:0; background:rgba(0,0,0,0.5); z-index:9998;"
+    onclick="toggleHamburgerMenu()"></div>
+  <!-- Hamburger Sidebar -->
+  <div id="hamburger-sidebar"
+    style="position:fixed; top:0; right:-320px; width:300px; height:100vh; background:#fff; z-index:9999; box-shadow:-4px 0 20px rgba(0,0,0,0.1); padding:2rem; transition:right 0.35s ease; display:flex; flex-direction:column; gap:1.5rem;">
+    <button onclick="toggleHamburgerMenu()"
+      style="align-self:flex-end; background:none; border:none; font-size:2.2rem; line-height:1; cursor:pointer; color:rgba(30,30,60,0.6);">&times;</button>
+    <a href="/"
+      style="text-decoration:none; color:#1a1a2e; font-weight:600; font-size:1.2rem; border-bottom:1px solid rgba(0,0,0,0.05); padding-bottom:0.75rem;">HOME</a>
+    <a href="/#why"
+      style="text-decoration:none; color:#1a1a2e; font-weight:600; font-size:1.2rem; border-bottom:1px solid rgba(0,0,0,0.05); padding-bottom:0.75rem;">WHY
+      CHOOSE US</a>
+    <a href="/about.html"
+      style="text-decoration:none; color:#1a1a2e; font-weight:600; font-size:1.2rem; border-bottom:1px solid rgba(0,0,0,0.05); padding-bottom:0.75rem;">ABOUT
+      US</a>
+    <a href="/?login=true" class="nav-cta"
+      style="margin-top:auto; width:100%; padding:0.85rem; font-size:1.05rem; border:none; cursor:pointer; display:block; text-align:center;">Sign
+      In / Register →</a>
+  </div>
+
+  <script>
+    function toggleHamburgerMenu() {
+      const sidebar = document.getElementById('hamburger-sidebar');
+      const overlay = document.getElementById('hamburger-overlay');
+      if (sidebar.style.right === '0px') {
+        sidebar.style.right = '-320px';
+        overlay.style.display = 'none';
+      } else {
+        sidebar.style.right = '0px';
+        overlay.style.display = 'block';
+      }
+    }
+  </script>
 
   <main>
     <!-- ── Hero Banner ── -->

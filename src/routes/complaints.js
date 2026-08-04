@@ -28,7 +28,7 @@ const upload = multer({
 });
 
 // File Complaint
-router.post('/', requireLogin, upload.single('attachment'), async (req, res) => {
+router.post('/', requireLogin, upload.fields([{ name: 'attachment', maxCount: 1 }, { name: 'low_income_cert', maxCount: 1 }]), async (req, res) => {
     const {
         title, category, court_name, court_address, case_number, hearing_date, complainant_name, respondent_name, complainant_address, description,
         complainant_phone, complainant_country, complainant_region, complainant_woreda, complainant_kebele, complainant_language,
@@ -50,11 +50,20 @@ router.post('/', requireLogin, upload.single('attachment'), async (req, res) => 
     const userId = req.session.userId;
     // Convert file to base64 data URI to store in memory SQLite for serverless logic
     let attachmentPath = null;
-    if (req.file) {
-        if (req.file.buffer) {
-            attachmentPath = `data:${req.file.mimetype};base64,${req.file.buffer.toString('base64')}`;
-        } else if (req.file.filename) {
-            attachmentPath = `/uploads/${req.file.filename}`;
+    let certPath = null;
+
+    if (req.files) {
+        if (req.files.attachment && req.files.attachment.length > 0) {
+            const file = req.files.attachment[0];
+            if (file.buffer) {
+                attachmentPath = `data:${file.mimetype};base64,${file.buffer.toString('base64')}`;
+            }
+        }
+        if (req.files.low_income_cert && req.files.low_income_cert.length > 0) {
+            const certFile = req.files.low_income_cert[0];
+            if (certFile.buffer) {
+                certPath = `data:${certFile.mimetype};base64,${certFile.buffer.toString('base64')}`;
+            }
         }
     }
     const parties = `Complainant: ${complainant_name || 'N/A'}, Respondent: ${respondent_name || 'N/A'}`;
@@ -64,13 +73,13 @@ router.post('/', requireLogin, upload.single('attachment'), async (req, res) => 
             `INSERT INTO complaints (
                 user_id, title, category, court_name, court_address, case_number, hearing_date, plaintiff_name, defendant_name, parties, description, priority, status, attachment_path,
                 complainant_phone, complainant_country, complainant_region, complainant_woreda, complainant_kebele, complainant_language,
-                respondent_phone, respondent_email, respondent_country, respondent_region, respondent_woreda, respondent_kebele, respondent_language
+                respondent_phone, respondent_email, respondent_country, respondent_region, respondent_woreda, respondent_kebele, respondent_language, court_fee_receipt
             ) 
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'Filed', ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'Filed', ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
             [
                 userId, title, category, court_name, court_address, case_number || 'Pending Assignment', hearing_date || null, complainant_name || null, respondent_name || null, parties || null, description, priority, attachmentPath || null,
                 complainant_phone || null, complainant_country || null, complainant_region || null, complainant_woreda || null, complainant_kebele || null, complainant_language || null,
-                respondent_phone || null, respondent_email || null, respondent_country || null, respondent_region || null, respondent_woreda || null, respondent_kebele || null, respondent_language || null
+                respondent_phone || null, respondent_email || null, respondent_country || null, respondent_region || null, respondent_woreda || null, respondent_kebele || null, respondent_language || null, certPath || null
             ]
         );
 
@@ -116,7 +125,7 @@ router.get('/', requireLogin, async (req, res) => {
         c.description, c.priority, c.status, c.assignment_status, c.assigned_judge,
         c.complainant_phone, c.complainant_country, c.complainant_region, c.complainant_woreda, c.complainant_kebele, c.complainant_language,
         c.respondent_phone, c.respondent_email, c.respondent_country, c.respondent_region, c.respondent_woreda, c.respondent_kebele, c.respondent_language,
-        c.clerk_language, c.judge_language, c.is_served, c.created_at, c.updated_at,
+        c.clerk_language, c.judge_language, c.court_fee_required, c.court_fee_amount, c.court_fee_paid, c.court_fee_receipt, c.is_served, c.created_at, c.updated_at,
         u.username as complainant_name 
     FROM complaints c
     JOIN users u ON c.user_id = u.id

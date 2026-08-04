@@ -30,7 +30,7 @@ router.post('/serve', requireRole(['CLERK', 'ADMIN']), async (req, res) => {
 // POST /api/clerk/verify
 // Clerk verifies filings and can update status or assignments
 router.post('/verify', requireRole(['CLERK']), async (req, res) => {
-    const { complaint_id, status, assigned_judge, priority } = req.body;
+    const { complaint_id, status, assigned_judge, priority, court_fee_required, court_fee_amount, court_fee_paid, court_fee_receipt } = req.body;
     if (!complaint_id) {
         return res.status(400).json({ error: 'Complaint ID is required' });
     }
@@ -45,6 +45,10 @@ router.post('/verify', requireRole(['CLERK']), async (req, res) => {
             params.push(assigned_judge ? 'Assigned to Judge' : 'Unassigned');
         }
         if (priority) { updates.push('priority = ?'); params.push(priority); }
+        if (court_fee_required !== undefined) { updates.push('court_fee_required = ?'); params.push(court_fee_required ? 1 : 0); }
+        if (court_fee_amount !== undefined) { updates.push('court_fee_amount = ?'); params.push(parseFloat(court_fee_amount) || 0); }
+        if (court_fee_paid !== undefined) { updates.push('court_fee_paid = ?'); params.push(court_fee_paid ? 1 : 0); }
+        if (court_fee_receipt !== undefined) { updates.push('court_fee_receipt = ?'); params.push(court_fee_receipt); }
 
         if (updates.length > 0) {
             params.push(complaint_id);
