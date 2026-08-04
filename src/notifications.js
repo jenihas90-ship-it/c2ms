@@ -216,7 +216,7 @@ async function notifyRespondentOfComplaint(complaintId) {
       try {
         await db.run(
           `INSERT INTO sms_logs (complaint_id, recipient_phone, message, status) VALUES (?, ?, ?, ?)`,
-          [complaintId, c.respondent_phone, messageText, serveStatus]
+          [complaintId, c.respondent_phone, serveStatus === 'failed' ? `[Delivery Failed] ${smsError}\n\nOriginal Message:\n${messageText}` : messageText, serveStatus]
         );
       } catch (logErr) {
         console.warn('[Serve SMS] Could not write to sms_logs:', logErr.message);
@@ -277,7 +277,7 @@ async function notifyRespondentJudgmentSms(complaintId, orderDetails, orderType,
       try {
         await db.run(
           `INSERT INTO sms_logs (complaint_id, recipient_phone, message, status) VALUES (?, ?, ?, ?)`,
-          [complaintId, c.respondent_phone, messageText, smsStatus]
+          [complaintId, c.respondent_phone, smsStatus === 'failed' ? `[Delivery Failed] ${smsError}\n\nOriginal Message:\n${messageText}` : messageText, smsStatus]
         );
       } catch (logErr) {
         console.warn('[AI SMS] Could not log to sms_logs:', logErr.message);

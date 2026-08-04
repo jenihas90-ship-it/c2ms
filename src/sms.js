@@ -139,7 +139,7 @@ function buildFallbackSms(complaint, orderDetails, orderType) {
 async function sendSms(to, message) {
     if (!to) {
         console.log('[SMS] No respondent phone number — skipping SMS send.');
-        return;
+        throw new Error('No respondent phone number provided.');
     }
 
     // Normalize phone: auto-format Ethiopian prefixes (09 or 07)
@@ -159,12 +159,13 @@ async function sendSms(to, message) {
     if (accountSid && authToken && fromPhone) {
         await sendViaTwilio(phone, message, accountSid, authToken, fromPhone);
     } else {
-        // Mock / console logging (default when no provider is configured)
-        console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
-        console.log('[SMS] 📱 Mock SMS — Twilio not configured. Would send to:', phone);
-        console.log('[SMS] Message:', message);
-        console.log('[SMS] Missing:', !accountSid ? 'TWILIO_ACCOUNT_SID ' : '', !authToken ? 'TWILIO_AUTH_TOKEN ' : '', !fromPhone ? 'TWILIO_FROM_PHONE' : '');
-        console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
+        // If we are in production (Vercel) and Twilio keys are missing, we should explicitly FAIL
+        // so that the failure is logged to the sms_logs table and visible in the UI.
+        const errMsg = 'Twilio credentials (ACCOUNT_SID, AUTH_TOKEN, FROM_PHONE) are missing on Vercel Environment Variables!';
+        console.error('[SMS Failed]', errMsg);
+        if (process.env.VERCEL || process.env.NOW_REGION) {
+            throw new Error(errMsg);
+        }
     }
 }
 
