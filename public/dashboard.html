@@ -399,28 +399,84 @@
                                     style="margin-bottom:1.5rem; padding:1.2rem; background:rgba(212, 168, 67, 0.08); border:1px solid rgba(212, 168, 67, 0.3); border-radius:10px;">
                                     <h5
                                         style="margin-bottom:0.6rem; color:var(--text-main); font-weight:700; font-size:1rem;">
-                                        ⚖️ Court Fees & Waivers</h5>
-                                    <p
-                                        style="font-size:0.9rem; color:var(--text-muted); margin-bottom:1rem; line-height:1.5;">
-                                        According to court rules, required fees must be paid in full. If you meet the
-                                        criteria for low income, you may apply for a fee waiver by uploading a poverty
-                                        certificate (certificate of indigency).</p>
-                                    <label
-                                        style="display:flex; align-items:flex-start; gap:0.6rem; font-size:0.95rem; font-weight:600; cursor:pointer; color:var(--text-main);">
-                                        <input type="checkbox" id="comp-low-income-check"
-                                            onchange="document.getElementById('low-income-upload-section').classList.toggle('hidden', !this.checked)"
-                                            style="margin-top:0.25rem;">
-                                        I am requesting a court fee waiver (Low Income)
-                                    </label>
-                                    <div id="low-income-upload-section" class="hidden"
-                                        style="margin-top:1.2rem; padding-top:1.2rem; border-top:1px dashed rgba(212, 168, 67, 0.3);">
+                                        ⚖️ Court Fees Calculation & Payment</h5>
+
+                                    <div style="display:flex; gap:1.5rem; margin-bottom:1.2rem; align-items:center;">
                                         <label
+                                            style="display:flex; align-items:center; gap:0.4rem; cursor:pointer; font-weight:600; font-size:0.9rem;">
+                                            <input type="radio" name="feeOption" value="pay" checked
+                                                onchange="toggleFeeView('pay')">
+                                            I will pay the required court fees
+                                        </label>
+                                        <label
+                                            style="display:flex; align-items:center; gap:0.4rem; cursor:pointer; font-weight:600; font-size:0.9rem;">
+                                            <input type="radio" name="feeOption" value="waiver"
+                                                onchange="toggleFeeView('waiver')">
+                                            Apply for Low Income Fee Waiver
+                                        </label>
+                                    </div>
+
+                                    <!-- Payment Options View -->
+                                    <div id="fee-payment-view"
+                                        style="padding-top:1rem; border-top:1px dashed rgba(212, 168, 67, 0.3);">
+                                        <p style="font-size:0.85rem; color:var(--text-muted); margin-bottom:0.75rem;">
+                                            Please transfer the court filing fee to one of the following recognized
+                                            accounts and upload your receipt below:</p>
+                                        <div
+                                            style="display:grid; grid-template-columns:1fr 1fr 1fr; gap:0.5rem; margin-bottom:1rem;">
+                                            <div
+                                                style="background:#fff; border:1px solid rgba(0,0,0,0.1); padding:0.75rem; border-radius:6px; text-align:center;">
+                                                <strong style="color:#d32f2f; font-size:0.85rem;">CBE</strong><br>
+                                                <span style="font-size:0.8rem; color:#666;">1000xxxxxx123</span>
+                                            </div>
+                                            <div
+                                                style="background:#fff; border:1px solid rgba(0,0,0,0.1); padding:0.75rem; border-radius:6px; text-align:center;">
+                                                <strong style="color:#1976d2; font-size:0.85rem;">Amhara
+                                                    Bank</strong><br>
+                                                <span style="font-size:0.8rem; color:#666;">5000xxxxxx456</span>
+                                            </div>
+                                            <div
+                                                style="background:#fff; border:1px solid rgba(0,0,0,0.1); padding:0.75rem; border-radius:6px; text-align:center;">
+                                                <strong style="color:#388e3c; font-size:0.85rem;">Sinke
+                                                    Bank</strong><br>
+                                                <span style="font-size:0.8rem; color:#666;">9000xxxxxx789</span>
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    <!-- Waiver View -->
+                                    <div id="fee-waiver-view" class="hidden"
+                                        style="padding-top:1rem; border-top:1px dashed rgba(212, 168, 67, 0.3);">
+                                        <p style="font-size:0.85rem; color:var(--text-muted); margin-bottom:0.75rem;">
+                                            You are applying for a fee waiver due to low income. A certified poverty
+                                            document is required.</p>
+                                    </div>
+
+                                    <!-- Shared Upload Input -->
+                                    <div style="margin-top:1rem;">
+                                        <label id="fee-upload-label"
                                             style="font-size:0.85rem; display:block; margin-bottom:0.5rem; font-weight:600;">Upload
-                                            Low Income Free Certificate (Required for waiver)</label>
+                                            Payment Receipt (Required)</label>
                                         <input type="file" id="comp-low-income-cert" accept=".pdf,.jpeg,.jpg,.png"
                                             style="width:100%; padding:0.5rem; background:var(--input-bg, #fff); border:1px solid rgba(0,0,0,0.1); border-radius:6px; font-size:0.85rem;">
                                     </div>
                                 </div>
+                                <script>
+                                    function toggleFeeView(mode) {
+                                        const paymentView = document.getElementById('fee-payment-view');
+                                        const waiverView = document.getElementById('fee-waiver-view');
+                                        const label = document.getElementById('fee-upload-label');
+                                        if (mode === 'pay') {
+                                            paymentView.classList.remove('hidden');
+                                            waiverView.classList.add('hidden');
+                                            label.textContent = 'Upload Payment Receipt (Required)';
+                                        } else {
+                                            paymentView.classList.add('hidden');
+                                            waiverView.classList.remove('hidden');
+                                            label.textContent = 'Upload Low Income Free Certificate (Required for waiver)';
+                                        }
+                                    }
+                                </script>
                                 <h4>Step 4: Evidence & Document Upload</h4>
                                 <div class="form-group">
                                     <label>Add Evidence (Optional)</label>

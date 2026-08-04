@@ -520,10 +520,16 @@ router.delete('/:id', requireRole(['ADMIN']), async (req, res) => {
             return res.status(404).json({ error: 'Complaint not found.' });
         }
 
-        await db.run('DELETE FROM complaints WHERE id = ?', [complaintId]);
-        await db.deleteComplaintFromBlob(complaintId).catch(err => console.error('[Blob] Failed to delete complaint from blob:', err.message));
+        // Soft Delete in SQLite memory
+        await db.run('UPDATE complaints SET status = \'Deleted\', updated_at = CURRENT_TIMESTAMP WHERE id = ?', [complaintId]);
 
-        res.json({ message: 'Complaint deleted successfully' });
+        // Sync the soft-deleted state to Vercel Blob explicitly
+        const updatedComplaint = await db.get('SELECT * FROM complaints WHERE id = ?', [complaintId]);
+        if (updatedComplaint) {
+            await db.syncComplaintToBlob(updatedComplaint).catch(err => console.error('[Blob] Failed to sync soft-deleted complaint to blob:', err.message));
+        }
+
+        res.json({ success: true, message: 'Complaint legally soft-deleted' });
     } catch (err) {
         console.error('Delete complaint error:', err);
         res.status(500).json({ error: 'Internal Server Error during deletion.' });
