@@ -426,7 +426,7 @@ async function initDatabase() {
       hearing_date TEXT,
       description TEXT NOT NULL,
       priority TEXT CHECK(priority IN ('Low', 'Medium', 'High', 'Urgent')) NOT NULL,
-      status TEXT CHECK(status IN ('Pending', 'In Progress', 'Resolved', 'Rejected', 'Filed', 'Under Review', 'Scheduled', 'Judgment Awaited', 'Closed', 'Appeal Filed')) DEFAULT 'Filed',
+      status TEXT CHECK(status IN ('Pending', 'In Progress', 'Resolved', 'Rejected', 'Filed', 'Under Review', 'Scheduled', 'Judgment Awaited', 'Closed', 'Appeal Filed', 'Deleted')) DEFAULT 'Filed',
       assignment_status TEXT CHECK(assignment_status IN ('Unassigned', 'Assigned to Judge', 'Assigned to Court')) DEFAULT 'Unassigned',
       assigned_judge TEXT,
       attachment_path TEXT,
@@ -613,7 +613,12 @@ async function initDatabase() {
     pauseBackup = false;
   }
 
-  await forceBackup();
+  // Only force backup during a fresh DB creation, not on cold starts where
+  // the blob might already have more recent data than our fresh in-memory DB
+  const hasComplaints = await get('SELECT COUNT(*) as val FROM complaints');
+  if (hasComplaints && hasComplaints.val > 0) {
+    await forceBackup();
+  }
   console.log('Database initialized successfully.');
 }
 
