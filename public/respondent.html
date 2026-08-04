@@ -1304,8 +1304,18 @@
             if (name === 'notifications') renderNotifications();
         }
 
+        // Global polling for real-time updates without refreshing
+        setInterval(() => {
+            if (document.getElementById('page-cases').classList.contains('active') || document.getElementById('page-overview').classList.contains('active')) {
+                loadCases(true);
+            }
+            if (document.getElementById('page-notifications').classList.contains('active')) {
+                renderNotifications(true);
+            }
+        }, 10000);
+
         // ── Load all cases ──
-        async function loadCases() {
+        async function loadCases(silent = false) {
             try {
                 const data = await apiRequest('/api/respondent/cases');
                 allCases = data.cases || [];
@@ -1314,7 +1324,9 @@
                 renderCaseList('all-cases-list', allCases);
                 renderStats(allCases);
             } catch (err) {
-                document.getElementById('recent-cases-list').innerHTML = '<div class="empty-state"><div class="big-icon">⚠️</div>Failed to load cases.</div>';
+                if (!silent) {
+                    document.getElementById('recent-cases-list').innerHTML = '<div class="empty-state"><div class="big-icon">⚠️</div>Failed to load cases.</div>';
+                }
             }
         }
 
@@ -1596,9 +1608,11 @@
         }
 
         // ── Notifications page: fetch and display real SMS logs ──
-        async function renderNotifications() {
+        async function renderNotifications(silent = false) {
             const container = document.getElementById('notifications-list');
-            container.innerHTML = '<div class="skeleton" style="height:60px"></div><div class="skeleton" style="height:60px;margin-top:.75rem"></div>';
+            if (!silent) {
+                container.innerHTML = '<div class="skeleton" style="height:60px"></div><div class="skeleton" style="height:60px;margin-top:.75rem"></div>';
+            }
 
             try {
                 const data = await apiRequest('/api/respondent/notifications');
