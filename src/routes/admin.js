@@ -7,13 +7,12 @@ const requireRole = require('../middleware/roleCheck');
 // Get global analytics summary (Admin, Clerk, Judge can view)
 router.get('/stats', requireRole(['ADMIN', 'CLERK', 'JUDGE']), async (req, res) => {
     try {
-        const totalCount = await db.get('SELECT COUNT(*) as val FROM complaints');
+        const totalCount = await db.get('SELECT COUNT(*) as val FROM complaints WHERE status != \'Deleted\'');
         const pendingCount = await db.get("SELECT COUNT(*) as val FROM complaints WHERE status IN ('Pending', 'Filed')");
         const progressCount = await db.get("SELECT COUNT(*) as val FROM complaints WHERE status IN ('In Progress', 'Under Review', 'Scheduled')");
         const resolvedCount = await db.get("SELECT COUNT(*) as val FROM complaints WHERE status = 'Resolved'");
 
-        // Permanent ever-filed count — reads from blob-backed storage (or fallback ledger table)
-        const totalFiledVal = await db.getFiledCount();
+        // Use the active total count directly. We ignore the ever-filed count so that Admin deletion correctly drops the metric.
 
         const categoryBreakdown = await db.all(
             'SELECT category, COUNT(*) as count FROM complaints GROUP BY category'
@@ -35,7 +34,7 @@ router.get('/stats', requireRole(['ADMIN', 'CLERK', 'JUDGE']), async (req, res) 
         res.json({
             summary: {
                 total: totalCount.val || 0,
-                totalFiled: totalFiledVal || 0,
+                totalFiled: totalCount.val || 0,
                 pending: pendingCount.val || 0,
                 inProgress: progressCount.val || 0,
                 resolved: resolvedCount.val || 0

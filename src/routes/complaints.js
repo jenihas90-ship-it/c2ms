@@ -129,7 +129,7 @@ router.get('/', requireLogin, async (req, res) => {
         u.username as complainant_name 
     FROM complaints c
     JOIN users u ON c.user_id = u.id
-    WHERE 1=1
+    WHERE c.status != 'Deleted'
   `;
     const params = [];
 
