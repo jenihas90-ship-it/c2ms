@@ -46,8 +46,10 @@ async function getDb() {
         const latestBlob = sortedBlobs[0];
         console.log(`[Persistence] Restoring database from Vercel Blob (found ${blobs.length} blob(s), selecting latest uploaded at ${latestBlob.uploadedAt || latestBlob.createdAt})`);
 
-        // Use downloadUrl which bypasses edge CDN cache, or fallback to url with cache-bust
-        const targetUrl = latestBlob.downloadUrl || `${latestBlob.url}?t=${Date.now()}`;
+        // NEVER use latestBlob.downloadUrl because list() is eventually consistent globally.
+        // It returns stale metadata, meaning downloadUrl points to the old snapshot!
+        // The .url property is deterministic, so adding a cache-buster forces a fresh origin fetch!
+        const targetUrl = `${latestBlob.url}?t=${Date.now()}`;
 
         const response = await fetch(targetUrl, {
           cache: 'no-store',
@@ -272,7 +274,7 @@ async function _readStatsBlob() {
   try {
     const { blobs } = await list({ prefix: STATS_BLOB_KEY });
     if (!blobs || blobs.length === 0) return null;
-    const targetUrl = blobs[0].downloadUrl || `${blobs[0].url}?t=${Date.now()}`;
+    const targetUrl = `${blobs[0].url}?t=${Date.now()}`;
     const res = await fetch(targetUrl, {
       cache: 'no-store',
       headers: { 'Pragma': 'no-cache', 'Cache-Control': 'no-cache' }
@@ -340,7 +342,7 @@ async function _readComplaintsBlob() {
     const { blobs } = await list({ prefix: COMPLAINTS_BLOB_KEY });
     if (!blobs || blobs.length === 0) return [];
     const sorted = blobs.sort((a, b) => new Date(b.uploadedAt || 0) - new Date(a.uploadedAt || 0));
-    const targetUrl = sorted[0].downloadUrl || `${sorted[0].url}?t=${Date.now()}`;
+    const targetUrl = `${sorted[0].url}?t=${Date.now()}`;
     const res = await fetch(targetUrl, {
       cache: 'no-store',
       headers: { 'Pragma': 'no-cache', 'Cache-Control': 'no-cache' }
