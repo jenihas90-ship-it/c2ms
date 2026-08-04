@@ -61,7 +61,7 @@ router.get('/case/:id', requireRespondent, async (req, res) => {
         const complaint = await db.get(
             `SELECT c.*, u.username as complainant_username, u.email as complainant_email
              FROM complaints c
-             JOIN users u ON c.user_id = u.id
+             LEFT JOIN users u ON c.user_id = u.id
              WHERE c.id = ?`,
             [complaintId]
         );
@@ -103,7 +103,7 @@ router.get('/case/:id', requireRespondent, async (req, res) => {
         const remarks = await db.all(
             `SELECT r.*, u.username, u.role
              FROM remarks r
-             JOIN users u ON r.user_id = u.id
+             LEFT JOIN users u ON r.user_id = u.id
              WHERE r.complaint_id = ?
              ORDER BY r.created_at ASC`,
             [complaintId]
@@ -173,7 +173,7 @@ router.post('/case/:id/respond', requireRespondent, async (req, res) => {
         );
 
         const newRemark = await db.get(
-            `SELECT r.*, u.username, u.role FROM remarks r JOIN users u ON r.user_id = u.id WHERE r.id = ?`,
+            `SELECT r.*, COALESCE(u.username, 'Anonymous') as username, u.role FROM remarks r LEFT JOIN users u ON r.user_id = u.id WHERE r.id = ?`,
             [result.id]
         );
 

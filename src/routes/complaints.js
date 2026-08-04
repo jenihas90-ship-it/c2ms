@@ -126,9 +126,9 @@ router.get('/', requireLogin, async (req, res) => {
         c.complainant_phone, c.complainant_country, c.complainant_region, c.complainant_woreda, c.complainant_kebele, c.complainant_language,
         c.respondent_phone, c.respondent_email, c.respondent_country, c.respondent_region, c.respondent_woreda, c.respondent_kebele, c.respondent_language,
         c.clerk_language, c.judge_language, c.court_fee_required, c.court_fee_amount, c.court_fee_paid, c.court_fee_receipt, c.is_served, c.created_at, c.updated_at,
-        u.username as complainant_name 
+        COALESCE(u.username, 'Anonymous') as complainant_name 
     FROM complaints c
-    JOIN users u ON c.user_id = u.id
+    LEFT JOIN users u ON c.user_id = u.id
     WHERE c.status != 'Deleted'
   `;
     const params = [];
@@ -189,9 +189,9 @@ router.get('/:id', requireLogin, async (req, res) => {
     try {
         // Fetch complaint
         const complaint = await db.get(
-            `SELECT c.*, u.username as complainant_name, u.email as complainant_email 
+            `SELECT c.*, COALESCE(u.username, 'Anonymous') as complainant_name, u.email as complainant_email 
        FROM complaints c
-       JOIN users u ON c.user_id = u.id
+       LEFT JOIN users u ON c.user_id = u.id
        WHERE c.id = ?`,
             [complaintId]
         );
@@ -208,9 +208,9 @@ router.get('/:id', requireLogin, async (req, res) => {
 
         // Fetch remarks timeline
         const remarks = await db.all(
-            `SELECT r.*, u.username, u.role
+            `SELECT r.*, COALESCE(u.username, 'Anonymous') as username, u.role
        FROM remarks r
-       JOIN users u ON r.user_id = u.id
+       LEFT JOIN users u ON r.user_id = u.id
        WHERE r.complaint_id = ?
        ORDER BY r.created_at ASC`,
             [complaintId]
@@ -309,9 +309,9 @@ router.post('/:id/remarks', requireLogin, async (req, res) => {
 
         // Fetch newly created remark with user details for immediate response
         const newRemark = await db.get(
-            `SELECT r.*, u.username, u.role
+            `SELECT r.*, COALESCE(u.username, 'Anonymous') as username, u.role
        FROM remarks r
-       JOIN users u ON r.user_id = u.id
+       LEFT JOIN users u ON r.user_id = u.id
        WHERE r.id = ?`,
             [result.id]
         );
@@ -358,7 +358,7 @@ router.patch('/:id/status', requireRole(['ADMIN', 'CLERK']), async (req, res) =>
                 const respondentReply = await db.get(`
                     SELECT r.id 
                     FROM remarks r
-                    JOIN users u ON r.user_id = u.id
+                    LEFT JOIN users u ON r.user_id = u.id
                     WHERE r.complaint_id = ? AND u.role = 'RESPONDENT'
                     LIMIT 1
                 `, [complaintId]);

@@ -25,7 +25,7 @@ router.get('/stats', requireRole(['ADMIN', 'CLERK', 'JUDGE']), async (req, res) 
         const recentComplaints = await db.all(
             `SELECT c.id, c.title, c.status, c.priority, c.created_at, u.username as complainant_name
        FROM complaints c
-       JOIN users u ON c.user_id = u.id
+       LEFT JOIN users u ON c.user_id = u.id
        ORDER BY c.created_at DESC
        LIMIT 5`
         );
@@ -56,7 +56,7 @@ router.get('/export', requireRole(['ADMIN']), async (req, res) => {
         const { start, end, status, category } = req.query;
         let query = `SELECT c.id, u.username as complainant, u.email as complainant_email, c.title, c.category, c.priority, c.status, c.attachment_path, c.created_at, c.updated_at
              FROM complaints c
-             JOIN users u ON c.user_id = u.id
+             LEFT JOIN users u ON c.user_id = u.id
              WHERE 1=1 `;
         const params = [];
 
@@ -91,7 +91,7 @@ router.get('/export', requireRole(['ADMIN']), async (req, res) => {
                 const remarksRows = await db.all(
                     `SELECT r.remark, r.created_at, u.username
                      FROM remarks r
-                     JOIN users u ON r.user_id = u.id
+                     LEFT JOIN users u ON r.user_id = u.id
                      WHERE r.complaint_id = ?
                      ORDER BY r.created_at ASC`,
                     [r.id]

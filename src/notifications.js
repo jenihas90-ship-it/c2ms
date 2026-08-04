@@ -36,7 +36,7 @@ async function sendMail({ to, subject, text, html }) {
 
 async function notifyNewComplaint(complaintId) {
   try {
-    const c = await db.get('SELECT c.*, u.username, u.email FROM complaints c JOIN users u ON c.user_id = u.id WHERE c.id = ?', [complaintId]);
+    const c = await db.get('SELECT c.*, COALESCE(u.username, \'Anonymous\') as username, u.email FROM complaints c LEFT JOIN users u ON c.user_id = u.id WHERE c.id = ?', [complaintId]);
     if (!c) return;
 
     // Notify admins (all admin users)
@@ -57,7 +57,7 @@ async function notifyNewComplaint(complaintId) {
 
 async function notifyStatusChange(complaintId, newStatus) {
   try {
-    const c = await db.get('SELECT c.*, u.username, u.email FROM complaints c JOIN users u ON c.user_id = u.id WHERE c.id = ?', [complaintId]);
+    const c = await db.get('SELECT c.*, COALESCE(u.username, \'Anonymous\') as username, u.email FROM complaints c LEFT JOIN users u ON c.user_id = u.id WHERE c.id = ?', [complaintId]);
     if (!c) return;
     const subject = `Complaint #${c.id} status updated: ${newStatus}`;
     const text = `The status of your complaint titled '${c.title}' has been updated to: ${newStatus}.`;
@@ -79,7 +79,7 @@ async function notifyStatusChange(complaintId, newStatus) {
 
 async function notifyRemarkAdded(complaintId, remark, authorId) {
   try {
-    const c = await db.get('SELECT c.*, u.username, u.email FROM complaints c JOIN users u ON c.user_id = u.id WHERE c.id = ?', [complaintId]);
+    const c = await db.get('SELECT c.*, COALESCE(u.username, \'Anonymous\') as username, u.email FROM complaints c LEFT JOIN users u ON c.user_id = u.id WHERE c.id = ?', [complaintId]);
     if (!c) return;
 
     const author = await db.get('SELECT id, username, email, role FROM users WHERE id = ?', [authorId]);

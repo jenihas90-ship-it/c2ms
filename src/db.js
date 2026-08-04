@@ -152,7 +152,7 @@ let lastRehydrateTime = 0;
 async function ensureComplaintsRehydrated(database) {
   if (!process.env.BLOB_READ_WRITE_TOKEN) return;
   const now = Date.now();
-  if (now - lastRehydrateTime < 2000) return;
+  if (now - lastRehydrateTime < 30000) return;
   lastRehydrateTime = now;
 
   try {
