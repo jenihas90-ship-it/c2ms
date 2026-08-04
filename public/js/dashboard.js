@@ -565,7 +565,18 @@ async function updateStatusAPI(newStatus) {
 // Admin: Delete complaint (with confirmation)
 async function deleteComplaintAPI() {
     if (!currentComplaintId) return;
-    if (!confirm('Are you sure you want to permanently delete this complaint? This cannot be undone.')) return;
+
+    const result = await Swal.fire({
+        title: 'Delete Complaint?',
+        text: "Are you sure you want to permanently delete this complaint? This cannot be undone.",
+        icon: 'error',
+        showCancelButton: true,
+        confirmButtonColor: '#ff4d4f',
+        cancelButtonColor: '#3a3a4a',
+        confirmButtonText: 'Yes, delete it'
+    });
+
+    if (!result.isConfirmed) return;
 
     try {
         await apiRequest(`/api/complaints/${currentComplaintId}`, { method: 'DELETE' });
@@ -585,30 +596,52 @@ async function openEditComplaint() {
         const data = await apiRequest(`/api/complaints/${currentComplaintId}`);
         const c = data.complaint;
 
-        const title = prompt('Edit Title:', c.title);
-        if (title === null) return; // cancelled
-
-        const category = prompt('Edit Category (Civil, Criminal, Family, Administrative, Other):', c.category);
-        if (category === null) return;
-
-        const priority = prompt('Edit Priority (Low, Medium, High):', c.priority);
-        if (priority === null) return;
-
-        const description = prompt('Edit Description:', c.description);
-        if (description === null) return;
-
-        let clerk_language = c.clerk_language || '';
-        let judge_language = c.judge_language || '';
+        let extraFields = '';
         if (currentUser.role === 'CLERK') {
-            clerk_language = prompt('Edit preferred Clerk language for this case (Oromic, English, Amharic):', clerk_language) || clerk_language;
+            extraFields = `<input id="swal-clerk-lang" class="swal2-input" placeholder="Clerk Language (Oromic, English, Amharic)" value="${c.clerk_language || ''}">`;
         } else if (currentUser.role === 'JUDGE') {
-            judge_language = prompt('Edit preferred Judge language for this case (Oromic, English, Amharic):', judge_language) || judge_language;
+            extraFields = `<input id="swal-judge-lang" class="swal2-input" placeholder="Judge Language (Oromic, English, Amharic)" value="${c.judge_language || ''}">`;
         }
+
+        const { value: formValues } = await Swal.fire({
+            title: 'Edit Complaint Details',
+            html:
+                `<input id="swal-title" class="swal2-input" placeholder="Title" value="${escapeHTML(c.title || '')}">` +
+                `<select id="swal-category" class="swal2-input">
+                    <option value="Civil" ${c.category === 'Civil' ? 'selected' : ''}>Civil</option>
+                    <option value="Criminal" ${c.category === 'Criminal' ? 'selected' : ''}>Criminal</option>
+                    <option value="Family" ${c.category === 'Family' ? 'selected' : ''}>Family</option>
+                    <option value="Administrative" ${c.category === 'Administrative' ? 'selected' : ''}>Administrative</option>
+                    <option value="Other" ${c.category === 'Other' ? 'selected' : ''}>Other</option>
+                </select>` +
+                `<select id="swal-priority" class="swal2-input">
+                    <option value="Low" ${c.priority === 'Low' ? 'selected' : ''}>Low Priority</option>
+                    <option value="Medium" ${c.priority === 'Medium' ? 'selected' : ''}>Medium Priority</option>
+                    <option value="High" ${c.priority === 'High' ? 'selected' : ''}>High Priority</option>
+                </select>` +
+                `<textarea id="swal-desc" class="swal2-textarea" placeholder="Description">${escapeHTML(c.description || '')}</textarea>` +
+                extraFields,
+            focusConfirm: false,
+            showCancelButton: true,
+            confirmButtonText: 'Save Changes',
+            preConfirm: () => {
+                return {
+                    title: document.getElementById('swal-title').value,
+                    category: document.getElementById('swal-category').value,
+                    priority: document.getElementById('swal-priority').value,
+                    description: document.getElementById('swal-desc').value,
+                    clerk_language: document.getElementById('swal-clerk-lang') ? document.getElementById('swal-clerk-lang').value : (c.clerk_language || ''),
+                    judge_language: document.getElementById('swal-judge-lang') ? document.getElementById('swal-judge-lang').value : (c.judge_language || '')
+                }
+            }
+        });
+
+        if (!formValues || !formValues.title) return;
 
         // Send update to server
         await apiRequest(`/api/complaints/${currentComplaintId}`, {
             method: 'PATCH',
-            body: JSON.stringify({ title, category, priority, description, clerk_language, judge_language })
+            body: JSON.stringify(formValues)
         });
 
         showToast('Complaint updated successfully.');
@@ -939,16 +972,35 @@ async function citizenEdit() {
             return;
         }
 
-        const title = prompt('Edit Title:', c.title);
-        if (title === null) return;
-        const category = prompt('Edit Category (Civil, Criminal, Family, Administrative, Other):', c.category);
-        if (category === null) return;
-        const description = prompt('Edit Description:', c.description);
-        if (description === null) return;
+        const { value: formValues } = await Swal.fire({
+            title: 'Edit Complaint',
+            html:
+                `<input id="swal-title" class="swal2-input" placeholder="Title" value="${escapeHTML(c.title || '')}">` +
+                `<select id="swal-category" class="swal2-input">
+                    <option value="Civil" ${c.category === 'Civil' ? 'selected' : ''}>Civil</option>
+                    <option value="Criminal" ${c.category === 'Criminal' ? 'selected' : ''}>Criminal</option>
+                    <option value="Family" ${c.category === 'Family' ? 'selected' : ''}>Family</option>
+                    <option value="Administrative" ${c.category === 'Administrative' ? 'selected' : ''}>Administrative</option>
+                    <option value="Other" ${c.category === 'Other' ? 'selected' : ''}>Other</option>
+                </select>` +
+                `<textarea id="swal-desc" class="swal2-textarea" placeholder="Description">${escapeHTML(c.description || '')}</textarea>`,
+            focusConfirm: false,
+            showCancelButton: true,
+            confirmButtonText: 'Save Changes',
+            preConfirm: () => {
+                return {
+                    title: document.getElementById('swal-title').value,
+                    category: document.getElementById('swal-category').value,
+                    description: document.getElementById('swal-desc').value
+                }
+            }
+        });
+
+        if (!formValues || !formValues.title) return;
 
         await apiRequest(`/api/complaints/${currentComplaintId}`, {
             method: 'PATCH',
-            body: JSON.stringify({ title, category, description })
+            body: JSON.stringify(formValues)
         });
         showToast('Complaint updated successfully');
         await openDetailsInspector(currentComplaintId);
@@ -965,26 +1017,36 @@ async function citizenEdit() {
 async function openScheduleHearing() {
     if (!currentComplaintId) return;
 
-    const hearing_type = prompt('Enter Hearing Type (Preliminary, Substantive, Interim, Final, Judgment):', 'Preliminary');
-    if (!hearing_type) return;
+    const { value: formValues } = await Swal.fire({
+        title: 'Schedule Hearing',
+        html:
+            '<input id="swal-type" class="swal2-input" placeholder="Hearing Type (Preliminary, etc.)" value="Preliminary">' +
+            '<input id="swal-date" type="date" class="swal2-input" value="' + new Date().toISOString().split('T')[0] + '">' +
+            '<input id="swal-time" type="time" class="swal2-input" value="10:00">' +
+            '<input id="swal-judge" class="swal2-input" placeholder="Judge Name">' +
+            '<input id="swal-court" class="swal2-input" placeholder="Courtroom">',
+        focusConfirm: false,
+        showCancelButton: true,
+        confirmButtonText: 'Schedule',
+        preConfirm: () => {
+            return {
+                hearing_type: document.getElementById('swal-type').value,
+                session_date: document.getElementById('swal-date').value,
+                session_time: document.getElementById('swal-time').value,
+                judge_name: document.getElementById('swal-judge').value,
+                courtroom: document.getElementById('swal-court').value
+            }
+        }
+    });
 
-    const session_date = prompt('Enter Hearing Date (YYYY-MM-DD):', new Date().toISOString().split('T')[0]);
-    if (!session_date) return;
-
-    const session_time = prompt('Enter Hearing Time (e.g. 10:00 AM):');
-    const judge_name = prompt('Assign Judge Name:');
-    const courtroom = prompt('Enter Courtroom:');
+    if (!formValues || !formValues.hearing_type) return;
 
     try {
         await apiRequest('/api/clerk/schedule', {
             method: 'POST',
             body: JSON.stringify({
                 complaint_id: currentComplaintId,
-                hearing_type,
-                session_date,
-                session_time,
-                judge_name,
-                courtroom
+                ...formValues
             })
         });
         showToast('Hearing scheduled successfully.');
@@ -997,7 +1059,18 @@ async function openScheduleHearing() {
 
 async function serveComplaint() {
     if (!currentComplaintId) return;
-    if (!confirm("Officially serve this complaint to the respondent? They will be notified immediately and it will appear on their dashboard.")) return;
+
+    const result = await Swal.fire({
+        title: 'Serve Complaint?',
+        text: "Are you sure you want to officially serve this complaint to the respondent? They will be notified immediately via SMS/Email.",
+        icon: 'warning',
+        showCancelButton: true,
+        confirmButtonColor: '#3fb950',
+        cancelButtonColor: '#d33',
+        confirmButtonText: 'Yes, serve notice'
+    });
+
+    if (!result.isConfirmed) return;
 
     try {
         await apiRequest('/api/clerk/serve', {
@@ -1038,14 +1111,40 @@ let _pendingJudgmentData = null;
 async function openIssueJudgment() {
     if (!currentComplaintId) return;
 
-    const order_type = prompt('Enter Order Type (Interim, Final Judgment, Dismissal, Settlement, Appeal):', 'Final Judgment');
-    if (!order_type) return;
+    const { value: formValues } = await Swal.fire({
+        title: 'Issue Judgment / Order',
+        html:
+            '<select id="swal-order-type" class="swal2-input">' +
+            '<option value="Final Judgment">Final Judgment</option>' +
+            '<option value="Interim Order">Interim Order</option>' +
+            '<option value="Dismissal">Dismissal</option>' +
+            '<option value="Settlement">Settlement</option>' +
+            '<option value="Appeal">Appeal</option>' +
+            '</select>' +
+            '<textarea id="swal-order-details" class="swal2-textarea" placeholder="Enter Order/Judgment Details here..." style="width: 80%; height: 120px;"></textarea>' +
+            '<div style="text-align: left; padding: 10px 20px;">' +
+            '<label><input type="checkbox" id="swal-status-update" checked> Mark this case as Resolved / Closed after issuing judgment</label>' +
+            '</div>',
+        focusConfirm: false,
+        showCancelButton: true,
+        confirmButtonText: 'Preview & Send',
+        preConfirm: () => {
+            const details = document.getElementById('swal-order-details').value;
+            if (!details) {
+                Swal.showValidationMessage('Order details cannot be empty');
+            }
+            return {
+                order_type: document.getElementById('swal-order-type').value,
+                order_details: details,
+                statusUpdate: document.getElementById('swal-status-update').checked
+            }
+        }
+    });
 
-    const order_details = prompt('Enter Order/Judgment Details:');
-    if (!order_details) return;
+    if (!formValues || !formValues.order_details) return;
 
-    const statusUpdate = confirm('Mark this case as Resolved / Closed after issuing judgment?');
-    const status = statusUpdate ? 'Resolved' : null;
+    const status = formValues.statusUpdate ? 'Resolved' : null;
+    const { order_type, order_details } = formValues;
 
     // Store pending judgment data
     _pendingJudgmentData = { complaint_id: currentComplaintId, order_type, order_details, status };
@@ -1151,10 +1250,26 @@ async function confirmJudgmentWithSms() {
 async function openConfidentialNotes() {
     if (!currentComplaintId) return;
 
-    const isNew = confirm('Press OK to write a new confidential note. Press Cancel to view existing notes only.');
-    if (isNew) {
-        const note_text = prompt('Enter your private note:');
+    const result = await Swal.fire({
+        title: 'Confidential Notes',
+        text: 'What would you like to do?',
+        icon: 'question',
+        showDenyButton: true,
+        showCancelButton: true,
+        confirmButtonText: 'Write New Note',
+        denyButtonText: 'View Past Notes'
+    });
+
+    if (result.isConfirmed) {
+        const { value: note_text } = await Swal.fire({
+            title: 'New Confidential Note',
+            input: 'textarea',
+            inputPlaceholder: 'Enter your private note here...',
+            showCancelButton: true
+        });
+
         if (!note_text) return;
+
         try {
             await apiRequest('/api/judge/notes', {
                 method: 'POST',
@@ -1165,19 +1280,23 @@ async function openConfidentialNotes() {
             showToast(err.message || 'Failed to add note.', true);
             return;
         }
-    }
-
-    // Attempt to view past notes
-    try {
-        const notes = await apiRequest(`/api/judge/notes/${currentComplaintId}`);
-        if (notes.length === 0) {
-            alert('No confidential case notes found.');
-        } else {
-            const formatted = notes.map(n => `[${formatDate(n.created_at)}] ${n.note_text}`).join('\\n\\n');
-            alert(`Confidential Notes:\\n\\n${formatted}`);
+    } else if (result.isDenied) {
+        // Attempt to view past notes
+        try {
+            const notes = await apiRequest(`/api/judge/notes/${currentComplaintId}`);
+            if (notes.length === 0) {
+                Swal.fire('No Notes', 'No confidential case notes found.', 'info');
+            } else {
+                const formatted = notes.map(n => `<b>${formatDate(n.created_at)}</b><br/>${escapeHTML(n.note_text)}`).join('<hr/>');
+                Swal.fire({
+                    title: 'Confidential Notes',
+                    html: `<div style="text-align:left;max-height:400px;overflow-y:auto;font-size:0.9rem;">${formatted}</div>`,
+                    width: '600px'
+                });
+            }
+        } catch (err) {
+            showToast('Only Judges have access to confidential notes.', true);
         }
-    } catch (err) {
-        showToast('Only Judges have access to confidential notes.', true);
     }
 }
 
