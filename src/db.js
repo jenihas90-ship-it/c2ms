@@ -131,6 +131,21 @@ async function run(sql, params = []) {
   }
 }
 
+// Known valid columns in the complaints table — used to filter blob JSON before re-inserting
+const COMPLAINT_COLUMNS = new Set([
+  'id', 'user_id', 'title', 'category', 'court_name', 'court_address', 'court_jurisdiction',
+  'case_number', 'plaintiff_name', 'defendant_name', 'parties', 'hearing_date',
+  'description', 'priority', 'status', 'assignment_status', 'assigned_judge',
+  'attachment_path', 'legal_representation',
+  'complainant_phone', 'complainant_country', 'complainant_region', 'complainant_woreda',
+  'complainant_kebele', 'complainant_language',
+  'respondent_phone', 'respondent_email', 'respondent_country', 'respondent_region',
+  'respondent_woreda', 'respondent_kebele', 'respondent_language',
+  'clerk_language', 'judge_language',
+  'court_fee_required', 'court_fee_amount', 'court_fee_paid', 'court_fee_receipt',
+  'is_served', 'created_at', 'updated_at'
+]);
+
 let lastRehydrateTime = 0;
 async function ensureComplaintsRehydrated(database) {
   if (!process.env.BLOB_READ_WRITE_TOKEN) return;
@@ -144,31 +159,33 @@ async function ensureComplaintsRehydrated(database) {
 
     for (const c of blobComplaints) {
       if (!c || !c.id) continue;
-      const res = database.exec(`SELECT id FROM complaints WHERE id = ${c.id}`);
+      const res = database.exec(`SELECT id FROM complaints WHERE id = ${Number(c.id)}`);
       const exists = res.length > 0 && res[0].values.length > 0;
 
       if (!exists) {
-        // Filter out keys that might be problematic or not standard columns if necessary
-        // But since we selected * from complaints before syncing, c should map perfectly to valid columns
-        const validKeys = Object.keys(c);
+        // Only insert columns that actually exist in the complaints table
+        const validKeys = Object.keys(c).filter(k => COMPLAINT_COLUMNS.has(k));
         if (validKeys.length > 0) {
           const placeholders = validKeys.map(() => '?').join(', ');
           const values = validKeys.map(k => c[k]);
 
           try {
-            database.run(`INSERT INTO complaints (${validKeys.join(', ')}) VALUES (${placeholders})`, values);
+            database.run(
+              `INSERT INTO complaints (${validKeys.join(', ')}) VALUES (${placeholders})`,
+              values
+            );
             console.log(`[Rehydrate] Inserted missing complaint #${c.id} into SQLite memory`);
           } catch (insertErr) {
-            console.warn(`[Rehydrate] Failed to insert missing complaint #${c.id}: ${insertErr.message}`);
-            // Fallback attempt with minimal required fields just in case of schema drift
+            console.warn(`[Rehydrate] Failed to insert complaint #${c.id}: ${insertErr.message}`);
+            // Last-resort fallback with absolute minimum fields
             try {
               database.run(
                 `INSERT INTO complaints (id, user_id, title, category, description, priority, status) VALUES (?, ?, ?, ?, ?, ?, ?)`,
                 [c.id, c.user_id || 1, c.title || 'Unknown', c.category || 'Other', c.description || '', c.priority || 'Medium', c.status || 'Filed']
               );
-              console.log(`[Rehydrate] Inserted missing complaint #${c.id} with minimal fallback`);
+              console.log(`[Rehydrate] Inserted complaint #${c.id} with minimal fallback`);
             } catch (fallbackErr) {
-              console.warn(`[Rehydrate] Fallback also failed: ${fallbackErr.message}`);
+              console.warn(`[Rehydrate] Fallback also failed for #${c.id}: ${fallbackErr.message}`);
             }
           }
         }
@@ -178,6 +195,7 @@ async function ensureComplaintsRehydrated(database) {
     console.warn('[Rehydrate] Overall Warning:', e.message);
   }
 }
+
 
 // Get single row
 async function get(sql, params = []) {
