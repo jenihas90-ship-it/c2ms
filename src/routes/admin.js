@@ -12,7 +12,11 @@ router.get('/stats', requireRole(['ADMIN', 'CLERK', 'JUDGE']), async (req, res) 
         const progressCount = await db.get("SELECT COUNT(*) as val FROM complaints WHERE status IN ('In Progress', 'Under Review', 'Scheduled')");
         const resolvedCount = await db.get("SELECT COUNT(*) as val FROM complaints WHERE status = 'Resolved'");
 
-        // Use the active total count directly. We ignore the ever-filed count so that Admin deletion correctly drops the metric.
+        // Use the permanent blob-backed filed count so the metric survives Vercel cold starts.
+        // The blob counter (cms_stats.json) is incremented every time a complaint is filed
+        // and is never decremented — it shows the total ever filed, even after deletions.
+        // Falls back to the SQLite ledger (filed_complaints_log) on first deploy or locally.
+        const permanentFiledCount = await db.getFiledCount();
 
         const categoryBreakdown = await db.all(
             'SELECT category, COUNT(*) as count FROM complaints GROUP BY category'
@@ -34,7 +38,8 @@ router.get('/stats', requireRole(['ADMIN', 'CLERK', 'JUDGE']), async (req, res) 
         res.json({
             summary: {
                 total: totalCount.val || 0,
-                totalFiled: totalCount.val || 0,
+                // totalFiled: permanent ever-filed count from blob — survives cold starts
+                totalFiled: permanentFiledCount || totalCount.val || 0,
                 pending: pendingCount.val || 0,
                 inProgress: progressCount.val || 0,
                 resolved: resolvedCount.val || 0
