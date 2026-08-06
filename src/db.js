@@ -35,20 +35,23 @@ async function getDb() {
 
   if (!tmpFileExists && (process.env.VERCEL || process.env.NOW_REGION) && process.env.BLOB_READ_WRITE_TOKEN) {
     try {
-      const { blobs } = await list({ prefix: 'cms_vercel.sqlite' });
-      if (blobs && blobs.length > 0) {
-        // Sort descending by uploadedAt / createdAt so we ALWAYS restore the newest DB snapshot
-        const sortedBlobs = blobs.sort((a, b) => {
-          const tA = new Date(a.uploadedAt || a.createdAt || 0).getTime();
-          const tB = new Date(b.uploadedAt || b.createdAt || 0).getTime();
-          return tB - tA;
-        });
-        const latestBlob = sortedBlobs[0];
-        console.log(`[Persistence] Restoring database from Vercel Blob (found ${blobs.length} blob(s), selecting latest uploaded at ${latestBlob.uploadedAt || latestBlob.createdAt})`);
+      const { head } = require('@vercel/blob');
+      let latestBlob;
+      try {
+        latestBlob = await head('cms_vercel.sqlite');
+      } catch (e) {
+        if (e.message.includes('not found')) {
+          console.log('[Persistence] No existing database found in Vercel Blob. Starting fresh.');
+          latestBlob = null;
+        } else {
+          throw e;
+        }
+      }
 
-        // NEVER use latestBlob.downloadUrl because list() is eventually consistent globally.
-        // It returns stale metadata, meaning downloadUrl points to the old snapshot!
-        // The .url property is deterministic, so adding a cache-buster forces a fresh origin fetch!
+      if (latestBlob) {
+        console.log(`[Persistence] Restoring database from Vercel Blob (found latest uploaded at ${latestBlob.uploadedAt})`);
+
+        // Use head() url with cache-buster. head() bypasses list() 5-minute CDN cache.
         const targetUrl = `${latestBlob.url}?t=${Date.now()}`;
 
         const response = await fetch(targetUrl, {
@@ -63,8 +66,6 @@ async function getDb() {
         const arrayBuffer = await response.arrayBuffer();
         fs.writeFileSync(DB_FILE, Buffer.from(arrayBuffer));
         console.log('[Persistence] Successfully restored database from Vercel Blob');
-      } else {
-        console.log('[Persistence] No existing database found in Vercel Blob. Starting fresh.');
       }
     } catch (err) {
       console.error('[Persistence] CRITICAL ERROR restoring from Vercel Blob:', err.message);
@@ -272,9 +273,15 @@ const STATS_BLOB_KEY = 'cms_stats.json';
 async function _readStatsBlob() {
   if (!process.env.BLOB_READ_WRITE_TOKEN) return null;
   try {
-    const { blobs } = await list({ prefix: STATS_BLOB_KEY });
-    if (!blobs || blobs.length === 0) return null;
-    const targetUrl = `${blobs[0].url}?t=${Date.now()}`;
+    const { head } = require('@vercel/blob');
+    let blob;
+    try {
+      blob = await head(STATS_BLOB_KEY);
+    } catch (e) {
+      if (e.message.includes('not found')) return null;
+      throw e;
+    }
+    const targetUrl = `${blob.url}?t=${Date.now()}`;
     const res = await fetch(targetUrl, {
       cache: 'no-store',
       headers: { 'Pragma': 'no-cache', 'Cache-Control': 'no-cache' }
@@ -369,10 +376,15 @@ const COMPLAINTS_BLOB_KEY = 'cms_complaints.json';
 async function _readComplaintsBlob() {
   if (!process.env.BLOB_READ_WRITE_TOKEN) return [];
   try {
-    const { blobs } = await list({ prefix: COMPLAINTS_BLOB_KEY });
-    if (!blobs || blobs.length === 0) return [];
-    const sorted = blobs.sort((a, b) => new Date(b.uploadedAt || 0) - new Date(a.uploadedAt || 0));
-    const targetUrl = `${sorted[0].url}?t=${Date.now()}`;
+    const { head } = require('@vercel/blob');
+    let blob;
+    try {
+      blob = await head(COMPLAINTS_BLOB_KEY);
+    } catch (e) {
+      if (e.message.includes('not found')) return [];
+      throw e;
+    }
+    const targetUrl = `${blob.url}?t=${Date.now()}`;
     const res = await fetch(targetUrl, {
       cache: 'no-store',
       headers: { 'Pragma': 'no-cache', 'Cache-Control': 'no-cache' }
