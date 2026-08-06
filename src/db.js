@@ -153,52 +153,55 @@ let lastRehydrateTime = 0;
 async function ensureComplaintsRehydrated(database) {
   if (!process.env.BLOB_READ_WRITE_TOKEN) return;
   const now = Date.now();
-  if (now - lastRehydrateTime < 30000) return;
+  if (now - lastRehydrateTime < 1000) return; // reduced throttle to 1s to ensure instant cross-worker sync
   lastRehydrateTime = now;
 
   try {
     const blobComplaints = await _readComplaintsBlob();
-    if (!blobComplaints || blobComplaints.length === 0) return;
+    if (!blobComplaints || !Array.isArray(blobComplaints) || blobComplaints.length === 0) return;
 
     for (const c of blobComplaints) {
       if (!c || !c.id) continue;
-      const res = database.exec(`SELECT id FROM complaints WHERE id = ${Number(c.id)}`);
-      const exists = res.length > 0 && res[0].values.length > 0;
+      try {
+        const res = database.exec(`SELECT id FROM complaints WHERE id = ${Number(c.id)}`);
+        const exists = res.length > 0 && res[0].values.length > 0;
 
-      if (!exists) {
-        // Only insert columns that actually exist in the complaints table
-        const validKeys = Object.keys(c).filter(k => COMPLAINT_COLUMNS.has(k));
-        if (validKeys.length > 0) {
-          const placeholders = validKeys.map(() => '?').join(', ');
-          const values = validKeys.map(k => c[k]);
+        if (!exists) {
+          // Only insert columns that actually exist in the complaints table
+          const validKeys = Object.keys(c).filter(k => COMPLAINT_COLUMNS.has(k));
+          if (validKeys.length > 0) {
+            const placeholders = validKeys.map(() => '?').join(', ');
+            const values = validKeys.map(k => c[k]);
 
-          try {
-            database.run(
-              `INSERT INTO complaints (${validKeys.join(', ')}) VALUES (${placeholders})`,
-              values
-            );
-            console.log(`[Rehydrate] Inserted missing complaint #${c.id} into SQLite memory`);
-          } catch (insertErr) {
-            console.warn(`[Rehydrate] Failed to insert complaint #${c.id}: ${insertErr.message}`);
-            // Last-resort fallback with absolute minimum fields
             try {
               database.run(
-                `INSERT INTO complaints (id, user_id, title, category, description, priority, status) VALUES (?, ?, ?, ?, ?, ?, ?)`,
-                [c.id, c.user_id || 1, c.title || 'Unknown', c.category || 'Other', c.description || '', c.priority || 'Medium', c.status || 'Filed']
+                `INSERT INTO complaints (${validKeys.join(', ')}) VALUES (${placeholders})`,
+                values
               );
-              console.log(`[Rehydrate] Inserted complaint #${c.id} with minimal fallback`);
-            } catch (fallbackErr) {
-              console.warn(`[Rehydrate] Fallback also failed for #${c.id}: ${fallbackErr.message}`);
+              console.log(`[Rehydrate] Inserted missing complaint #${c.id} into SQLite memory`);
+            } catch (insertErr) {
+              console.warn(`[Rehydrate] Failed to insert complaint #${c.id}: ${insertErr.message}`);
+              // Last-resort fallback with absolute minimum fields
+              try {
+                database.run(
+                  `INSERT INTO complaints (id, user_id, title, category, description, priority, status) VALUES (?, ?, ?, ?, ?, ?, ?)`,
+                  [c.id, c.user_id || 1, c.title || 'Unknown', c.category || 'Other', c.description || '', c.priority || 'Medium', c.status || 'Filed']
+                );
+                console.log(`[Rehydrate] Inserted complaint #${c.id} with minimal fallback`);
+              } catch (fallbackErr) {
+                console.warn(`[Rehydrate] Fallback also failed for #${c.id}: ${fallbackErr.message}`);
+              }
             }
           }
         }
+      } catch (innerErr) {
+        console.warn(`[Rehydrate] Skipped corrupted item #${c.id}: ${innerErr.message}`);
       }
     }
   } catch (e) {
     console.warn('[Rehydrate] Overall Warning:', e.message);
   }
 }
-
 
 // Get single row
 async function get(sql, params = []) {
@@ -382,19 +385,19 @@ async function _readComplaintsBlob() {
       blob = await head(COMPLAINTS_BLOB_KEY);
     } catch (e) {
       if (e.message.includes('not found')) return [];
-      throw e;
+      throw e; // Important: do not swallow real errors
     }
     const targetUrl = `${blob.url}?t=${Date.now()}`;
     const res = await fetch(targetUrl, {
       cache: 'no-store',
       headers: { 'Pragma': 'no-cache', 'Cache-Control': 'no-cache' }
     });
-    if (!res.ok) return [];
+    if (!res.ok) throw new Error(`Fetch failed: ${res.status}`);
     const data = await res.json();
     return Array.isArray(data) ? data : [];
   } catch (e) {
     console.warn('[Blob] Could not read cms_complaints.json:', e.message);
-    return [];
+    throw new Error('read_failure'); // Propagate to prevent wiping json
   }
 }
 
@@ -421,6 +424,10 @@ async function syncComplaintToBlob(complaintObj) {
     }
     await _writeComplaintsBlob(list);
   } catch (e) {
+    if (e.message.includes('read_failure')) {
+      console.error('[Blob] Aborting sync to prevent data wipe due to read failure.');
+      return;
+    }
     console.warn('[Blob] Failed to sync complaint to blob:', e.message);
   }
 }
@@ -433,6 +440,10 @@ async function deleteComplaintFromBlob(complaintId) {
     await _writeComplaintsBlob(filtered);
     console.log('[Blob] Deleted complaint', complaintId, 'from cms_complaints.json');
   } catch (e) {
+    if (e.message.includes('read_failure')) {
+      console.error('[Blob] Aborting delete to prevent metadata wipe due to read failure.');
+      return;
+    }
     console.warn('[Blob] Failed to delete complaint from blob:', e.message);
   }
 }
