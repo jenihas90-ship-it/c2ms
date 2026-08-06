@@ -298,17 +298,36 @@ async function _writeStatsBlob(data) {
 }
 
 // Returns the permanent "ever filed" count.
-// On Vercel: reads from cms_stats.json blob (survives cold starts).
-// Fallback: counts from SQLite filed_complaints_log table.
+// Tier 1: cms_stats.json blob (fastest, survives cold starts).
+// Tier 2: bootstrap from cms_complaints.json blob (all complaints ever synced).
+//         When bootstrapped, the count is written back to cms_stats.json for future calls.
+// Tier 3: SQLite filed_complaints_log table (local dev fallback).
 async function getFiledCount() {
-  // Try blob-backed counter first (most reliable on Vercel)
   if (process.env.BLOB_READ_WRITE_TOKEN) {
+    // Tier 1 — dedicated stats blob
     const stats = await _readStatsBlob();
-    if (stats && typeof stats.totalFiled === 'number') {
+    if (stats && typeof stats.totalFiled === 'number' && stats.totalFiled > 0) {
       return stats.totalFiled;
     }
+
+    // Tier 2 — bootstrap from the complaints backup blob.
+    // cms_complaints.json contains every complaint ever synced (including soft-deleted ones)
+    // so its length equals the true total-ever-filed count.
+    try {
+      const complaints = await _readComplaintsBlob();
+      if (complaints && complaints.length > 0) {
+        const count = complaints.length; // ALL entries — never filtered by status
+        console.log(`[Stats] Bootstrapping totalFiled=${count} from cms_complaints.json`);
+        // Persist so future calls hit Tier 1 directly
+        await _writeStatsBlob({ totalFiled: count, bootstrappedAt: new Date().toISOString() });
+        return count;
+      }
+    } catch (bootstrapErr) {
+      console.warn('[Stats] Bootstrap from cms_complaints.json failed:', bootstrapErr.message);
+    }
   }
-  // Fallback: SQLite ledger (works locally and on fresh deploys)
+
+  // Tier 3 — local SQLite ledger (works when BLOB_READ_WRITE_TOKEN is absent)
   try {
     const row = await get('SELECT COUNT(*) as val FROM filed_complaints_log');
     return row ? (row.val || 0) : 0;
@@ -322,7 +341,18 @@ async function getFiledCount() {
 async function incrementFiledCount() {
   if (!process.env.BLOB_READ_WRITE_TOKEN) return; // local: SQLite ledger is enough
   try {
-    const current = await _readStatsBlob() || { totalFiled: 0 };
+    let current = await _readStatsBlob();
+    if (!current || typeof current.totalFiled !== 'number' || current.totalFiled === 0) {
+      // Bootstrap from cms_complaints.json to avoid starting from 0 when stats blob is new
+      try {
+        const existing = await _readComplaintsBlob();
+        const baseCount = (existing && existing.length > 0) ? existing.length : 0;
+        current = { totalFiled: baseCount };
+        console.log(`[Stats] Bootstrapped base count to ${baseCount} from cms_complaints.json`);
+      } catch (_) {
+        current = { totalFiled: 0 };
+      }
+    }
     const next = { ...current, totalFiled: (current.totalFiled || 0) + 1, updatedAt: new Date().toISOString() };
     await _writeStatsBlob(next);
     console.log('[Stats] totalFiled incremented to', next.totalFiled);
