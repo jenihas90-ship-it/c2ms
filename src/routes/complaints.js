@@ -113,66 +113,24 @@ router.post('/', requireLogin, upload.fields([{ name: 'attachment', maxCount: 1 
 });
 
 // Get Complaints List
+// DEFINITIVE FIX: Read directly from the shared Vercel Blob JSON (cms_complaints.json).
+// This ensures ALL Vercel serverless workers — which have isolated in-memory SQLite —
+// always serve the same, up-to-date complaint data. Falls back to SQLite for local dev.
 router.get('/', requireLogin, async (req, res) => {
     const userId = req.session.userId;
     const role = req.session.role;
     const { status, category, search } = req.query;
-
-    let query = `
-    SELECT 
-        c.id, c.user_id, c.title, c.category, c.court_name, c.court_address, c.court_jurisdiction,
-        c.case_number, c.plaintiff_name, c.defendant_name, c.parties, c.hearing_date, 
-        c.description, c.priority, c.status, c.assignment_status, c.assigned_judge,
-        c.complainant_phone, c.complainant_country, c.complainant_region, c.complainant_woreda, c.complainant_kebele, c.complainant_language,
-        c.respondent_phone, c.respondent_email, c.respondent_country, c.respondent_region, c.respondent_woreda, c.respondent_kebele, c.respondent_language,
-        c.clerk_language, c.judge_language, c.court_fee_required, c.court_fee_amount, c.court_fee_paid, c.court_fee_receipt, c.is_served, c.created_at, c.updated_at,
-        COALESCE(u.username, 'Anonymous') as complainant_name 
-    FROM complaints c
-    LEFT JOIN users u ON c.user_id = u.id
-    WHERE c.status != 'Deleted'
-  `;
-    const params = [];
-
-    // Filter by user role (Complainant sees only their own, Staff sees all - Judges could see assigned)
-    const isStaff = ['admin', 'ADMIN', 'CLERK', 'JUDGE'].includes(role);
-    if (!isStaff) {
-        query += ' AND c.user_id = ?';
-        params.push(userId);
-    } else if (role === 'JUDGE') {
-        // Optional: filter by judge if assigned, otherwise let judge see all for demo purposes
-        // query += ' AND c.assignment_status != "Unassigned"';
-    }
-
-    // Optional status filter
-    if (status) {
-        query += ' AND c.status = ?';
-        params.push(status);
-    }
-
-    // Optional category filter
-    if (category) {
-        query += ' AND c.category = ?';
-        params.push(category);
-    }
-
-    // Optional region filter
-    if (req.query.region) {
-        query += ' AND c.complainant_region = ?';
-        params.push(req.query.region);
-    }
-
-    // Optional search query (matches title or description)
-    if (search) {
-        query += ' AND (c.title LIKE ? OR c.description LIKE ?)';
-        const searchVal = `%${search}%`;
-        params.push(searchVal, searchVal);
-    }
-
-    // Order by latest active
-    query += ' ORDER BY c.created_at DESC';
+    const region = req.query.region || '';
 
     try {
-        const list = await db.all(query, params);
+        const list = await db.getAllComplaintsFromBlob({
+            userId,
+            role,
+            status,
+            category,
+            region,
+            search
+        });
         res.json(list);
     } catch (err) {
         console.error('Fetch complaints error:', err);

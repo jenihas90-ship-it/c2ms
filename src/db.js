@@ -441,9 +441,13 @@ async function deleteComplaintFromBlob(complaintId) {
   if (!process.env.BLOB_READ_WRITE_TOKEN || !complaintId) return;
   try {
     const list = await _readComplaintsBlob();
-    const filtered = list.filter(c => String(c.id) !== String(complaintId));
-    await _writeComplaintsBlob(filtered);
-    console.log('[Blob] Deleted complaint', complaintId, 'from cms_complaints.json');
+    // Soft-delete: mark as Deleted so it is excluded from lists but still in blob for count purposes
+    const idx = list.findIndex(c => String(c.id) === String(complaintId));
+    if (idx >= 0) {
+      list[idx] = { ...list[idx], status: 'Deleted', updatedAt: new Date().toISOString() };
+    }
+    await _writeComplaintsBlob(list);
+    console.log('[Blob] Marked complaint', complaintId, 'as Deleted in cms_complaints.json');
   } catch (e) {
     if (e.message.includes('read_failure')) {
       console.error('[Blob] Aborting delete to prevent metadata wipe due to read failure.');
@@ -451,6 +455,84 @@ async function deleteComplaintFromBlob(complaintId) {
     }
     console.warn('[Blob] Failed to delete complaint from blob:', e.message);
   }
+}
+
+// ─────────────────────────────────────────────────────────
+//  PRIMARY COMPLAINT READ PATH — reads directly from the
+//  shared JSON Blob so ALL Vercel workers see the same data.
+//  Falls back to in-memory SQLite for local dev (no blob token).
+// ─────────────────────────────────────────────────────────
+async function getAllComplaintsFromBlob(filters = {}) {
+  // On Vercel: read from the authoritative shared JSON blob
+  if (process.env.BLOB_READ_WRITE_TOKEN) {
+    try {
+      let complaints = await _readComplaintsBlob();
+      if (!Array.isArray(complaints)) complaints = [];
+
+      // Resolve the username for each complaint by looking up in in-memory DB
+      const database = await getDb();
+      const userCache = {};
+      const resolveUsername = (userId) => {
+        if (userCache[userId] !== undefined) return userCache[userId];
+        try {
+          const r = database.exec(`SELECT username FROM users WHERE id = ${Number(userId)}`);
+          const name = (r.length > 0 && r[0].values.length > 0) ? r[0].values[0][0] : 'Anonymous';
+          userCache[userId] = name;
+          return name;
+        } catch (_) { return 'Anonymous'; }
+      };
+
+      // Build filtered list (mirrors SQLite-level filters)
+      let result = complaints
+        .filter(c => c && c.status !== 'Deleted')
+        .map(c => ({ ...c, complainant_name: resolveUsername(c.user_id) }));
+
+      // Apply role/user filter
+      const { userId, role, status, category, region, search } = filters;
+      const isStaff = ['admin', 'ADMIN', 'CLERK', 'JUDGE'].includes(role);
+      if (!isStaff && userId) {
+        result = result.filter(c => String(c.user_id) === String(userId));
+      }
+      if (status) result = result.filter(c => c.status === status);
+      if (category) result = result.filter(c => c.category === category);
+      if (region) result = result.filter(c => c.complainant_region === region);
+      if (search) {
+        const s = search.toLowerCase();
+        result = result.filter(c =>
+          (c.title || '').toLowerCase().includes(s) ||
+          (c.description || '').toLowerCase().includes(s)
+        );
+      }
+
+      // Sort newest first
+      result.sort((a, b) => new Date(b.created_at || 0) - new Date(a.created_at || 0));
+      return result;
+    } catch (e) {
+      console.warn('[Blob] getAllComplaintsFromBlob failed, falling back to SQLite:', e.message);
+      // Fall through to SQLite fallback below
+    }
+  }
+
+  // Local dev fallback: use in-memory SQLite
+  const { userId, role, status, category, region, search } = filters;
+  let query = `
+    SELECT c.*, COALESCE(u.username, 'Anonymous') as complainant_name
+    FROM complaints c
+    LEFT JOIN users u ON c.user_id = u.id
+    WHERE c.status != 'Deleted'
+  `;
+  const params = [];
+  const isStaff = ['admin', 'ADMIN', 'CLERK', 'JUDGE'].includes(role);
+  if (!isStaff && userId) { query += ' AND c.user_id = ?'; params.push(userId); }
+  if (status) { query += ' AND c.status = ?'; params.push(status); }
+  if (category) { query += ' AND c.category = ?'; params.push(category); }
+  if (region) { query += ' AND c.complainant_region = ?'; params.push(region); }
+  if (search) {
+    query += ' AND (c.title LIKE ? OR c.description LIKE ?)';
+    params.push(`%${search}%`, `%${search}%`);
+  }
+  query += ' ORDER BY c.created_at DESC';
+  return all(query, params);
 }
 
 
@@ -705,5 +787,6 @@ module.exports = {
   getFiledCount,
   incrementFiledCount,
   syncComplaintToBlob,
-  deleteComplaintFromBlob
+  deleteComplaintFromBlob,
+  getAllComplaintsFromBlob
 };
