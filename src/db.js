@@ -7,6 +7,7 @@ const { put, list } = require('@vercel/blob');
 let db = null;
 let SQL = null;
 let DB_FILE = null;
+let pauseBackup = false; // Guards against blob uploads during DB initialisation
 
 // Initialize sql.js and create in-memory/tmp database
 async function getDb() {
@@ -149,11 +150,15 @@ const COMPLAINT_COLUMNS = new Set([
   'is_served', 'created_at', 'updated_at'
 ]);
 
-let lastRehydrateTime = 0;
+// Start at -Infinity so the very first request on a fresh worker ALWAYS reads from Blob.
+// This is critical: each Vercel worker has its own module scope and its own in-memory DB.
+// Without an immediate first-read, a new worker will never learn about complaints filed
+// on a different worker.
+let lastRehydrateTime = -Infinity;
 async function ensureComplaintsRehydrated(database) {
   if (!process.env.BLOB_READ_WRITE_TOKEN) return;
   const now = Date.now();
-  if (now - lastRehydrateTime < 1000) return; // reduced throttle to 1s to ensure instant cross-worker sync
+  if (now - lastRehydrateTime < 5000) return; // 5-second throttle per-worker after the first read
   lastRehydrateTime = now;
 
   try {
@@ -451,7 +456,14 @@ async function deleteComplaintFromBlob(complaintId) {
 
 // Initialize tables
 async function initDatabase() {
+  // Pause blob uploads during schema creation / user seeding to prevent
+  // uploading an incomplete snapshot that overwrites a complete blob.
   pauseBackup = true;
+
+  // Detect whether this is a truly new, empty database (no users table populated yet).
+  // We use this at the end to decide whether to call forceBackup().
+  // On cold-start restores the admin user already exists, so isNewDatabase stays false.
+  let isNewDatabase = false;
   try {
     await run(`
     CREATE TABLE IF NOT EXISTS users (
@@ -632,6 +644,8 @@ async function initDatabase() {
     // Insert default administrators
     const adminExists = await get("SELECT * FROM users WHERE username = 'admin' LIMIT 1");
     if (!adminExists) {
+      // No admin means this is a brand-new, empty database — mark it so we backup at the end.
+      isNewDatabase = true;
       const hashedPassword = bcrypt.hashSync('admin123', 10);
       await run(
         "INSERT INTO users (username, email, password, role) VALUES (?, ?, ?, ?)",
@@ -668,11 +682,15 @@ async function initDatabase() {
     pauseBackup = false;
   }
 
-  // Only force backup during a fresh DB creation, not on cold starts where
-  // the blob might already have more recent data than our fresh in-memory DB
-  const hasComplaints = await get('SELECT COUNT(*) as val FROM complaints');
-  if (hasComplaints && hasComplaints.val > 0) {
+  // CRITICAL: Only call forceBackup() on a brand-new empty database.
+  // On cold starts the blob was already restored into /tmp before getDb() returned,
+  // so calling forceBackup() here would OVERWRITE the blob with just default users
+  // and zero complaints — wiping all filed data!
+  if (isNewDatabase) {
+    console.log('[Persistence] Fresh database detected — uploading initial snapshot to Vercel Blob.');
     await forceBackup();
+  } else {
+    console.log('[Persistence] Restored database — skipping forceBackup() to preserve existing blob data.');
   }
   console.log('Database initialized successfully.');
 }
