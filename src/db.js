@@ -41,7 +41,8 @@ async function getDb() {
       try {
         latestBlob = await head('cms_vercel.sqlite');
       } catch (e) {
-        if (e.message.includes('not found')) {
+        const msg = (e.message || '').toLowerCase();
+        if (msg.includes('not found') || msg.includes('does not exist') || msg.includes('blob does not exist') || e.status === 404) {
           console.log('[Persistence] No existing database found in Vercel Blob. Starting fresh.');
           latestBlob = null;
         } else {
@@ -286,7 +287,8 @@ async function _readStatsBlob() {
     try {
       blob = await head(STATS_BLOB_KEY);
     } catch (e) {
-      if (e.message.includes('not found')) return null;
+      const msg = (e.message || '').toLowerCase();
+      if (msg.includes('not found') || msg.includes('does not exist') || msg.includes('blob does not exist') || e.status === 404) return null;
       throw e;
     }
     const targetUrl = `${blob.url}?t=${Date.now()}`;
@@ -389,7 +391,8 @@ async function _readComplaintsBlob() {
     try {
       blob = await head(COMPLAINTS_BLOB_KEY);
     } catch (e) {
-      if (e.message.includes('not found')) return [];
+      const msg = (e.message || '').toLowerCase();
+      if (msg.includes('not found') || msg.includes('does not exist') || msg.includes('blob does not exist') || e.status === 404) return [];
       throw e; // Important: do not swallow real errors
     }
     const targetUrl = `${blob.url}?t=${Date.now()}`;
