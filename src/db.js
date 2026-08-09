@@ -114,7 +114,7 @@ async function run(sql, params = []) {
           let uploaded = false;
           for (let attempt = 1; attempt <= 3 && !uploaded; attempt++) {
             try {
-              await put('cms_vercel.sqlite', buffer, { access: 'public', addRandomSuffix: false });
+              await put('cms_vercel.sqlite', buffer, { access: 'public', addRandomSuffix: false, cacheControlMaxAge: 0 });
               console.log(`[Persistence] Backed up database to Vercel Blob (attempt ${attempt}).`);
               uploaded = true;
             } catch (blobErr) {
@@ -261,7 +261,7 @@ async function forceBackup() {
       if ((process.env.VERCEL || process.env.NOW_REGION) && process.env.BLOB_READ_WRITE_TOKEN) {
         // Vercel Blob's put correctly handles Buffers
         const { put } = require('@vercel/blob');
-        await put('cms_vercel.sqlite', buffer, { access: 'public', addRandomSuffix: false });
+        await put('cms_vercel.sqlite', buffer, { access: 'public', addRandomSuffix: false, cacheControlMaxAge: 0 });
         console.log('[Persistence] Forced backup to Vercel Blob.');
       }
     } catch (err) {
@@ -306,7 +306,7 @@ async function _writeStatsBlob(data) {
   if (!process.env.BLOB_READ_WRITE_TOKEN) return;
   try {
     const json = JSON.stringify(data);
-    await put(STATS_BLOB_KEY, json, { access: 'public', addRandomSuffix: false, contentType: 'application/json' });
+    await put(STATS_BLOB_KEY, json, { access: 'public', addRandomSuffix: false, contentType: 'application/json', cacheControlMaxAge: 0 });
   } catch (e) {
     console.warn('[Stats] Could not write cms_stats.json:', e.message);
   }
@@ -410,7 +410,7 @@ async function _writeComplaintsBlob(complaintsList) {
   if (!process.env.BLOB_READ_WRITE_TOKEN) return;
   try {
     const json = JSON.stringify(complaintsList);
-    await put(COMPLAINTS_BLOB_KEY, json, { access: 'public', addRandomSuffix: false, contentType: 'application/json' });
+    await put(COMPLAINTS_BLOB_KEY, json, { access: 'public', addRandomSuffix: false, contentType: 'application/json', cacheControlMaxAge: 0 });
     console.log('[Blob] cms_complaints.json updated with', complaintsList.length, 'complaints.');
   } catch (e) {
     console.warn('[Blob] Could not write cms_complaints.json:', e.message);
