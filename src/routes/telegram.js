@@ -20,6 +20,13 @@ function normalizePhone(phone) {
 }
 
 // Handle all Telegram incoming webhooks
+router.get('/test', (req, res) => {
+    res.json({
+        tokenExists: !!process.env.TELEGRAM_BOT_TOKEN,
+        nodeEnv: process.env.NODE_ENV
+    });
+});
+
 router.post('/webhook', async (req, res) => {
     try {
         const update = req.body;
