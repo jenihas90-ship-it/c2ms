@@ -54,7 +54,9 @@ async function getDb() {
         console.log(`[Persistence] Restoring database from Vercel Blob (found latest uploaded at ${latestBlob.uploadedAt})`);
 
         // Use head() url with cache-buster. head() bypasses list() 5-minute CDN cache.
-        const targetUrl = `${latestBlob.downloadUrl || latestBlob.url}?t=${Date.now()}`;
+        const baseUrl = latestBlob.downloadUrl || latestBlob.url;
+        const separator = baseUrl.includes('?') ? '&' : '?';
+        const targetUrl = `${baseUrl}${separator}t=${Date.now()}`;
 
         const response = await fetch(targetUrl, {
           cache: 'no-store',
@@ -291,7 +293,9 @@ async function _readStatsBlob() {
       if (msg.includes('not found') || msg.includes('does not exist') || msg.includes('blob does not exist') || e.status === 404) return null;
       throw e;
     }
-    const targetUrl = `${blob.downloadUrl || blob.url}?t=${Date.now()}`;
+    const baseUrl = blob.downloadUrl || blob.url;
+    const separator = baseUrl.includes('?') ? '&' : '?';
+    const targetUrl = `${baseUrl}${separator}t=${Date.now()}`;
     const res = await fetch(targetUrl, {
       cache: 'no-store',
       headers: { 'Pragma': 'no-cache', 'Cache-Control': 'no-cache' }
@@ -395,7 +399,9 @@ async function _readComplaintsBlob() {
       if (msg.includes('not found') || msg.includes('does not exist') || msg.includes('blob does not exist') || e.status === 404) return [];
       throw e; // Important: do not swallow real errors
     }
-    const targetUrl = `${blob.downloadUrl || blob.url}?t=${Date.now()}`;
+    const baseUrl = blob.downloadUrl || blob.url;
+    const separator = baseUrl.includes('?') ? '&' : '?';
+    const targetUrl = `${baseUrl}${separator}t=${Date.now()}`;
     const res = await fetch(targetUrl, {
       cache: 'no-store',
       headers: { 'Pragma': 'no-cache', 'Cache-Control': 'no-cache' }
@@ -479,7 +485,9 @@ async function _readTelegramLinksBlob() {
       if (msg.includes('not found') || msg.includes('does not exist') || msg.includes('blob does not exist') || e.status === 404) return {};
       throw e;
     }
-    const targetUrl = `${blob.downloadUrl || blob.url}?t=${Date.now()}`;
+    const baseUrl = blob.downloadUrl || blob.url;
+    const separator = baseUrl.includes('?') ? '&' : '?';
+    const targetUrl = `${baseUrl}${separator}t=${Date.now()}`;
     const res = await fetch(targetUrl, {
       cache: 'no-store',
       headers: { 'Pragma': 'no-cache', 'Cache-Control': 'no-cache' }
