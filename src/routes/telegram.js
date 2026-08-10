@@ -77,7 +77,11 @@ router.post('/webhook', async (req, res) => {
                     await db.run('INSERT OR REPLACE INTO telegram_links (phone_number, chat_id) VALUES (?, ?)', [localVariant, String(chatId)]);
                 }
 
-                // CRITICAL: Persist to Vercel Blob immediately so the link survives cold starts
+                // CRITICAL: Persist to shared Vercel Blob (cms_telegram_links.json) immediately
+                // so ALL workers see this link — not just the one that received the webhook.
+                await db.syncTelegramLinkToBlob(phone, chatId);
+
+                // Also backup the full SQLite snapshot
                 await db.forceBackup();
                 console.log('[Telegram] Phone linked and backup persisted for chatId:', chatId);
 
@@ -105,6 +109,87 @@ router.post('/webhook', async (req, res) => {
 
     // 200 OK immediately at the END to prevent Vercel from suspending process before messages send
     res.sendStatus(200);
+});
+
+/**
+ * GET /api/telegram/debug
+ * Shows all stored telegram links and current webhook info from Telegram API.
+ * Use this to diagnose why messages aren't received.
+ */
+router.get('/debug', async (req, res) => {
+    try {
+        const token = process.env.TELEGRAM_BOT_TOKEN || '8870809274:AAEC1SfmunltKqE_Akq4Z5IEW1K9HyAIy5c';
+
+        // 1. Check webhook info from Telegram
+        const webhookInfoResponse = await fetch(`https://api.telegram.org/bot${token}/getWebhookInfo`);
+        const webhookInfo = await webhookInfoResponse.json();
+
+        // 2. Get all links from SQLite
+        let sqliteLinks = [];
+        try {
+            const dbMod = await db.getDb();
+            const stmt = dbMod.prepare('SELECT phone_number, chat_id, linked_at FROM telegram_links ORDER BY linked_at DESC');
+            while (stmt.step()) {
+                const cols = stmt.getColumnNames();
+                const vals = stmt.get();
+                const row = {};
+                cols.forEach((c, i) => { row[c] = vals[i]; });
+                sqliteLinks.push(row);
+            }
+            stmt.free();
+        } catch (e) {
+            sqliteLinks = [{ error: e.message }];
+        }
+
+        // 3. Get all links from Blob
+        let blobLinks = {};
+        try {
+            const { head } = require('@vercel/blob');
+            const blob = await head('cms_telegram_links.json').catch(() => null);
+            if (blob) {
+                const r = await fetch(`${blob.url}?t=${Date.now()}`, { cache: 'no-store' });
+                if (r.ok) blobLinks = await r.json();
+            }
+        } catch (e) {
+            blobLinks = { error: e.message };
+        }
+
+        res.json({
+            telegramWebhook: webhookInfo,
+            sqliteLinks,
+            blobLinks,
+            tokenConfigured: !!process.env.TELEGRAM_BOT_TOKEN,
+            blobTokenConfigured: !!process.env.BLOB_READ_WRITE_TOKEN,
+            expectedWebhookUrl: req.headers.host ? `https://${req.headers.host}/api/telegram/webhook` : '(unknown host)'
+        });
+    } catch (err) {
+        res.status(500).json({ error: err.message });
+    }
+});
+
+/**
+ * POST /api/telegram/set-webhook
+ * Registers the webhook URL with Telegram.
+ * Body: { "url": "https://your-app.vercel.app/api/telegram/webhook" }
+ * OR omit body to auto-detect from request host.
+ */
+router.post('/set-webhook', async (req, res) => {
+    try {
+        const token = process.env.TELEGRAM_BOT_TOKEN || '8870809274:AAEC1SfmunltKqE_Akq4Z5IEW1K9HyAIy5c';
+        const webhookUrl = (req.body && req.body.url)
+            ? req.body.url
+            : `https://${req.headers.host}/api/telegram/webhook`;
+
+        const response = await fetch(`https://api.telegram.org/bot${token}/setWebhook`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ url: webhookUrl, drop_pending_updates: true })
+        });
+        const result = await response.json();
+        res.json({ webhookUrl, telegramResponse: result });
+    } catch (err) {
+        res.status(500).json({ error: err.message });
+    }
 });
 
 module.exports = router;

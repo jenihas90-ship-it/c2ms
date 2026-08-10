@@ -157,15 +157,15 @@ async function sendSms(to, message) {
 
     // ── TELEGRAM INTERCEPTION (100% Free Notification) ───────────
     try {
-        const tgLink = await db.get('SELECT chat_id FROM telegram_links WHERE phone_number = ? OR phone_number = ?', [phone, '0' + phone.substring(4)]);
-        if (tgLink && tgLink.chat_id) {
-            console.log(`[Telegram Intercept] Rerouting SMS to Telegram Chat ID ${tgLink.chat_id} for ${phone}`);
+        const chatId = await db.getTelegramChatIdByPhone(phone);
+        if (chatId) {
+            console.log(`[Telegram Intercept] Rerouting SMS to Telegram Chat ID ${chatId} for ${phone}`);
             const formattedMessage = `🏛 *Justice connect CMS*\n\n${message}`;
-            await telegram.sendMessage(tgLink.chat_id, formattedMessage);
+            await telegram.sendMessage(chatId, formattedMessage);
             return; // Success! Delivery handled by Telegram.
         }
     } catch (dbErr) {
-        console.warn('[Telegram Intercept] Link check failed (might be missing table in dev). Falling back to SMS route:', dbErr.message);
+        console.warn('[Telegram Intercept] Lookup failed. Falling back to SMS route:', dbErr.message);
     }
     // ─────────────────────────────────────────────────────────────
 

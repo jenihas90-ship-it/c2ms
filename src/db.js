@@ -461,6 +461,111 @@ async function deleteComplaintFromBlob(complaintId) {
 }
 
 // ─────────────────────────────────────────────────────────
+//  TELEGRAM LINKS BLOB (cms_telegram_links.json)
+//  Keeps phone→chat_id mappings alive across cold starts
+//  and worker isolation — independent of the SQLite blob.
+// ─────────────────────────────────────────────────────────
+const TELEGRAM_LINKS_BLOB_KEY = 'cms_telegram_links.json';
+
+async function _readTelegramLinksBlob() {
+  if (!process.env.BLOB_READ_WRITE_TOKEN) return {};
+  try {
+    const { head } = require('@vercel/blob');
+    let blob;
+    try {
+      blob = await head(TELEGRAM_LINKS_BLOB_KEY);
+    } catch (e) {
+      const msg = (e.message || '').toLowerCase();
+      if (msg.includes('not found') || msg.includes('does not exist') || msg.includes('blob does not exist') || e.status === 404) return {};
+      throw e;
+    }
+    const targetUrl = `${blob.url}?t=${Date.now()}`;
+    const res = await fetch(targetUrl, {
+      cache: 'no-store',
+      headers: { 'Pragma': 'no-cache', 'Cache-Control': 'no-cache' }
+    });
+    if (!res.ok) return {};
+    const data = await res.json();
+    return (data && typeof data === 'object' && !Array.isArray(data)) ? data : {};
+  } catch (e) {
+    console.warn('[TelegramBlob] Could not read cms_telegram_links.json:', e.message);
+    return {};
+  }
+}
+
+async function _writeTelegramLinksBlob(linksMap) {
+  if (!process.env.BLOB_READ_WRITE_TOKEN) return;
+  try {
+    const json = JSON.stringify(linksMap);
+    await put(TELEGRAM_LINKS_BLOB_KEY, json, { access: 'public', addRandomSuffix: false, contentType: 'application/json', cacheControlMaxAge: 0 });
+    console.log('[TelegramBlob] cms_telegram_links.json updated with', Object.keys(linksMap).length, 'entries.');
+  } catch (e) {
+    console.warn('[TelegramBlob] Could not write cms_telegram_links.json:', e.message);
+  }
+}
+
+/**
+ * Persist a phone→chatId link to the shared Telegram links blob.
+ * Called after every successful bot linking so ALL workers can see it.
+ */
+async function syncTelegramLinkToBlob(phoneNumber, chatId) {
+  if (!process.env.BLOB_READ_WRITE_TOKEN) return;
+  try {
+    const current = await _readTelegramLinksBlob();
+    current[phoneNumber] = { chat_id: String(chatId), linked_at: new Date().toISOString() };
+    // Also store local 09... variant so lookup always hits
+    if (phoneNumber.startsWith('+251')) {
+      const localVariant = '0' + phoneNumber.substring(4);
+      current[localVariant] = { chat_id: String(chatId), linked_at: new Date().toISOString() };
+    }
+    await _writeTelegramLinksBlob(current);
+  } catch (e) {
+    console.warn('[TelegramBlob] syncTelegramLinkToBlob failed:', e.message);
+  }
+}
+
+/**
+ * Look up Telegram chat_id for a phone number.
+ * Checks in-memory SQLite first (fast path), then falls back to the shared blob
+ * — ensuring cross-worker delivery even on fresh cold-start workers.
+ */
+async function getTelegramChatIdByPhone(phone) {
+  // Fast path: in-memory SQLite
+  try {
+    const database = await getDb();
+    const stmt = database.prepare('SELECT chat_id FROM telegram_links WHERE phone_number = ? OR phone_number = ?');
+    stmt.bind([phone, '0' + phone.substring(4)]);
+    if (stmt.step()) {
+      const vals = stmt.get();
+      stmt.free();
+      if (vals && vals[0]) return String(vals[0]);
+    }
+    stmt.free();
+  } catch (e) {
+    console.warn('[Telegram] SQLite lookup failed:', e.message);
+  }
+
+  // Blob fallback: cross-worker / cold-start
+  try {
+    const linksMap = await _readTelegramLinksBlob();
+    const entry = linksMap[phone] || linksMap['0' + phone.substring(4)];
+    if (entry && entry.chat_id) {
+      console.log(`[TelegramBlob] Found chat_id for ${phone} in blob (cross-worker lookup).`);
+      // Warm the in-memory DB for subsequent calls on same worker
+      try {
+        const database = await getDb();
+        database.run('INSERT OR REPLACE INTO telegram_links (phone_number, chat_id) VALUES (?, ?)', [phone, entry.chat_id]);
+      } catch (_) { }
+      return entry.chat_id;
+    }
+  } catch (e) {
+    console.warn('[TelegramBlob] Blob fallback lookup failed:', e.message);
+  }
+
+  return null;
+}
+
+// ─────────────────────────────────────────────────────────
 //  PRIMARY COMPLAINT READ PATH — reads directly from the
 //  shared JSON Blob so ALL Vercel workers see the same data.
 //  Falls back to in-memory SQLite for local dev (no blob token).
@@ -800,5 +905,7 @@ module.exports = {
   incrementFiledCount,
   syncComplaintToBlob,
   deleteComplaintFromBlob,
-  getAllComplaintsFromBlob
+  getAllComplaintsFromBlob,
+  syncTelegramLinkToBlob,
+  getTelegramChatIdByPhone
 };
