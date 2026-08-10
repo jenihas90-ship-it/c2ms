@@ -77,6 +77,10 @@ router.post('/webhook', async (req, res) => {
                     await db.run('INSERT OR REPLACE INTO telegram_links (phone_number, chat_id) VALUES (?, ?)', [localVariant, String(chatId)]);
                 }
 
+                // CRITICAL: Persist to Vercel Blob immediately so the link survives cold starts
+                await db.forceBackup();
+                console.log('[Telegram] Phone linked and backup persisted for chatId:', chatId);
+
                 await telegram.sendMessage(chatId, `✅ Success!\n\nPhone number ${phone} is now securely linked to this chat.\n\nYou will instantly receive official court updates here for any cases filed under your name.`, {
                     reply_markup: { remove_keyboard: true }
                 });
