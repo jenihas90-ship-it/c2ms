@@ -116,27 +116,39 @@ router.get('/test-blob', async (req, res) => {
         const { put, head } = require('@vercel/blob');
         const writeObj = { [Date.now().toString()]: "test" };
         const json = JSON.stringify(writeObj);
-        const putRes = await put('cms_telegram_links.json', json, { access: 'public', addRandomSuffix: false, contentType: 'application/json', cacheControlMaxAge: 0 });
+        const putRes = await put('cms_telegram_links.json', json, { access: 'public', addRandomSuffix: false, contentType: 'application/json', cacheControlMaxAge: 0 }).catch(e => ({ error: e.message }));
 
-        const blobResp = await head('cms_telegram_links.json');
+        let privateRes = null;
+        if (putRes.error) {
+            privateRes = await put('cms_telegram_links_private.json', json, { addRandomSuffix: false, contentType: 'application/json', cacheControlMaxAge: 0 }).catch(e => ({ error: e.message }));
+        }
+
+        const blobResp = await head('cms_telegram_links.json').catch(() => null);
+        const privateBlobResp = await head('cms_telegram_links_private.json').catch(() => null);
 
         let fetchStatus = null;
+        let pFetchStatus = null;
         let data = null;
-        let readError = null;
         try {
-            const r = await fetch(`${blobResp.url}?t=${Date.now()}`);
-            fetchStatus = r.status;
-            data = await r.json();
-        } catch (fe) {
-            readError = fe.message;
-        }
+            if (blobResp) {
+                const r = await fetch(`${blobResp.url}?t=${Date.now()}`);
+                fetchStatus = r.status;
+                data = await r.json().catch(() => null);
+            }
+            if (privateBlobResp && privateBlobResp.downloadUrl) {
+                const rp = await fetch(privateBlobResp.downloadUrl);
+                pFetchStatus = rp.status;
+            }
+        } catch (fe) { }
 
         res.json({
             putResult: putRes,
+            privatePutResult: privateRes,
             headResult: blobResp,
+            privateHeadResult: privateBlobResp,
             fetchStatus,
-            data,
-            readError
+            pFetchStatus,
+            data
         });
     } catch (err) {
         res.json({ error: err.message, stack: err.stack });
