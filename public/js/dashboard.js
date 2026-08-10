@@ -892,7 +892,9 @@ async function handleLogout() {
         await apiRequest('/api/auth/logout', { method: 'POST' });
         showToast('Logging out...');
         setTimeout(() => {
-            window.location.href = '/';
+            // Use replace() so the dashboard is removed from browser history.
+            // The back button will NOT be able to return to this page after logout.
+            window.location.replace('/');
         }, 800);
     } catch (error) {
         showToast('Failed to log out correctly', true);

@@ -103,22 +103,23 @@ async function checkAuthSession(isAuthPage = false) {
             if (isAuthPage) {
                 // Logged in user hitting index.html -> redirect based on role
                 if (data.user.role === 'RESPONDENT') {
-                    window.location.href = '/respondent.html';
+                    window.location.replace('/respondent.html');
                 } else {
-                    window.location.href = '/dashboard.html';
+                    window.location.replace('/dashboard.html');
                 }
             }
             return data.user;
         } else {
             if (!isAuthPage) {
-                // Logged out user hitting auth protected dashboard -> redirect to index.html
-                window.location.href = '/';
+                // Logged out user hitting protected page -> redirect to login.
+                // Use replace() so the protected page is removed from history.
+                window.location.replace('/');
             }
             return null;
         }
     } catch (error) {
         if (!isAuthPage) {
-            window.location.href = '/';
+            window.location.replace('/');
         }
         return null;
     }

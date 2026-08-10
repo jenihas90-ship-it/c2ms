@@ -32,7 +32,31 @@ app.use(
     })
 );
 
-// Serve static frontend files
+// Helper: set no-cache headers so the browser never caches protected pages.
+// This prevents the back button from showing a stale authenticated page after logout.
+function noCache(res) {
+    res.set('Cache-Control', 'no-store, no-cache, must-revalidate, private');
+    res.set('Pragma', 'no-cache');
+    res.set('Expires', '0');
+}
+
+// Protected HTML pages — registered BEFORE express.static so these explicit routes
+// take priority and the no-store Cache-Control headers are always applied.
+// This means clicking Back after logout will NOT show a cached authenticated page.
+app.get(['/dashboard', '/dashboard.html'], (req, res) => {
+    noCache(res);
+    res.sendFile(path.resolve(__dirname, '../public/dashboard.html'));
+});
+app.get(['/chat', '/chat.html'], (req, res) => {
+    noCache(res);
+    res.sendFile(path.resolve(__dirname, '../public/chat.html'));
+});
+app.get(['/respondent', '/respondent.html'], (req, res) => {
+    noCache(res);
+    res.sendFile(path.resolve(__dirname, '../public/respondent.html'));
+});
+
+// Serve static files (JS, CSS, images, etc.) — public assets are fine to cache
 app.use(express.static(path.resolve(__dirname, '../public')));
 
 // API Routers
@@ -51,20 +75,6 @@ app.use('/api/judge', judgeRouter);
 app.use('/api/clerk', clerkRouter);
 app.use('/api/respondent', respondentRouter);
 app.use('/api/notifications', notificationsRouter);
-
-// Explicit page routes
-app.get('/chat', (req, res) => {
-    res.sendFile(path.resolve(__dirname, '../public/chat.html'));
-});
-app.get('/chat.html', (req, res) => {
-    res.sendFile(path.resolve(__dirname, '../public/chat.html'));
-});
-app.get('/respondent', (req, res) => {
-    res.sendFile(path.resolve(__dirname, '../public/respondent.html'));
-});
-app.get('/respondent.html', (req, res) => {
-    res.sendFile(path.resolve(__dirname, '../public/respondent.html'));
-});
 
 // Fallback to serving public/index.html for UI routes
 app.get('*', (req, res) => {
