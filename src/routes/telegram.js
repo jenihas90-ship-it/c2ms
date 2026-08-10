@@ -21,9 +21,13 @@ function normalizePhone(phone) {
 
 // Handle all Telegram incoming webhooks
 router.get('/test', (req, res) => {
+    const allKeys = Object.keys(process.env);
+    const telegramKeys = allKeys.filter(k => k.includes('TELEGRAM') || k.includes('BOT'));
     res.json({
         tokenExists: !!process.env.TELEGRAM_BOT_TOKEN,
-        nodeEnv: process.env.NODE_ENV
+        tokenLength: (process.env.TELEGRAM_BOT_TOKEN || '').length,
+        nodeEnv: process.env.NODE_ENV,
+        relatedKeys: telegramKeys
     });
 });
 
