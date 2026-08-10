@@ -185,7 +185,7 @@ router.get('/debug', async (req, res) => {
             sqliteLinks = [{ error: e.message }];
         }
 
-        // 3. Get all links from Blob (use downloadUrl — blob is private)
+        // 3. Get all links from Blob (use downloadUrl + auth — blob is private)
         let blobLinks = {};
         try {
             const { head } = require('@vercel/blob');
@@ -195,7 +195,11 @@ router.get('/debug', async (req, res) => {
                 const separator = fetchUrl.includes('?') ? '&' : '?';
                 const r = await fetch(`${fetchUrl}${separator}t=${Date.now()}`, {
                     cache: 'no-store',
-                    headers: { 'Pragma': 'no-cache', 'Cache-Control': 'no-cache' }
+                    headers: {
+                        'Pragma': 'no-cache',
+                        'Cache-Control': 'no-cache',
+                        ...(process.env.BLOB_READ_WRITE_TOKEN ? { 'Authorization': `Bearer ${process.env.BLOB_READ_WRITE_TOKEN}` } : {})
+                    }
                 });
                 if (r.ok) blobLinks = await r.json();
                 else blobLinks = { fetchError: `HTTP ${r.status}`, fetchUrl };

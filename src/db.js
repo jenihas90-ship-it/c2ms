@@ -53,14 +53,22 @@ async function getDb() {
       if (latestBlob) {
         console.log(`[Persistence] Restoring database from Vercel Blob (found latest uploaded at ${latestBlob.uploadedAt})`);
 
-        // Use head() url with cache-buster. head() bypasses list() 5-minute CDN cache.
+        // Private blobs require Authorization: Bearer header — downloadUrl alone returns 403.
         const baseUrl = latestBlob.downloadUrl || latestBlob.url;
         const separator = baseUrl.includes('?') ? '&' : '?';
         const targetUrl = `${baseUrl}${separator}t=${Date.now()}`;
 
+        const blobFetchHeaders = {
+          'Pragma': 'no-cache',
+          'Cache-Control': 'no-cache'
+        };
+        if (process.env.BLOB_READ_WRITE_TOKEN) {
+          blobFetchHeaders['Authorization'] = `Bearer ${process.env.BLOB_READ_WRITE_TOKEN}`;
+        }
+
         const response = await fetch(targetUrl, {
           cache: 'no-store',
-          headers: { 'Pragma': 'no-cache', 'Cache-Control': 'no-cache' }
+          headers: blobFetchHeaders
         });
 
         if (!response.ok) {
@@ -298,7 +306,11 @@ async function _readStatsBlob() {
     const targetUrl = `${baseUrl}${separator}t=${Date.now()}`;
     const res = await fetch(targetUrl, {
       cache: 'no-store',
-      headers: { 'Pragma': 'no-cache', 'Cache-Control': 'no-cache' }
+      headers: {
+        'Pragma': 'no-cache',
+        'Cache-Control': 'no-cache',
+        ...(process.env.BLOB_READ_WRITE_TOKEN ? { 'Authorization': `Bearer ${process.env.BLOB_READ_WRITE_TOKEN}` } : {})
+      }
     });
     if (!res.ok) return null;
     return await res.json();
@@ -404,7 +416,11 @@ async function _readComplaintsBlob() {
     const targetUrl = `${baseUrl}${separator}t=${Date.now()}`;
     const res = await fetch(targetUrl, {
       cache: 'no-store',
-      headers: { 'Pragma': 'no-cache', 'Cache-Control': 'no-cache' }
+      headers: {
+        'Pragma': 'no-cache',
+        'Cache-Control': 'no-cache',
+        ...(process.env.BLOB_READ_WRITE_TOKEN ? { 'Authorization': `Bearer ${process.env.BLOB_READ_WRITE_TOKEN}` } : {})
+      }
     });
     if (!res.ok) throw new Error(`Fetch failed: ${res.status}`);
     const data = await res.json();
@@ -490,7 +506,11 @@ async function _readTelegramLinksBlob() {
     const targetUrl = `${baseUrl}${separator}t=${Date.now()}`;
     const res = await fetch(targetUrl, {
       cache: 'no-store',
-      headers: { 'Pragma': 'no-cache', 'Cache-Control': 'no-cache' }
+      headers: {
+        'Pragma': 'no-cache',
+        'Cache-Control': 'no-cache',
+        ...(process.env.BLOB_READ_WRITE_TOKEN ? { 'Authorization': `Bearer ${process.env.BLOB_READ_WRITE_TOKEN}` } : {})
+      }
     });
     if (!res.ok) return {};
     const data = await res.json();
