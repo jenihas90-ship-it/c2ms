@@ -36,46 +36,24 @@ async function getDb() {
 
   if (!tmpFileExists && (process.env.VERCEL || process.env.NOW_REGION) && process.env.BLOB_READ_WRITE_TOKEN) {
     try {
-      const { head } = require('@vercel/blob');
-      let latestBlob;
+      const { get: blobGet } = require('@vercel/blob');
+      let blobResp;
       try {
-        latestBlob = await head('cms_vercel.sqlite');
+        // Use SDK get() — handles OIDC auth automatically on Vercel (no raw fetch needed)
+        blobResp = await blobGet('cms_vercel.sqlite');
       } catch (e) {
         const msg = (e.message || '').toLowerCase();
         if (msg.includes('not found') || msg.includes('does not exist') || msg.includes('blob does not exist') || e.status === 404) {
           console.log('[Persistence] No existing database found in Vercel Blob. Starting fresh.');
-          latestBlob = null;
+          blobResp = null;
         } else {
           throw e;
         }
       }
 
-      if (latestBlob) {
-        console.log(`[Persistence] Restoring database from Vercel Blob (found latest uploaded at ${latestBlob.uploadedAt})`);
-
-        // Private blobs require Authorization: Bearer header — downloadUrl alone returns 403.
-        const baseUrl = latestBlob.downloadUrl || latestBlob.url;
-        const separator = baseUrl.includes('?') ? '&' : '?';
-        const targetUrl = `${baseUrl}${separator}t=${Date.now()}`;
-
-        const blobFetchHeaders = {
-          'Pragma': 'no-cache',
-          'Cache-Control': 'no-cache'
-        };
-        if (process.env.BLOB_READ_WRITE_TOKEN) {
-          blobFetchHeaders['Authorization'] = `Bearer ${process.env.BLOB_READ_WRITE_TOKEN}`;
-        }
-
-        const response = await fetch(targetUrl, {
-          cache: 'no-store',
-          headers: blobFetchHeaders
-        });
-
-        if (!response.ok) {
-          throw new Error(`Blob fetch failed: ${response.status} ${response.statusText}`);
-        }
-
-        const arrayBuffer = await response.arrayBuffer();
+      if (blobResp) {
+        console.log('[Persistence] Restoring database from Vercel Blob via SDK get()...');
+        const arrayBuffer = await blobResp.arrayBuffer();
         fs.writeFileSync(DB_FILE, Buffer.from(arrayBuffer));
         console.log('[Persistence] Successfully restored database from Vercel Blob');
       }
@@ -83,7 +61,6 @@ async function getDb() {
       console.error('[Persistence] CRITICAL ERROR restoring from Vercel Blob:', err.message);
       // We must not silently create a new DB if the blob exists but failed to download,
       // otherwise forceBackup() will overwrite the blob with an empty DB!
-      // But we have to return a fallback or the app crashes. We'll throw so it doesn't corrupt.
       throw new Error(`Failed to restore Vercel Blob DB. To prevent data wiping, app is stopped. Error: ${err.message}`);
     }
   }
@@ -292,27 +269,15 @@ const STATS_BLOB_KEY = 'cms_stats.json';
 async function _readStatsBlob() {
   if (!process.env.BLOB_READ_WRITE_TOKEN) return null;
   try {
-    const { head } = require('@vercel/blob');
-    let blob;
+    const { get: blobGet } = require('@vercel/blob');
+    let res;
     try {
-      blob = await head(STATS_BLOB_KEY);
+      res = await blobGet(STATS_BLOB_KEY);
     } catch (e) {
       const msg = (e.message || '').toLowerCase();
       if (msg.includes('not found') || msg.includes('does not exist') || msg.includes('blob does not exist') || e.status === 404) return null;
       throw e;
     }
-    const baseUrl = blob.downloadUrl || blob.url;
-    const separator = baseUrl.includes('?') ? '&' : '?';
-    const targetUrl = `${baseUrl}${separator}t=${Date.now()}`;
-    const res = await fetch(targetUrl, {
-      cache: 'no-store',
-      headers: {
-        'Pragma': 'no-cache',
-        'Cache-Control': 'no-cache',
-        ...(process.env.BLOB_READ_WRITE_TOKEN ? { 'Authorization': `Bearer ${process.env.BLOB_READ_WRITE_TOKEN}` } : {})
-      }
-    });
-    if (!res.ok) return null;
     return await res.json();
   } catch (e) {
     console.warn('[Stats] Could not read cms_stats.json:', e.message);
@@ -402,27 +367,15 @@ const COMPLAINTS_BLOB_KEY = 'cms_complaints.json';
 async function _readComplaintsBlob() {
   if (!process.env.BLOB_READ_WRITE_TOKEN) return [];
   try {
-    const { head } = require('@vercel/blob');
-    let blob;
+    const { get: blobGet } = require('@vercel/blob');
+    let res;
     try {
-      blob = await head(COMPLAINTS_BLOB_KEY);
+      res = await blobGet(COMPLAINTS_BLOB_KEY);
     } catch (e) {
       const msg = (e.message || '').toLowerCase();
       if (msg.includes('not found') || msg.includes('does not exist') || msg.includes('blob does not exist') || e.status === 404) return [];
       throw e; // Important: do not swallow real errors
     }
-    const baseUrl = blob.downloadUrl || blob.url;
-    const separator = baseUrl.includes('?') ? '&' : '?';
-    const targetUrl = `${baseUrl}${separator}t=${Date.now()}`;
-    const res = await fetch(targetUrl, {
-      cache: 'no-store',
-      headers: {
-        'Pragma': 'no-cache',
-        'Cache-Control': 'no-cache',
-        ...(process.env.BLOB_READ_WRITE_TOKEN ? { 'Authorization': `Bearer ${process.env.BLOB_READ_WRITE_TOKEN}` } : {})
-      }
-    });
-    if (!res.ok) throw new Error(`Fetch failed: ${res.status}`);
     const data = await res.json();
     return Array.isArray(data) ? data : [];
   } catch (e) {
@@ -492,27 +445,15 @@ const TELEGRAM_LINKS_BLOB_KEY = 'cms_telegram_links.json';
 async function _readTelegramLinksBlob() {
   if (!process.env.BLOB_READ_WRITE_TOKEN) return {};
   try {
-    const { head } = require('@vercel/blob');
-    let blob;
+    const { get: blobGet } = require('@vercel/blob');
+    let res;
     try {
-      blob = await head(TELEGRAM_LINKS_BLOB_KEY);
+      res = await blobGet(TELEGRAM_LINKS_BLOB_KEY);
     } catch (e) {
       const msg = (e.message || '').toLowerCase();
       if (msg.includes('not found') || msg.includes('does not exist') || msg.includes('blob does not exist') || e.status === 404) return {};
       throw e;
     }
-    const baseUrl = blob.downloadUrl || blob.url;
-    const separator = baseUrl.includes('?') ? '&' : '?';
-    const targetUrl = `${baseUrl}${separator}t=${Date.now()}`;
-    const res = await fetch(targetUrl, {
-      cache: 'no-store',
-      headers: {
-        'Pragma': 'no-cache',
-        'Cache-Control': 'no-cache',
-        ...(process.env.BLOB_READ_WRITE_TOKEN ? { 'Authorization': `Bearer ${process.env.BLOB_READ_WRITE_TOKEN}` } : {})
-      }
-    });
-    if (!res.ok) return {};
     const data = await res.json();
     return (data && typeof data === 'object' && !Array.isArray(data)) ? data : {};
   } catch (e) {
