@@ -185,24 +185,23 @@ router.get('/debug', async (req, res) => {
             sqliteLinks = [{ error: e.message }];
         }
 
-        // 3. Get all links from Blob (use downloadUrl + auth — blob is private)
+        // 3. Get all links from Blob (use SDK get() — handles OIDC auth automatically)
         let blobLinks = {};
         try {
-            const { head } = require('@vercel/blob');
-            const blob = await head('cms_telegram_links.json').catch(() => null);
-            if (blob) {
-                const fetchUrl = blob.downloadUrl || blob.url;
-                const separator = fetchUrl.includes('?') ? '&' : '?';
-                const r = await fetch(`${fetchUrl}${separator}t=${Date.now()}`, {
-                    cache: 'no-store',
-                    headers: {
-                        'Pragma': 'no-cache',
-                        'Cache-Control': 'no-cache',
-                        ...(process.env.BLOB_READ_WRITE_TOKEN ? { 'Authorization': `Bearer ${process.env.BLOB_READ_WRITE_TOKEN}` } : {})
-                    }
-                });
-                if (r.ok) blobLinks = await r.json();
-                else blobLinks = { fetchError: `HTTP ${r.status}`, fetchUrl };
+            const { get: blobGet } = require('@vercel/blob');
+            let res;
+            try {
+                res = await blobGet('cms_telegram_links.json');
+            } catch (e) {
+                const msg = (e.message || '').toLowerCase();
+                if (msg.includes('not found') || msg.includes('does not exist') || msg.includes('blob does not exist') || e.status === 404) {
+                    res = null;
+                } else {
+                    throw e;
+                }
+            }
+            if (res) {
+                blobLinks = await res.json();
             } else {
                 blobLinks = { note: 'cms_telegram_links.json blob does not exist yet' };
             }
