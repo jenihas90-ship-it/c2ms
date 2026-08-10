@@ -1,6 +1,7 @@
 const nodemailer = require('nodemailer');
 const db = require('./db');
 const sms = require('./sms');
+const telegram = require('./telegram');
 
 // Read SMTP config from environment variables
 const SMTP_HOST = process.env.SMTP_HOST;
@@ -31,6 +32,24 @@ async function sendMail({ to, subject, text, html }) {
     console.log('Email sent:', subject, 'to', to);
   } catch (err) {
     console.error('Failed to send email:', err && err.message ? err.message : err);
+  }
+}
+
+/**
+ * Attempts to send a message via Telegram if the phone number is linked.
+ * Returns true if sent, false otherwise.
+ */
+async function sendViaTelegramIfLinked(phone, text) {
+  if (!phone) return false;
+  try {
+    const chatId = await db.getTelegramChatIdByPhone(phone);
+    if (!chatId) return false;
+    await telegram.sendMessage(chatId, text);
+    console.log(`[Telegram] ✅ Message dispatched to chatId ${chatId} (phone: ${phone})`);
+    return true;
+  } catch (err) {
+    console.warn(`[Telegram] ❌ sendViaTelegramIfLinked failed for ${phone}:`, err.message);
+    return false;
   }
 }
 
@@ -121,15 +140,21 @@ View the conversation: ${linkText}`;
       }
       if (respondentPhone) {
         const smsText = `New message on case #${c.case_number || c.id} from ${author.role.toLowerCase()} ${author.username}. Login to the respondent portal to view and respond.`;
+        // Prefer Telegram (free) over Twilio SMS
+        const sentViaTelegram = await sendViaTelegramIfLinked(respondentPhone, `⚖️ Court Update — Case #${c.case_number || c.id}\n\n${smsText}`);
         let smsStatus = 'sent';
         let smsError = null;
-        try {
-          await sms.sendSms(respondentPhone, smsText);
-          console.log(`[Remark SMS] ✅ SMS dispatched to ${respondentPhone}`);
-        } catch (smsErr) {
-          smsStatus = 'failed';
-          smsError = smsErr.message;
-          console.warn('[Remark SMS] ❌ Twilio error:', smsErr.message);
+        if (!sentViaTelegram) {
+          try {
+            await sms.sendSms(respondentPhone, smsText);
+            console.log(`[Remark SMS] ✅ SMS dispatched to ${respondentPhone}`);
+          } catch (smsErr) {
+            smsStatus = 'failed';
+            smsError = smsErr.message;
+            console.warn('[Remark SMS] ❌ Twilio error:', smsErr.message);
+          }
+        } else {
+          smsStatus = 'telegram';
         }
         try {
           await db.run(
@@ -194,7 +219,7 @@ async function notifyRespondentOfComplaint(complaintId) {
     const c = await db.get('SELECT * FROM complaints WHERE id = ?', [complaintId]);
     if (!c) return;
 
-    // ── REAL SMS TO RESPONDENT PHONE ──────────────────────────────────────
+    // ── NOTIFY RESPONDENT (Telegram preferred, falls back to Twilio) ─────────
     if (c.respondent_phone) {
       const orderType = 'Legal Complaint Notice';
       const orderDetails = `A legal complaint titled "${c.title}" has been officially served against you at ${c.court_name || 'the court'}. Case ref: ${c.case_number || '#' + c.id}. Please login to the respondent portal immediately to review.`;
@@ -202,21 +227,28 @@ async function notifyRespondentOfComplaint(complaintId) {
       // Generate AI-personalised message (falls back to template if no Gemini key)
       const messageText = await sms.generateSmsContent(c, orderDetails, orderType);
 
-      // Send via Twilio (or console log if Twilio not configured)
-      let serveStatus = 'sent';
-      try {
-        await sms.sendSms(c.respondent_phone, messageText);
-        console.log(`[Serve SMS] ✅ SMS dispatched to ${c.respondent_phone} for complaint #${complaintId}`);
-      } catch (smsErr) {
-        serveStatus = 'failed';
-        console.warn(`[Serve SMS] ❌ Twilio error for complaint #${complaintId}:`, smsErr.message);
+      // Prefer Telegram (free) over Twilio SMS
+      const sentViaTelegram = await sendViaTelegramIfLinked(
+        c.respondent_phone,
+        `⚖️ Official Court Notice\n\n${messageText}`
+      );
+
+      let serveStatus = sentViaTelegram ? 'telegram' : 'sent';
+      if (!sentViaTelegram) {
+        try {
+          await sms.sendSms(c.respondent_phone, messageText);
+          console.log(`[Serve SMS] ✅ SMS dispatched to ${c.respondent_phone} for complaint #${complaintId}`);
+        } catch (smsErr) {
+          serveStatus = 'failed';
+          console.warn(`[Serve SMS] ❌ Twilio error for complaint #${complaintId}:`, smsErr.message);
+        }
       }
 
       // Log to sms_logs for audit trail & respondent portal display
       try {
         await db.run(
           `INSERT INTO sms_logs (complaint_id, recipient_phone, message, status) VALUES (?, ?, ?, ?)`,
-          [complaintId, c.respondent_phone, serveStatus === 'failed' ? `[Delivery Failed] ${smsError}\n\nOriginal Message:\n${messageText}` : messageText, serveStatus]
+          [complaintId, c.respondent_phone, messageText, serveStatus]
         );
       } catch (logErr) {
         console.warn('[Serve SMS] Could not write to sms_logs:', logErr.message);
@@ -262,16 +294,22 @@ async function notifyRespondentJudgmentSms(complaintId, orderDetails, orderType,
     // Use custom text from judge if provided, else regenerate
     const messageText = customSmsText ? customSmsText : await sms.generateSmsContent(c, orderDetails, orderType);
 
-    // Send SMS (Twilio if configured, else console log)
+    // Send via Telegram (preferred) or Twilio fallback
     if (c.respondent_phone) {
-      let smsStatus = 'sent';
+      const sentViaTelegram = await sendViaTelegramIfLinked(
+        c.respondent_phone,
+        `⚖️ Court Judgment Issued\n\n${messageText}`
+      );
+      let smsStatus = sentViaTelegram ? 'telegram' : 'sent';
       let smsError = null;
-      try {
-        await sms.sendSms(c.respondent_phone, messageText);
-      } catch (smsErr) {
-        smsStatus = 'failed';
-        smsError = smsErr.message;
-        console.warn('[AI SMS] Twilio error:', smsErr.message);
+      if (!sentViaTelegram) {
+        try {
+          await sms.sendSms(c.respondent_phone, messageText);
+        } catch (smsErr) {
+          smsStatus = 'failed';
+          smsError = smsErr.message;
+          console.warn('[AI SMS] Twilio error:', smsErr.message);
+        }
       }
       // Log to sms_logs table for audit trail
       try {
