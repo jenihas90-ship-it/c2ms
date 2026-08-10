@@ -185,14 +185,22 @@ router.get('/debug', async (req, res) => {
             sqliteLinks = [{ error: e.message }];
         }
 
-        // 3. Get all links from Blob
+        // 3. Get all links from Blob (use downloadUrl — blob is private)
         let blobLinks = {};
         try {
             const { head } = require('@vercel/blob');
             const blob = await head('cms_telegram_links.json').catch(() => null);
             if (blob) {
-                const r = await fetch(`${blob.url}?t=${Date.now()}`, { cache: 'no-store' });
+                const fetchUrl = blob.downloadUrl || blob.url;
+                const separator = fetchUrl.includes('?') ? '&' : '?';
+                const r = await fetch(`${fetchUrl}${separator}t=${Date.now()}`, {
+                    cache: 'no-store',
+                    headers: { 'Pragma': 'no-cache', 'Cache-Control': 'no-cache' }
+                });
                 if (r.ok) blobLinks = await r.json();
+                else blobLinks = { fetchError: `HTTP ${r.status}`, fetchUrl };
+            } else {
+                blobLinks = { note: 'cms_telegram_links.json blob does not exist yet' };
             }
         } catch (e) {
             blobLinks = { error: e.message };
@@ -233,6 +241,73 @@ router.post('/set-webhook', async (req, res) => {
         res.json({ webhookUrl, telegramResponse: result });
     } catch (err) {
         res.status(500).json({ error: err.message });
+    }
+});
+
+/**
+ * POST /api/telegram/send-test
+ * Directly sends a test message to a given chatId OR looks up by phone.
+ * Body: { "chatId": "123456789" } OR { "phone": "+251911223344" }
+ * Useful for admin-level diagnostics when linked accounts exist.
+ */
+router.post('/send-test', async (req, res) => {
+    try {
+        let chatId = req.body && req.body.chatId;
+        const phone = req.body && req.body.phone;
+
+        if (!chatId && phone) {
+            chatId = await db.getTelegramChatIdByPhone(normalizePhone(phone));
+            if (!chatId) {
+                return res.status(404).json({ error: `No Telegram link found for phone: ${phone}` });
+            }
+        }
+
+        if (!chatId) {
+            return res.status(400).json({ error: 'Provide either chatId or phone in request body' });
+        }
+
+        await telegram.sendMessage(String(chatId), '✅ Test message from Justice Court CMS — your Telegram notifications are working correctly!');
+        res.json({ success: true, chatId, message: 'Test message sent successfully.' });
+    } catch (err) {
+        res.status(500).json({ success: false, error: err.message });
+    }
+});
+
+/**
+ * POST /api/telegram/admin-link
+ * Manually inserts a phone→chatId mapping (for admin testing / emergency linking).
+ * Body: { "phone": "+251911223344", "chatId": "123456789" }
+ */
+router.post('/admin-link', async (req, res) => {
+    try {
+        const rawPhone = req.body && req.body.phone;
+        const chatId = req.body && req.body.chatId;
+
+        if (!rawPhone || !chatId) {
+            return res.status(400).json({ error: 'Both phone and chatId are required' });
+        }
+
+        const phone = normalizePhone(rawPhone);
+
+        // Insert into SQLite
+        await db.run('INSERT OR REPLACE INTO telegram_links (phone_number, chat_id) VALUES (?, ?)', [phone, String(chatId)]);
+        if (phone.startsWith('+251')) {
+            const localVariant = '0' + phone.substring(4);
+            await db.run('INSERT OR REPLACE INTO telegram_links (phone_number, chat_id) VALUES (?, ?)', [localVariant, String(chatId)]);
+        }
+
+        // Persist to blob so all workers see it
+        await db.syncTelegramLinkToBlob(phone, chatId);
+        await db.forceBackup();
+
+        res.json({
+            success: true,
+            message: `Manually linked ${phone} → chatId ${chatId}`,
+            phone,
+            chatId
+        });
+    } catch (err) {
+        res.status(500).json({ success: false, error: err.message });
     }
 });
 

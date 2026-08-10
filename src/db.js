@@ -538,11 +538,16 @@ async function syncTelegramLinkToBlob(phoneNumber, chatId) {
  * — ensuring cross-worker delivery even on fresh cold-start workers.
  */
 async function getTelegramChatIdByPhone(phone) {
+  // Build variant: +251XXXXXXXX <-> 09XXXXXXXX
+  const intlVariant = phone.startsWith('0') ? ('+251' + phone.substring(1)) : null;
+  const localVariant = phone.startsWith('+251') ? ('0' + phone.substring(4)) : null;
+  const alt = intlVariant || localVariant || phone;
+
   // Fast path: in-memory SQLite
   try {
     const database = await getDb();
     const stmt = database.prepare('SELECT chat_id FROM telegram_links WHERE phone_number = ? OR phone_number = ?');
-    stmt.bind([phone, '0' + phone.substring(4)]);
+    stmt.bind([phone, alt]);
     if (stmt.step()) {
       const vals = stmt.get();
       stmt.free();
@@ -556,7 +561,7 @@ async function getTelegramChatIdByPhone(phone) {
   // Blob fallback: cross-worker / cold-start
   try {
     const linksMap = await _readTelegramLinksBlob();
-    const entry = linksMap[phone] || linksMap['0' + phone.substring(4)];
+    const entry = linksMap[phone] || linksMap[alt];
     if (entry && entry.chat_id) {
       console.log(`[TelegramBlob] Found chat_id for ${phone} in blob (cross-worker lookup).`);
       // Warm the in-memory DB for subsequent calls on same worker
