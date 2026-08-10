@@ -712,6 +712,15 @@ async function initDatabase() {
     )
   `);
 
+    // Create Telegram Links Table (links phone numbers to Telegram Chat IDs)
+    await run(`
+    CREATE TABLE IF NOT EXISTS telegram_links (
+      phone_number TEXT PRIMARY KEY,
+      chat_id TEXT NOT NULL,
+      linked_at DATETIME DEFAULT CURRENT_TIMESTAMP
+    )
+  `);
+
     // Create In-App Notifications Table 
     await run(`
     CREATE TABLE IF NOT EXISTS in_app_notifications (

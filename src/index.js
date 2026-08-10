@@ -67,6 +67,7 @@ const judgeRouter = require('./routes/judge');
 const clerkRouter = require('./routes/clerk');
 const respondentRouter = require('./routes/respondent');
 const notificationsRouter = require('./routes/notifications');
+const telegramRouter = require('./routes/telegram');
 
 app.use('/api/auth', authRouter);
 app.use('/api/complaints', complaintsRouter);
@@ -75,6 +76,7 @@ app.use('/api/judge', judgeRouter);
 app.use('/api/clerk', clerkRouter);
 app.use('/api/respondent', respondentRouter);
 app.use('/api/notifications', notificationsRouter);
+app.use('/api/telegram', telegramRouter);
 
 // Fallback to serving public/index.html for UI routes
 app.get('*', (req, res) => {

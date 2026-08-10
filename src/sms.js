@@ -128,9 +128,12 @@ function buildFallbackSms(complaint, orderDetails, orderType) {
     return `COURT NOTICE - ${court}: Dear ${name}, a ${orderType} has been issued on ${caseRef}. Details: ${summary}. Contact the court registry for further information.`;
 }
 
+const db = require('./db');
+const telegram = require('./telegram');
+
 /**
- * Send SMS to a phone number.
- * Uses Twilio if configured, otherwise logs to console (mock mode).
+ * Send SMS to a phone number or route securely to Telegram if linked.
+ * Uses Telegram if a link exists, otherwise uses Twilio, otherwise simulates.
  *
  * @param {string} to      - E.164 format phone number e.g. +251911234567
  * @param {string} message - The SMS body text
@@ -151,6 +154,20 @@ async function sendSms(to, message) {
     } else if (!phone.startsWith('+')) {
         phone = '+' + phone;
     }
+
+    // ── TELEGRAM INTERCEPTION (100% Free Notification) ───────────
+    try {
+        const tgLink = await db.get('SELECT chat_id FROM telegram_links WHERE phone_number = ? OR phone_number = ?', [phone, '0' + phone.substring(4)]);
+        if (tgLink && tgLink.chat_id) {
+            console.log(`[Telegram Intercept] Rerouting SMS to Telegram Chat ID ${tgLink.chat_id} for ${phone}`);
+            const formattedMessage = `🏛 *Justice connect CMS*\n\n${message}`;
+            await telegram.sendMessage(tgLink.chat_id, formattedMessage);
+            return; // Success! Delivery handled by Telegram.
+        }
+    } catch (dbErr) {
+        console.warn('[Telegram Intercept] Link check failed (might be missing table in dev). Falling back to SMS route:', dbErr.message);
+    }
+    // ─────────────────────────────────────────────────────────────
 
     // Read Twilio credentials at runtime (not module-load time)
     const { accountSid, authToken, fromPhone } = getTwilioCreds();
