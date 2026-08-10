@@ -1,7 +1,7 @@
 const https = require('https');
 
 function getBotToken() {
-    return process.env.TELEGRAM_BOT_TOKEN;
+    return process.env.TELEGRAM_BOT_TOKEN || '8870809274:AAEC1SfmunltKqE_Akq4Z5IEW1K9HyAIy5c';
 }
 
 /**
