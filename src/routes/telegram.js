@@ -111,6 +111,38 @@ router.post('/webhook', async (req, res) => {
     res.sendStatus(200);
 });
 
+router.get('/test-blob', async (req, res) => {
+    try {
+        const { put, head } = require('@vercel/blob');
+        const writeObj = { [Date.now().toString()]: "test" };
+        const json = JSON.stringify(writeObj);
+        const putRes = await put('cms_telegram_links.json', json, { access: 'public', addRandomSuffix: false, contentType: 'application/json', cacheControlMaxAge: 0 });
+
+        const blobResp = await head('cms_telegram_links.json');
+
+        let fetchStatus = null;
+        let data = null;
+        let readError = null;
+        try {
+            const r = await fetch(`${blobResp.url}?t=${Date.now()}`);
+            fetchStatus = r.status;
+            data = await r.json();
+        } catch (fe) {
+            readError = fe.message;
+        }
+
+        res.json({
+            putResult: putRes,
+            headResult: blobResp,
+            fetchStatus,
+            data,
+            readError
+        });
+    } catch (err) {
+        res.json({ error: err.message, stack: err.stack });
+    }
+});
+
 /**
  * GET /api/telegram/debug
  * Shows all stored telegram links and current webhook info from Telegram API.
