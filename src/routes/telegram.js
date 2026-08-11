@@ -190,7 +190,7 @@ router.get('/debug', async (req, res) => {
             const { list: blobList } = require('@vercel/blob');
             let blobInfo;
             try {
-                const { blobs } = await blobList({ prefix: 'cms_telegram_links.json', limit: 1, token: process.env.BLOB_READ_WRITE_TOKEN });
+                const { blobs } = await blobList({ prefix: 'cms_telegram_links.json', limit: 1 });
                 blobInfo = blobs[0] || null;
             } catch (e) {
                 const msg = (e.message || '').toLowerCase();

@@ -39,7 +39,7 @@ async function getDb() {
       const { list: blobList } = require('@vercel/blob');
       let blobInfo;
       try {
-        const { blobs } = await blobList({ prefix: 'cms_vercel.sqlite', limit: 1, token: process.env.BLOB_READ_WRITE_TOKEN });
+        const { blobs } = await blobList({ prefix: 'cms_vercel.sqlite', limit: 1 });
         blobInfo = blobs[0] || null;
       } catch (e) {
         const msg = (e.message || '').toLowerCase();
@@ -273,7 +273,7 @@ async function _readStatsBlob() {
     const { list: blobList } = require('@vercel/blob');
     let blobInfo;
     try {
-      const { blobs } = await blobList({ prefix: STATS_BLOB_KEY, limit: 1, token: process.env.BLOB_READ_WRITE_TOKEN });
+      const { blobs } = await blobList({ prefix: STATS_BLOB_KEY, limit: 1 });
       blobInfo = blobs[0] || null;
     } catch (e) {
       const msg = (e.message || '').toLowerCase();
@@ -374,7 +374,7 @@ async function _readComplaintsBlob() {
     const { list: blobList } = require('@vercel/blob');
     let blobInfo;
     try {
-      const { blobs } = await blobList({ prefix: COMPLAINTS_BLOB_KEY, limit: 1, token: process.env.BLOB_READ_WRITE_TOKEN });
+      const { blobs } = await blobList({ prefix: COMPLAINTS_BLOB_KEY, limit: 1 });
       blobInfo = blobs[0] || null;
     } catch (e) {
       const msg = (e.message || '').toLowerCase();
@@ -455,7 +455,7 @@ async function _readTelegramLinksBlob() {
     const { list: blobList } = require('@vercel/blob');
     let blobInfo;
     try {
-      const { blobs } = await blobList({ prefix: TELEGRAM_LINKS_BLOB_KEY, limit: 1, token: process.env.BLOB_READ_WRITE_TOKEN });
+      const { blobs } = await blobList({ prefix: TELEGRAM_LINKS_BLOB_KEY, limit: 1 });
       blobInfo = blobs[0] || null;
     } catch (e) {
       const msg = (e.message || '').toLowerCase();
