@@ -36,10 +36,11 @@ async function getDb() {
 
   if (!tmpFileExists && (process.env.VERCEL || process.env.NOW_REGION) && process.env.BLOB_READ_WRITE_TOKEN) {
     try {
-      const { head: blobHead } = require('@vercel/blob');
+      const { list: blobList } = require('@vercel/blob');
       let blobInfo;
       try {
-        blobInfo = await blobHead('cms_vercel.sqlite', { token: process.env.BLOB_READ_WRITE_TOKEN });
+        const { blobs } = await blobList({ prefix: 'cms_vercel.sqlite', limit: 1, token: process.env.BLOB_READ_WRITE_TOKEN });
+        blobInfo = blobs[0] || null;
       } catch (e) {
         const msg = (e.message || '').toLowerCase();
         if (msg.includes('not found') || msg.includes('does not exist') || msg.includes('blob does not exist') || e.status === 404) {
@@ -269,10 +270,11 @@ const STATS_BLOB_KEY = 'cms_stats.json';
 async function _readStatsBlob() {
   if (!process.env.BLOB_READ_WRITE_TOKEN) return null;
   try {
-    const { head: blobHead } = require('@vercel/blob');
+    const { list: blobList } = require('@vercel/blob');
     let blobInfo;
     try {
-      blobInfo = await blobHead(STATS_BLOB_KEY, { token: process.env.BLOB_READ_WRITE_TOKEN });
+      const { blobs } = await blobList({ prefix: STATS_BLOB_KEY, limit: 1, token: process.env.BLOB_READ_WRITE_TOKEN });
+      blobInfo = blobs[0] || null;
     } catch (e) {
       const msg = (e.message || '').toLowerCase();
       if (msg.includes('not found') || msg.includes('does not exist') || msg.includes('blob does not exist') || e.status === 404) return null;
@@ -369,10 +371,11 @@ const COMPLAINTS_BLOB_KEY = 'cms_complaints.json';
 async function _readComplaintsBlob() {
   if (!process.env.BLOB_READ_WRITE_TOKEN) return [];
   try {
-    const { head: blobHead } = require('@vercel/blob');
+    const { list: blobList } = require('@vercel/blob');
     let blobInfo;
     try {
-      blobInfo = await blobHead(COMPLAINTS_BLOB_KEY, { token: process.env.BLOB_READ_WRITE_TOKEN });
+      const { blobs } = await blobList({ prefix: COMPLAINTS_BLOB_KEY, limit: 1, token: process.env.BLOB_READ_WRITE_TOKEN });
+      blobInfo = blobs[0] || null;
     } catch (e) {
       const msg = (e.message || '').toLowerCase();
       if (msg.includes('not found') || msg.includes('does not exist') || msg.includes('blob does not exist') || e.status === 404) return [];
@@ -449,10 +452,11 @@ const TELEGRAM_LINKS_BLOB_KEY = 'cms_telegram_links.json';
 async function _readTelegramLinksBlob() {
   if (!process.env.BLOB_READ_WRITE_TOKEN) return {};
   try {
-    const { head: blobHead } = require('@vercel/blob');
+    const { list: blobList } = require('@vercel/blob');
     let blobInfo;
     try {
-      blobInfo = await blobHead(TELEGRAM_LINKS_BLOB_KEY, { token: process.env.BLOB_READ_WRITE_TOKEN });
+      const { blobs } = await blobList({ prefix: TELEGRAM_LINKS_BLOB_KEY, limit: 1, token: process.env.BLOB_READ_WRITE_TOKEN });
+      blobInfo = blobs[0] || null;
     } catch (e) {
       const msg = (e.message || '').toLowerCase();
       if (msg.includes('not found') || msg.includes('does not exist') || msg.includes('blob does not exist') || e.status === 404) return {};

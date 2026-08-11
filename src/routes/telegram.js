@@ -187,10 +187,11 @@ router.get('/debug', async (req, res) => {
 
         let blobLinks = {};
         try {
-            const { head: blobHead } = require('@vercel/blob');
+            const { list: blobList } = require('@vercel/blob');
             let blobInfo;
             try {
-                blobInfo = await blobHead('cms_telegram_links.json', { token: process.env.BLOB_READ_WRITE_TOKEN });
+                const { blobs } = await blobList({ prefix: 'cms_telegram_links.json', limit: 1, token: process.env.BLOB_READ_WRITE_TOKEN });
+                blobInfo = blobs[0] || null;
             } catch (e) {
                 const msg = (e.message || '').toLowerCase();
                 if (msg.includes('not found') || msg.includes('does not exist') || msg.includes('blob does not exist') || e.status === 404) {
