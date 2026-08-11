@@ -498,7 +498,10 @@ async function syncTelegramLinkToBlob(phoneNumber, chatId) {
  * Checks in-memory SQLite first (fast path), then falls back to the shared blob
  * — ensuring cross-worker delivery even on fresh cold-start workers.
  */
-async function getTelegramChatIdByPhone(phone) {
+async function getTelegramChatIdByPhone(rawPhone) {
+  if (!rawPhone) return null;
+  const phone = String(rawPhone).trim().replace(/\s+/g, '');
+
   // Build variant: +251XXXXXXXX <-> 09XXXXXXXX
   const intlVariant = phone.startsWith('0') ? ('+251' + phone.substring(1)) : null;
   const localVariant = phone.startsWith('+251') ? ('0' + phone.substring(4)) : null;

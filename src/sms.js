@@ -146,7 +146,7 @@ async function sendSms(to, message) {
     }
 
     // Normalize phone: auto-format Ethiopian prefixes (09 or 07)
-    let phone = to.toString().trim();
+    let phone = String(to).trim().replace(/\s+/g, '');
     if (phone.startsWith('09') || phone.startsWith('07')) {
         phone = '+251' + phone.substring(1);
     } else if (phone.startsWith('251') && !phone.startsWith('+')) {
