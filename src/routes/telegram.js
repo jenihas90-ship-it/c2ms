@@ -185,23 +185,23 @@ router.get('/debug', async (req, res) => {
             sqliteLinks = [{ error: e.message }];
         }
 
-        // 3. Get all links from Blob (use SDK get() — handles OIDC auth automatically)
         let blobLinks = {};
         try {
-            const { get: blobGet } = require('@vercel/blob');
-            let res;
+            const { head: blobHead } = require('@vercel/blob');
+            let blobInfo;
             try {
-                res = await blobGet('cms_telegram_links.json');
+                blobInfo = await blobHead('cms_telegram_links.json', { token: process.env.BLOB_READ_WRITE_TOKEN });
             } catch (e) {
                 const msg = (e.message || '').toLowerCase();
                 if (msg.includes('not found') || msg.includes('does not exist') || msg.includes('blob does not exist') || e.status === 404) {
-                    res = null;
+                    blobInfo = null;
                 } else {
                     throw e;
                 }
             }
-            if (res) {
-                blobLinks = await res.json();
+            if (blobInfo) {
+                const fetchRes = await fetch(blobInfo.downloadUrl);
+                blobLinks = await fetchRes.json();
             } else {
                 blobLinks = { note: 'cms_telegram_links.json blob does not exist yet' };
             }

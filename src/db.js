@@ -36,24 +36,24 @@ async function getDb() {
 
   if (!tmpFileExists && (process.env.VERCEL || process.env.NOW_REGION) && process.env.BLOB_READ_WRITE_TOKEN) {
     try {
-      const { get: blobGet } = require('@vercel/blob');
-      let blobResp;
+      const { head: blobHead } = require('@vercel/blob');
+      let blobInfo;
       try {
-        // Use SDK get() — handles OIDC auth automatically on Vercel (no raw fetch needed)
-        blobResp = await blobGet('cms_vercel.sqlite');
+        blobInfo = await blobHead('cms_vercel.sqlite', { token: process.env.BLOB_READ_WRITE_TOKEN });
       } catch (e) {
         const msg = (e.message || '').toLowerCase();
         if (msg.includes('not found') || msg.includes('does not exist') || msg.includes('blob does not exist') || e.status === 404) {
           console.log('[Persistence] No existing database found in Vercel Blob. Starting fresh.');
-          blobResp = null;
+          blobInfo = null;
         } else {
           throw e;
         }
       }
 
-      if (blobResp) {
-        console.log('[Persistence] Restoring database from Vercel Blob via SDK get()...');
-        const arrayBuffer = await blobResp.arrayBuffer();
+      if (blobInfo) {
+        console.log('[Persistence] Restoring database from Vercel Blob...');
+        const fetchRes = await fetch(blobInfo.downloadUrl);
+        const arrayBuffer = await fetchRes.arrayBuffer();
         fs.writeFileSync(DB_FILE, Buffer.from(arrayBuffer));
         console.log('[Persistence] Successfully restored database from Vercel Blob');
       }
@@ -269,16 +269,18 @@ const STATS_BLOB_KEY = 'cms_stats.json';
 async function _readStatsBlob() {
   if (!process.env.BLOB_READ_WRITE_TOKEN) return null;
   try {
-    const { get: blobGet } = require('@vercel/blob');
-    let res;
+    const { head: blobHead } = require('@vercel/blob');
+    let blobInfo;
     try {
-      res = await blobGet(STATS_BLOB_KEY);
+      blobInfo = await blobHead(STATS_BLOB_KEY, { token: process.env.BLOB_READ_WRITE_TOKEN });
     } catch (e) {
       const msg = (e.message || '').toLowerCase();
       if (msg.includes('not found') || msg.includes('does not exist') || msg.includes('blob does not exist') || e.status === 404) return null;
       throw e;
     }
-    return await res.json();
+    if (!blobInfo) return null;
+    const fetchRes = await fetch(blobInfo.downloadUrl);
+    return await fetchRes.json();
   } catch (e) {
     console.warn('[Stats] Could not read cms_stats.json:', e.message);
     return null;
@@ -367,16 +369,18 @@ const COMPLAINTS_BLOB_KEY = 'cms_complaints.json';
 async function _readComplaintsBlob() {
   if (!process.env.BLOB_READ_WRITE_TOKEN) return [];
   try {
-    const { get: blobGet } = require('@vercel/blob');
-    let res;
+    const { head: blobHead } = require('@vercel/blob');
+    let blobInfo;
     try {
-      res = await blobGet(COMPLAINTS_BLOB_KEY);
+      blobInfo = await blobHead(COMPLAINTS_BLOB_KEY, { token: process.env.BLOB_READ_WRITE_TOKEN });
     } catch (e) {
       const msg = (e.message || '').toLowerCase();
       if (msg.includes('not found') || msg.includes('does not exist') || msg.includes('blob does not exist') || e.status === 404) return [];
       throw e; // Important: do not swallow real errors
     }
-    const data = await res.json();
+    if (!blobInfo) return [];
+    const fetchRes = await fetch(blobInfo.downloadUrl);
+    const data = await fetchRes.json();
     return Array.isArray(data) ? data : [];
   } catch (e) {
     console.warn('[Blob] Could not read cms_complaints.json:', e.message);
@@ -445,16 +449,18 @@ const TELEGRAM_LINKS_BLOB_KEY = 'cms_telegram_links.json';
 async function _readTelegramLinksBlob() {
   if (!process.env.BLOB_READ_WRITE_TOKEN) return {};
   try {
-    const { get: blobGet } = require('@vercel/blob');
-    let res;
+    const { head: blobHead } = require('@vercel/blob');
+    let blobInfo;
     try {
-      res = await blobGet(TELEGRAM_LINKS_BLOB_KEY);
+      blobInfo = await blobHead(TELEGRAM_LINKS_BLOB_KEY, { token: process.env.BLOB_READ_WRITE_TOKEN });
     } catch (e) {
       const msg = (e.message || '').toLowerCase();
       if (msg.includes('not found') || msg.includes('does not exist') || msg.includes('blob does not exist') || e.status === 404) return {};
       throw e;
     }
-    const data = await res.json();
+    if (!blobInfo) return {};
+    const fetchRes = await fetch(blobInfo.downloadUrl);
+    const data = await fetchRes.json();
     return (data && typeof data === 'object' && !Array.isArray(data)) ? data : {};
   } catch (e) {
     console.warn('[TelegramBlob] Could not read cms_telegram_links.json:', e.message);
