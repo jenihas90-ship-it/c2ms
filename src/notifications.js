@@ -3,6 +3,19 @@ const db = require('./db');
 const sms = require('./sms');
 const telegram = require('./telegram');
 
+/**
+ * Normalizes a phone number to E.164 format (+251...) for consistent Telegram lookup.
+ * Handles formats: 09..., 07..., 251..., +251...
+ */
+function normalizePhone(phone) {
+  if (!phone) return phone;
+  let p = String(phone).trim().replace(/\s+/g, '').replace(/-/g, '');
+  if (p.startsWith('09') || p.startsWith('07')) return '+251' + p.substring(1);
+  if (p.startsWith('251') && !p.startsWith('+')) return '+' + p;
+  if (!p.startsWith('+')) return '+' + p;
+  return p;
+}
+
 // Read SMTP config from environment variables
 const SMTP_HOST = process.env.SMTP_HOST;
 const SMTP_PORT = process.env.SMTP_PORT;
@@ -41,14 +54,19 @@ async function sendMail({ to, subject, text, html }) {
  */
 async function sendViaTelegramIfLinked(phone, text) {
   if (!phone) return false;
+  // Always normalize before lookup so format mismatches (0911... vs +251911...) don't break delivery
+  const normalizedPhone = normalizePhone(phone);
   try {
-    const chatId = await db.getTelegramChatIdByPhone(phone);
-    if (!chatId) return false;
+    const chatId = await db.getTelegramChatIdByPhone(normalizedPhone);
+    if (!chatId) {
+      console.log(`[Telegram] No linked chatId for ${normalizedPhone} (original: ${phone})`);
+      return false;
+    }
     await telegram.sendMessage(chatId, text);
-    console.log(`[Telegram] ✅ Message dispatched to chatId ${chatId} (phone: ${phone})`);
+    console.log(`[Telegram] ✅ Message dispatched to chatId ${chatId} (phone: ${normalizedPhone})`);
     return true;
   } catch (err) {
-    console.warn(`[Telegram] ❌ sendViaTelegramIfLinked failed for ${phone}:`, err.message);
+    console.warn(`[Telegram] ❌ sendViaTelegramIfLinked failed for ${normalizedPhone}:`, err.message);
     return false;
   }
 }
@@ -138,6 +156,8 @@ View the conversation: ${linkText}`;
           }
         } catch (e) { /* silent */ }
       }
+      // Normalize phone format before Telegram/SMS dispatch
+      if (respondentPhone) respondentPhone = normalizePhone(respondentPhone);
       if (respondentPhone) {
         const smsText = `New message on case #${c.case_number || c.id} from ${author.role.toLowerCase()} ${author.username}. Login to the respondent portal to view and respond.`;
         // Prefer Telegram (free) over Twilio SMS
@@ -221,6 +241,8 @@ async function notifyRespondentOfComplaint(complaintId) {
 
     // ── NOTIFY RESPONDENT (Telegram preferred, falls back to Twilio) ─────────
     if (c.respondent_phone) {
+      // Normalize phone so lookup matches the format stored during Telegram linking
+      c.respondent_phone = normalizePhone(c.respondent_phone);
       const orderType = 'Legal Complaint Notice';
       const orderDetails = `A legal complaint titled "${c.title}" has been officially served against you at ${c.court_name || 'the court'}. Case ref: ${c.case_number || '#' + c.id}. Please login to the respondent portal immediately to review.`;
 
@@ -296,6 +318,8 @@ async function notifyRespondentJudgmentSms(complaintId, orderDetails, orderType,
 
     // Send via Telegram (preferred) or Twilio fallback
     if (c.respondent_phone) {
+      // Normalize phone so it matches the format from Telegram linking
+      c.respondent_phone = normalizePhone(c.respondent_phone);
       const sentViaTelegram = await sendViaTelegramIfLinked(
         c.respondent_phone,
         `⚖️ Court Judgment Issued\n\n${messageText}`

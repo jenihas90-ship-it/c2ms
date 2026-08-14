@@ -9,6 +9,25 @@ let SQL = null;
 let DB_FILE = null;
 let pauseBackup = false; // Guards against blob uploads during DB initialisation
 
+/**
+ * Fetches a URL with up to `retries` attempts (default 2), waiting `delayMs` between each.
+ * Needed because Vercel private blob downloadUrls are pre-signed and can transiently 403.
+ */
+async function fetchWithRetry(url, retries = 2, delayMs = 500) {
+  let lastErr;
+  for (let i = 0; i <= retries; i++) {
+    try {
+      const res = await fetch(url);
+      if (res.ok) return res;
+      lastErr = new Error(`HTTP ${res.status} from blob URL`);
+    } catch (e) {
+      lastErr = e;
+    }
+    if (i < retries) await new Promise(r => setTimeout(r, delayMs));
+  }
+  throw lastErr;
+}
+
 // Initialize sql.js and create in-memory/tmp database
 async function getDb() {
   if (db) return db;
@@ -39,8 +58,9 @@ async function getDb() {
       const { list: blobList } = require('@vercel/blob');
       let blobInfo;
       try {
-        const { blobs } = await blobList({ prefix: 'cms_vercel.sqlite', limit: 1 });
-        blobInfo = blobs[0] || null;
+        const { blobs } = await blobList({ prefix: 'cms_vercel.sqlite', limit: 10 });
+        // Exact name match to avoid random-suffix duplicates
+        blobInfo = blobs.find(b => b.pathname === 'cms_vercel.sqlite') || null;
       } catch (e) {
         const msg = (e.message || '').toLowerCase();
         if (msg.includes('not found') || msg.includes('does not exist') || msg.includes('blob does not exist') || e.status === 404) {
@@ -53,7 +73,7 @@ async function getDb() {
 
       if (blobInfo) {
         console.log('[Persistence] Restoring database from Vercel Blob...');
-        const fetchRes = await fetch(blobInfo.downloadUrl);
+        const fetchRes = await fetchWithRetry(blobInfo.downloadUrl);
         const arrayBuffer = await fetchRes.arrayBuffer();
         fs.writeFileSync(DB_FILE, Buffer.from(arrayBuffer));
         console.log('[Persistence] Successfully restored database from Vercel Blob');
@@ -273,15 +293,16 @@ async function _readStatsBlob() {
     const { list: blobList } = require('@vercel/blob');
     let blobInfo;
     try {
-      const { blobs } = await blobList({ prefix: STATS_BLOB_KEY, limit: 1 });
-      blobInfo = blobs[0] || null;
+      const { blobs } = await blobList({ prefix: STATS_BLOB_KEY, limit: 10 });
+      // Exact name match to prevent picking random-suffix duplicates
+      blobInfo = blobs.find(b => b.pathname === STATS_BLOB_KEY) || null;
     } catch (e) {
       const msg = (e.message || '').toLowerCase();
       if (msg.includes('not found') || msg.includes('does not exist') || msg.includes('blob does not exist') || e.status === 404) return null;
       throw e;
     }
     if (!blobInfo) return null;
-    const fetchRes = await fetch(blobInfo.downloadUrl);
+    const fetchRes = await fetchWithRetry(blobInfo.downloadUrl);
     return await fetchRes.json();
   } catch (e) {
     console.warn('[Stats] Could not read cms_stats.json:', e.message);
@@ -374,15 +395,16 @@ async function _readComplaintsBlob() {
     const { list: blobList } = require('@vercel/blob');
     let blobInfo;
     try {
-      const { blobs } = await blobList({ prefix: COMPLAINTS_BLOB_KEY, limit: 1 });
-      blobInfo = blobs[0] || null;
+      const { blobs } = await blobList({ prefix: COMPLAINTS_BLOB_KEY, limit: 10 });
+      // Exact name match to prevent picking random-suffix duplicates
+      blobInfo = blobs.find(b => b.pathname === COMPLAINTS_BLOB_KEY) || null;
     } catch (e) {
       const msg = (e.message || '').toLowerCase();
       if (msg.includes('not found') || msg.includes('does not exist') || msg.includes('blob does not exist') || e.status === 404) return [];
       throw e; // Important: do not swallow real errors
     }
     if (!blobInfo) return [];
-    const fetchRes = await fetch(blobInfo.downloadUrl);
+    const fetchRes = await fetchWithRetry(blobInfo.downloadUrl);
     const data = await fetchRes.json();
     return Array.isArray(data) ? data : [];
   } catch (e) {
@@ -455,15 +477,16 @@ async function _readTelegramLinksBlob() {
     const { list: blobList } = require('@vercel/blob');
     let blobInfo;
     try {
-      const { blobs } = await blobList({ prefix: TELEGRAM_LINKS_BLOB_KEY, limit: 1 });
-      blobInfo = blobs[0] || null;
+      const { blobs } = await blobList({ prefix: TELEGRAM_LINKS_BLOB_KEY, limit: 10 });
+      // Exact name match to prevent picking random-suffix duplicates
+      blobInfo = blobs.find(b => b.pathname === TELEGRAM_LINKS_BLOB_KEY) || null;
     } catch (e) {
       const msg = (e.message || '').toLowerCase();
       if (msg.includes('not found') || msg.includes('does not exist') || msg.includes('blob does not exist') || e.status === 404) return {};
       throw e;
     }
     if (!blobInfo) return {};
-    const fetchRes = await fetch(blobInfo.downloadUrl);
+    const fetchRes = await fetchWithRetry(blobInfo.downloadUrl);
     const data = await fetchRes.json();
     return (data && typeof data === 'object' && !Array.isArray(data)) ? data : {};
   } catch (e) {
