@@ -1,6 +1,21 @@
 // Check auth on load
-document.addEventListener('DOMContentLoaded', () => {
-    checkAuthSession(true);
+document.addEventListener('DOMContentLoaded', async () => {
+    const user = await checkAuthSession(true);
+    if (user) {
+        const ctaBtns = document.querySelectorAll('.nav-cta');
+        ctaBtns.forEach(btn => {
+            btn.textContent = 'Go to Dashboard →';
+            btn.onclick = (e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                if (user.role === 'RESPONDENT') {
+                    window.location.href = '/respondent.html';
+                } else {
+                    window.location.href = '/dashboard.html';
+                }
+            };
+        });
+    }
 });
 
 // Toggle between sign-in and registration forms

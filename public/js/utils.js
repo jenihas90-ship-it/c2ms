@@ -100,14 +100,6 @@ async function checkAuthSession(isAuthPage = false) {
     try {
         const data = await apiRequest('/api/auth/me');
         if (data.loggedIn) {
-            if (isAuthPage) {
-                // Logged in user hitting index.html -> redirect based on role
-                if (data.user.role === 'RESPONDENT') {
-                    window.location.replace('/respondent.html');
-                } else {
-                    window.location.replace('/dashboard.html');
-                }
-            }
             return data.user;
         } else {
             if (!isAuthPage) {

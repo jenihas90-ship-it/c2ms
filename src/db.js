@@ -17,7 +17,11 @@ async function fetchWithRetry(url, retries = 2, delayMs = 500) {
   let lastErr;
   for (let i = 0; i <= retries; i++) {
     try {
-      const res = await fetch(url);
+      const headers = {};
+      if (process.env.BLOB_READ_WRITE_TOKEN) {
+        headers['Authorization'] = `Bearer ${process.env.BLOB_READ_WRITE_TOKEN}`;
+      }
+      const res = await fetch(url, { headers });
       if (res.ok) return res;
       lastErr = new Error(`HTTP ${res.status} from blob URL`);
     } catch (e) {
@@ -653,6 +657,25 @@ async function getAllComplaintsFromBlob(filters = {}) {
   return all(query, params);
 }
 
+// ─────────────────────────────────────────────────────────
+//  SINGLE COMPLAINT BLOB LOOKUP
+//  Used as fallback in the detail endpoint so a cold-start
+//  Vercel worker with empty SQLite can still serve complaint
+//  details from the authoritative shared blob.
+// ─────────────────────────────────────────────────────────
+async function getComplaintFromBlob(complaintId) {
+  if (!process.env.BLOB_READ_WRITE_TOKEN) return null;
+  try {
+    const complaints = await _readComplaintsBlob();
+    if (!Array.isArray(complaints)) return null;
+    const c = complaints.find(x => x && String(x.id) === String(complaintId));
+    return c || null;
+  } catch (e) {
+    console.warn('[Blob] getComplaintFromBlob failed:', e.message);
+    return null;
+  }
+}
+
 
 // Initialize tables
 async function initDatabase() {
@@ -916,6 +939,8 @@ module.exports = {
   syncComplaintToBlob,
   deleteComplaintFromBlob,
   getAllComplaintsFromBlob,
+  getComplaintFromBlob,
   syncTelegramLinkToBlob,
   getTelegramChatIdByPhone
 };
+

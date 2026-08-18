@@ -420,28 +420,58 @@
                                     <div id="fee-payment-view"
                                         style="padding-top:1rem; border-top:1px dashed rgba(212, 168, 67, 0.3);">
                                         <p style="font-size:0.85rem; color:var(--text-muted); margin-bottom:0.75rem;">
-                                            Please transfer the court filing fee to one of the following recognized
-                                            accounts and upload your receipt below:</p>
-                                        <div
-                                            style="display:grid; grid-template-columns:1fr 1fr 1fr; gap:0.5rem; margin-bottom:1rem;">
+                                            Please choose a payment method to generate your payment order code and
+                                            reference:</p>
+
+                                        <div style="display:grid; grid-template-columns:1fr 1fr 1fr; gap:0.5rem; margin-bottom:1rem;"
+                                            id="payment-methods-grid">
+                                            <label style="cursor:pointer; display:block;">
+                                                <input type="radio" name="payment_method" value="CBE"
+                                                    style="display:none;" onchange="generatePaymentCode()">
+                                                <div class="payment-card"
+                                                    style="background:#fff; border:1px solid rgba(0,0,0,0.1); padding:0.75rem; border-radius:6px; text-align:center; transition:0.2s;">
+                                                    <strong style="color:#d32f2f; font-size:0.85rem;">CBE</strong>
+                                                </div>
+                                            </label>
+                                            <label style="cursor:pointer; display:block;">
+                                                <input type="radio" name="payment_method" value="CBE Birr"
+                                                    style="display:none;" onchange="generatePaymentCode()">
+                                                <div class="payment-card"
+                                                    style="background:#fff; border:1px solid rgba(0,0,0,0.1); padding:0.75rem; border-radius:6px; text-align:center; transition:0.2s;">
+                                                    <strong style="color:#7b1fa2; font-size:0.85rem;">CBE Birr</strong>
+                                                </div>
+                                            </label>
+                                            <label style="cursor:pointer; display:block;">
+                                                <input type="radio" name="payment_method" value="Telebirr"
+                                                    style="display:none;" onchange="generatePaymentCode()">
+                                                <div class="payment-card"
+                                                    style="background:#fff; border:1px solid rgba(0,0,0,0.1); padding:0.75rem; border-radius:6px; text-align:center; transition:0.2s;">
+                                                    <strong style="color:#0288d1; font-size:0.85rem;">Telebirr</strong>
+                                                </div>
+                                            </label>
+                                        </div>
+
+                                        <!-- Code Display Section -->
+                                        <div id="payment-code-display" class="hidden"
+                                            style="background:rgba(99,102,241,0.05); padding:1rem; border-radius:6px; margin-bottom:1rem; border:1px solid rgba(99,102,241,0.2);">
+                                            <p style="font-size:0.85rem; margin-bottom:0.5rem; color:var(--text-main);">
+                                                Use the following details to complete your payment via <span
+                                                    id="pay-method-name" style="font-weight:700;"></span>:</p>
                                             <div
-                                                style="background:#fff; border:1px solid rgba(0,0,0,0.1); padding:0.75rem; border-radius:6px; text-align:center;">
-                                                <strong style="color:#d32f2f; font-size:0.85rem;">CBE</strong><br>
-                                                <span style="font-size:0.8rem; color:#666;">1000xxxxxx123</span>
+                                                style="display:flex; justify-content:space-between; margin-bottom:0.4rem;">
+                                                <span style="font-size:0.8rem; color:var(--text-muted);">Order
+                                                    Code:</span>
+                                                <strong id="pay-order-code"
+                                                    style="font-family:monospace; font-size:1.1rem; color:var(--primary);"></strong>
                                             </div>
-                                            <div
-                                                style="background:#fff; border:1px solid rgba(0,0,0,0.1); padding:0.75rem; border-radius:6px; text-align:center;">
-                                                <strong style="color:#1976d2; font-size:0.85rem;">Amhara
-                                                    Bank</strong><br>
-                                                <span style="font-size:0.8rem; color:#666;">5000xxxxxx456</span>
-                                            </div>
-                                            <div
-                                                style="background:#fff; border:1px solid rgba(0,0,0,0.1); padding:0.75rem; border-radius:6px; text-align:center;">
-                                                <strong style="color:#388e3c; font-size:0.85rem;">Sinke
-                                                    Bank</strong><br>
-                                                <span style="font-size:0.8rem; color:#666;">9000xxxxxx789</span>
+                                            <div style="display:flex; justify-content:space-between;">
+                                                <span style="font-size:0.8rem; color:var(--text-muted);">Payment
+                                                    Ref:</span>
+                                                <strong id="pay-reference"
+                                                    style="font-family:monospace; font-size:1.1rem; color:var(--primary);"></strong>
                                             </div>
                                         </div>
+
                                     </div>
 
                                     <!-- Waiver View -->
@@ -474,6 +504,43 @@
                                             paymentView.classList.add('hidden');
                                             waiverView.classList.remove('hidden');
                                             label.textContent = 'Upload Low Income Free Certificate (Required for waiver)';
+                                        }
+                                    }
+
+                                    function generatePaymentCode() {
+                                        const methods = document.querySelectorAll('input[name="payment_method"]');
+                                        let selectedMethod = '';
+
+                                        methods.forEach(m => {
+                                            const card = m.nextElementSibling;
+                                            if (m.checked) {
+                                                selectedMethod = m.value;
+                                                card.style.borderColor = 'var(--primary)';
+                                                card.style.boxShadow = '0 0 0 2px rgba(99,102,241,0.2)';
+                                                card.style.background = 'rgba(99,102,241,0.05)';
+                                            } else {
+                                                card.style.borderColor = 'rgba(0,0,0,0.1)';
+                                                card.style.boxShadow = 'none';
+                                                card.style.background = '#fff';
+                                            }
+                                        });
+
+                                        if (selectedMethod) {
+                                            document.getElementById('payment-code-display').classList.remove('hidden');
+                                            document.getElementById('pay-method-name').textContent = selectedMethod;
+
+                                            // Mock generation for visual demonstration
+                                            // Real implementation would fetch this from an API endpoint linked to the provider
+                                            if (!window._generatedPaymentData) window._generatedPaymentData = {};
+                                            if (!window._generatedPaymentData[selectedMethod]) {
+                                                window._generatedPaymentData[selectedMethod] = {
+                                                    orderCode: Math.floor(100000 + Math.random() * 900000),
+                                                    ref: Math.random().toString(36).substring(2, 10).toUpperCase() + Math.floor(10 + Math.random() * 90)
+                                                };
+                                            }
+
+                                            document.getElementById('pay-order-code').textContent = window._generatedPaymentData[selectedMethod].orderCode;
+                                            document.getElementById('pay-reference').textContent = window._generatedPaymentData[selectedMethod].ref;
                                         }
                                     }
                                 </script>
