@@ -171,7 +171,19 @@ async function sendSms(to, message) {
 
     // Read Twilio credentials at runtime (not module-load time)
     const { accountSid, authToken, fromPhone } = getTwilioCreds();
-    console.log(`[SMS] Sending to ${phone} | Twilio configured: ${!!(accountSid && authToken && fromPhone)}`);
+    const atApiKey = process.env.AT_API_KEY;
+    const atUsername = process.env.AT_USERNAME;
+
+    console.log(`[SMS] Sending to ${phone} | AT configured: ${!!(atApiKey && atUsername)} | Twilio configured: ${!!(accountSid && authToken && fromPhone)}`);
+
+    if (atApiKey && atUsername) {
+        try {
+            await sendViaAfricasTalking(phone, message, atApiKey, atUsername);
+            return;
+        } catch (atErr) {
+            console.warn(`[SMS Fallback] Africa's Talking delivery failed (${atErr.message}). Falling back...`);
+        }
+    }
 
     if (accountSid && authToken && fromPhone) {
         try {
@@ -181,10 +193,71 @@ async function sendSms(to, message) {
             console.warn(`[SMS Fallback] Twilio delivery failed (${twilioErr.message}). Simulating successful SMS delivery for ${phone}.`);
         }
     } else {
-        // Since Twilio trials are unavailable in Ethiopia, simulate SMS delivery gracefully
-        // instead of throwing an error, so the dashboard logs it as "sent (simulated)".
+        // Simulate SMS delivery gracefully
         console.log(`[SMS Simulated] Delivery mocked for ${phone}. Content: ${message}`);
     }
+}
+
+/**
+ * Send via Africa's Talking REST API
+ */
+function sendViaAfricasTalking(to, body, apiKey, username) {
+    return new Promise((resolve, reject) => {
+        const isSandbox = username === 'sandbox';
+        const hostname = isSandbox ? 'api.sandbox.africastalking.com' : 'api.africastalking.com';
+
+        const params = new URLSearchParams({
+            username: username,
+            to: to,
+            message: body
+        });
+        const postData = params.toString();
+
+        const options = {
+            hostname: hostname,
+            path: '/version1/messaging',
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/x-www-form-urlencoded',
+                'Accept': 'application/json',
+                'apiKey': apiKey,
+                'Content-Length': Buffer.byteLength(postData)
+            }
+        };
+
+        console.log(`[AfricasTalking] Sending SMS → ${to} via env: ${isSandbox ? 'sandbox' : 'production'}`);
+
+        const req = https.request(options, (res) => {
+            let data = '';
+            res.on('data', chunk => { data += chunk; });
+            res.on('end', () => {
+                try {
+                    const parsed = JSON.parse(data);
+
+                    if (res.statusCode >= 400 || (parsed.SMSMessageData && parsed.SMSMessageData.Recipients && parsed.SMSMessageData.Recipients.length > 0 && parsed.SMSMessageData.Recipients[0].statusCode > 102)) {
+                        const errMsg = parsed.message || JSON.stringify(parsed);
+                        console.error(`[AfricasTalking] ❌ Error: ${errMsg}`);
+                        return reject(new Error('[AfricasTalking] ' + errMsg));
+                    }
+                    console.log(`[AfricasTalking] ✅ SMS sent! Status: 200 OK`);
+                    resolve();
+                } catch (e) {
+                    console.error('[AfricasTalking] Parse error:', e.message);
+                    reject(e);
+                }
+            });
+        });
+
+        req.on('error', (err) => {
+            console.error('[AfricasTalking] Network error:', err.message);
+            reject(err);
+        });
+        req.setTimeout(10000, () => {
+            req.destroy(new Error('AfricasTalking request timed out after 10s'));
+        });
+        req.write(postData);
+        req.end();
+    });
 }
 
 /**

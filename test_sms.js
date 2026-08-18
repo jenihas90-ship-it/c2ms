@@ -19,12 +19,12 @@ async function run() {
         console.error("Usage: node test_sms.js +1234567890");
         return;
     }
-    console.log(`Sending test SMS to ${TO} from ${process.env.TWILIO_FROM_PHONE}...`);
+    console.log(`Sending test SMS to ${TO} via Africa's Talking / Twilio...`);
     try {
-        await sendSms(TO, "Test SMS from Court Complaint Management System. Twilio configuration is working!");
-        console.log("Success! Twilio SMS API call completed successfully.");
+        await sendSms(TO, "Test SMS from Court Complaint Management System. API configuration is working!");
+        console.log("Success! SMS API call completed successfully.");
     } catch (err) {
-        console.error("Twilio test failed:", err.message);
+        console.error("SMS test failed:", err.message);
     }
 }
 
