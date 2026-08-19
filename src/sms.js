@@ -173,12 +173,13 @@ async function sendSms(to, message) {
     const { accountSid, authToken, fromPhone } = getTwilioCreds();
     const atApiKey = process.env.AT_API_KEY;
     const atUsername = process.env.AT_USERNAME;
+    const atSenderId = process.env.AT_SENDER_ID; // Support for Sender ID
 
-    console.log(`[SMS] Sending to ${phone} | AT configured: ${!!(atApiKey && atUsername)} | Twilio configured: ${!!(accountSid && authToken && fromPhone)}`);
+    console.log(`[SMS] Sending to ${phone} | AT configured: ${!!(atApiKey && atUsername)}`);
 
     if (atApiKey && atUsername) {
         try {
-            await sendViaAfricasTalking(phone, message, atApiKey, atUsername);
+            await sendViaAfricasTalking(phone, message, atApiKey, atUsername, atSenderId);
             return;
         } catch (atErr) {
             console.warn(`[SMS Fallback] Africa's Talking delivery failed (${atErr.message}). Falling back...`);
@@ -201,16 +202,22 @@ async function sendSms(to, message) {
 /**
  * Send via Africa's Talking REST API
  */
-function sendViaAfricasTalking(to, body, apiKey, username) {
+function sendViaAfricasTalking(to, body, apiKey, username, senderId) {
     return new Promise((resolve, reject) => {
         const isSandbox = username === 'sandbox';
         const hostname = isSandbox ? 'api.sandbox.africastalking.com' : 'api.africastalking.com';
 
-        const params = new URLSearchParams({
+        const payload = {
             username: username,
             to: to,
             message: body
-        });
+        };
+
+        if (senderId) {
+            payload.from = senderId;
+        }
+
+        const params = new URLSearchParams(payload);
         const postData = params.toString();
 
         const options = {
