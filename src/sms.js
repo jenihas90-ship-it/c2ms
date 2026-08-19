@@ -175,14 +175,16 @@ async function sendSms(to, message) {
     const atUsername = process.env.AT_USERNAME;
     const atSenderId = process.env.AT_SENDER_ID; // Support for Sender ID
 
-    console.log(`[SMS] Sending to ${phone} | AT configured: ${!!(atApiKey && atUsername)}`);
+    // Africa's Talking (only use in PRODUCTION mode — sandbox only hits whitelisted test numbers)
+    const atIsProduction = atApiKey && atUsername && atUsername !== 'sandbox';
+    console.log(`[SMS] Sending to ${phone} | AT production: ${atIsProduction} | Twilio configured: ${!!(accountSid && authToken)}`);
 
-    if (atApiKey && atUsername) {
+    if (atIsProduction) {
         try {
             await sendViaAfricasTalking(phone, message, atApiKey, atUsername, atSenderId);
             return;
         } catch (atErr) {
-            console.warn(`[SMS Fallback] Africa's Talking delivery failed (${atErr.message}). Falling back...`);
+            console.warn(`[SMS Fallback] Africa's Talking delivery failed (${atErr.message}). Falling back to Twilio...`);
         }
     }
 

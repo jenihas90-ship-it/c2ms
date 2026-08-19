@@ -380,7 +380,8 @@ async function openDetailsInspector(id) {
         // Show Clerk "Serve Notice" button if not yet served
         const serveBtn = document.getElementById('clerk-serve-btn');
         if (serveBtn) {
-            const isClerkOrAdmin = ['CLERK', 'ADMIN', 'admin'].includes(currentUser?.role);
+            const roleUpper = (currentUser?.role || '').toUpperCase();
+            const isClerkOrAdmin = ['CLERK', 'ADMIN'].includes(roleUpper);
             if (isClerkOrAdmin && !c.is_served) {
                 serveBtn.classList.remove('hidden');
             } else {
