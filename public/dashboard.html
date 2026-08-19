@@ -470,6 +470,14 @@
                                                 <strong id="pay-reference"
                                                     style="font-family:monospace; font-size:1.1rem; color:var(--primary);"></strong>
                                             </div>
+                                            <div
+                                                style="display:flex; justify-content:space-between; margin-top:0.6rem; padding-top:0.6rem; border-top:1px solid rgba(0,0,0,0.1);">
+                                                <span
+                                                    style="font-size:0.9rem; font-weight:600; color:var(--text-main);">Amount
+                                                    Due:</span>
+                                                <strong id="pay-amount"
+                                                    style="font-size:1.1rem; color:#d32f2f;"></strong>
+                                            </div>
                                         </div>
 
                                     </div>
@@ -541,6 +549,23 @@
 
                                             document.getElementById('pay-order-code').textContent = window._generatedPaymentData[selectedMethod].orderCode;
                                             document.getElementById('pay-reference').textContent = window._generatedPaymentData[selectedMethod].ref;
+
+                                            // Dynamically generate fee based on case category
+                                            const categoryInput = document.getElementById('comp-category');
+                                            const selectedCat = categoryInput ? categoryInput.value : 'Other';
+                                            const feeMap = {
+                                                'Civil': '500 ETB',
+                                                'Criminal': 'Free (State)',
+                                                'Family': '150 ETB',
+                                                'Property': '1,000 ETB',
+                                                'Administrative': '400 ETB',
+                                                'Other': '200 ETB'
+                                            };
+
+                                            // Handle edge case where user hasn't selected a category yet
+                                            let finalAmount = selectedCat ? (feeMap[selectedCat] || '200 ETB') : 'Please select a category in Step 1';
+
+                                            document.getElementById('pay-amount').textContent = finalAmount;
                                         }
                                     }
                                 </script>
