@@ -13,7 +13,16 @@ router.post('/serve', requireRole(['CLERK', 'ADMIN']), async (req, res) => {
     try {
         await db.run('UPDATE complaints SET is_served = 1, status = \'In Progress\' WHERE id = ?', [complaint_id]);
 
-        // Await notification dispatch so Vercel does not terminate background task prematurely
+        // Sync served state to Vercel Blob so it persists across cold starts
+        const updatedComplaint = await db.get('SELECT * FROM complaints WHERE id = ?', [complaint_id]);
+        if (updatedComplaint) {
+            await db.syncComplaintToBlob(updatedComplaint).catch(err =>
+                console.error('[Serve] Failed to sync served complaint to blob:', err.message)
+            );
+        }
+
+        // Send SMS/Telegram to respondent — this fires at the exact moment
+        // the complaint becomes visible on the respondent's page (is_served = 1)
         try {
             await notifications.notifyRespondentOfComplaint(complaint_id);
         } catch (notifErr) {

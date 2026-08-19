@@ -105,13 +105,6 @@ router.post('/', requireLogin, upload.fields([{ name: 'attachment', maxCount: 1 
         // so they see the new complaint in their notification panel immediately
         await notifications.notifyStaffNewComplaint(result.id).catch(err => console.error('notifyStaffNewComplaint failed', err));
 
-        // Immediately notify respondent via Telegram (preferred) or SMS fallback
-        // when a complaint is first filed — no need to wait for Clerk "Serve" action
-        if (respondent_phone) {
-            await notifications.notifyRespondentOfComplaint(result.id)
-                .catch(err => console.error('notifyRespondentOfComplaint (on file) failed', err));
-        }
-
         res.status(201).json({
             message: 'Complaint submitted successfully!',
             complaintId: result.id
