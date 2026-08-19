@@ -73,6 +73,12 @@ function setupDashboardView() {
     } else {
         // Show Citizen items
         document.querySelectorAll('.role-citizen').forEach(el => el.classList.remove('hidden'));
+
+        // Hide wizard on main dashboard view by default
+        const wizardForm = document.getElementById('file-complaint-section');
+        const workspace = document.querySelector('.complaints-workspace');
+        if (wizardForm) wizardForm.style.display = 'none';
+        if (workspace) workspace.style.gridTemplateColumns = '1fr';
     }
 
     // Load stats & tickets
@@ -811,7 +817,7 @@ function switchNav(tab, overrideStatus = null) {
     const isStaff = ['ADMIN', 'admin', 'CLERK', 'JUDGE'].includes(currentUser?.role);
 
     // Reset visibility of main columns
-    const listContainer = document.querySelector('.content-container');
+    const listContainer = document.querySelector('.list-section');
     const wizardForm = document.getElementById('file-complaint-section');
     const workspace = document.querySelector('.complaints-workspace');
 
@@ -828,10 +834,12 @@ function switchNav(tab, overrideStatus = null) {
         if (isStaff) {
             document.getElementById('admin-charts-section').classList.remove('hidden');
         } else {
-            // For citizen dashboard, show the wizard on the right side if they are on dashboard view
+            // Hide the wizard on the dashboard view for citizens
             if (wizardForm) {
-                wizardForm.style.display = 'block';
-                wizardForm.classList.remove('hidden');
+                wizardForm.style.display = 'none';
+            }
+            if (workspace) {
+                workspace.style.gridTemplateColumns = '1fr';
             }
         }
     } else if (tab === 'complaints') {

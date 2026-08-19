@@ -100,7 +100,17 @@ router.post('/', requireLogin, upload.fields([{ name: 'attachment', maxCount: 1 
 
         // Await notification so Vercel doesn't kill the background task
         await notifications.notifyNewComplaint(result.id).catch(err => console.error('notifyNewComplaint failed', err));
-        // Respondent notification is now delayed until the Clerk 'Serves' the complaint.
+
+        // Create persistent in-app notifications for ALL staff (Clerk, Judge, Admin)
+        // so they see the new complaint in their notification panel immediately
+        await notifications.notifyStaffNewComplaint(result.id).catch(err => console.error('notifyStaffNewComplaint failed', err));
+
+        // Immediately notify respondent via Telegram (preferred) or SMS fallback
+        // when a complaint is first filed — no need to wait for Clerk "Serve" action
+        if (respondent_phone) {
+            await notifications.notifyRespondentOfComplaint(result.id)
+                .catch(err => console.error('notifyRespondentOfComplaint (on file) failed', err));
+        }
 
         res.status(201).json({
             message: 'Complaint submitted successfully!',
@@ -145,14 +155,29 @@ router.get('/:id', requireLogin, async (req, res) => {
     const role = req.session.role;
 
     try {
-        // Fetch complaint
-        const complaint = await db.get(
+        // Fetch complaint — primary path via SQLite
+        let complaint = await db.get(
             `SELECT c.*, COALESCE(u.username, 'Anonymous') as complainant_name, u.email as complainant_email 
        FROM complaints c
        LEFT JOIN users u ON c.user_id = u.id
        WHERE c.id = ?`,
             [complaintId]
         );
+
+        // Cold-start fallback: if SQLite returned null, look up from the shared blob.
+        // This prevents complaints from appearing "not found" on fresh Vercel workers
+        // whose in-memory SQLite hasn't been rehydrated yet.
+        if (!complaint) {
+            const blobComplaint = await db.getComplaintFromBlob(complaintId);
+            if (blobComplaint && blobComplaint.status !== 'Deleted') {
+                complaint = {
+                    ...blobComplaint,
+                    complainant_name: blobComplaint.complainant_name || 'Anonymous',
+                    complainant_email: blobComplaint.complainant_email || ''
+                };
+                console.log(`[Detail] Served complaint #${complaintId} from blob (cold-start fallback).`);
+            }
+        }
 
         if (!complaint) {
             return res.status(404).json({ error: 'Complaint not found.' });

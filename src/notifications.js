@@ -92,6 +92,39 @@ async function notifyNewComplaint(complaintId) {
   }
 }
 
+/**
+ * Creates persistent in-app notifications for ALL Clerk, Judge, and Admin users
+ * when a new complaint is filed. These notifications appear in the staff dashboard
+ * notification panel and stay visible until dismissed, ensuring staff never miss
+ * a newly filed complaint regardless of Vercel worker isolation.
+ */
+async function notifyStaffNewComplaint(complaintId) {
+  try {
+    const c = await db.get('SELECT * FROM complaints WHERE id = ?', [complaintId]);
+    if (!c) return;
+
+    const staffUsers = await db.all(
+      "SELECT id, role FROM users WHERE role IN ('ADMIN', 'CLERK', 'JUDGE', 'admin', 'clerk', 'judge')"
+    );
+
+    const msg = `📋 New complaint #${c.case_number || c.id} filed: "${c.title}" (${c.category}). Click to review.`;
+
+    for (const staff of staffUsers) {
+      try {
+        await db.run(
+          `INSERT INTO in_app_notifications (user_id, message, complaint_id) VALUES (?, ?, ?)`,
+          [staff.id, msg, c.id]
+        );
+      } catch (e) {
+        console.warn(`[StaffNotify] Could not insert notification for user #${staff.id}:`, e.message);
+      }
+    }
+    console.log(`[StaffNotify] In-app notifications sent to ${staffUsers.length} staff for complaint #${complaintId}`);
+  } catch (err) {
+    console.error('[StaffNotify] notifyStaffNewComplaint error:', err.message || err);
+  }
+}
+
 async function notifyStatusChange(complaintId, newStatus) {
   try {
     const c = await db.get('SELECT c.*, COALESCE(u.username, \'Anonymous\') as username, u.email FROM complaints c LEFT JOIN users u ON c.user_id = u.id WHERE c.id = ?', [complaintId]);
@@ -378,6 +411,7 @@ async function notifyRespondentJudgmentSms(complaintId, orderDetails, orderType,
 
 module.exports = {
   notifyNewComplaint,
+  notifyStaffNewComplaint,
   notifyStatusChange,
   notifyRemarkAdded,
   notifyRespondentOfComplaint,
