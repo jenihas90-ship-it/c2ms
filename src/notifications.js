@@ -16,23 +16,33 @@ function normalizePhone(phone) {
   return p;
 }
 
-// Read SMTP config from environment variables
-const SMTP_HOST = process.env.SMTP_HOST;
-const SMTP_PORT = process.env.SMTP_PORT;
+// Gmail SMTP config from environment variables
+const SMTP_HOST = process.env.SMTP_HOST || 'smtp.gmail.com';
+const SMTP_PORT = Number(process.env.SMTP_PORT || 465);
 const SMTP_USER = process.env.SMTP_USER;
 const SMTP_PASS = process.env.SMTP_PASS;
-const FROM_EMAIL = process.env.FROM_EMAIL || 'no-reply@resolver.local';
+const FROM_EMAIL = process.env.FROM_EMAIL || SMTP_USER || 'no-reply@resolver.local';
+
+// Detect placeholder / unconfigured credentials so we don't attempt a real SMTP connection
+const PLACEHOLDER_PATTERNS = ['your-gmail', 'your-app-password', 'example.com', 'placeholder'];
+function isPlaceholder(val) {
+  if (!val) return true;
+  const v = val.toLowerCase();
+  return PLACEHOLDER_PATTERNS.some(p => v.includes(p));
+}
 
 let transporter = null;
-if (SMTP_HOST && SMTP_PORT) {
+if (SMTP_USER && SMTP_PASS && !isPlaceholder(SMTP_USER) && !isPlaceholder(SMTP_PASS)) {
   transporter = nodemailer.createTransport({
     host: SMTP_HOST,
-    port: Number(SMTP_PORT),
-    secure: Number(SMTP_PORT) === 465, // true for 465, false for other ports
-    auth: SMTP_USER ? { user: SMTP_USER, pass: SMTP_PASS } : undefined
+    port: SMTP_PORT,
+    secure: SMTP_PORT === 465,
+    auth: { user: SMTP_USER, pass: SMTP_PASS }
   });
+  console.log(`[Email] Gmail transporter configured for ${SMTP_USER}`);
 } else {
-  console.log('SMTP not configured. Email notifications will be disabled. Set SMTP_HOST and SMTP_PORT to enable.');
+  console.log('[Email] SMTP credentials not configured or still set to placeholder values. Email notifications are DISABLED.');
+  console.log('[Email] To enable Gmail: set SMTP_USER and SMTP_PASS (Google App Password) in .env');
 }
 
 async function sendMail({ to, subject, text, html }) {
@@ -174,54 +184,14 @@ View the conversation: ${linkText}`;
         await sendMail({ to: c.respondent_email, subject, text: respText });
       }
 
-      // Notify respondent via SMS (and log for dashboard display)
-      // First try saved complaint phone, then look up from user account matching respondent_email
-      let respondentPhone = c.respondent_phone;
-      if (!respondentPhone && c.respondent_email) {
-        try {
-          const respUser = await db.get(
-            `SELECT id, username FROM users WHERE LOWER(email) = LOWER(?) AND role = 'RESPONDENT'`,
-            [c.respondent_email]
-          );
-          // users table doesn't store phone directly; phone is on complaint row only
-          if (respUser) {
-            console.log(`[Remark SMS] Found respondent user ${respUser.username} but no phone on file.`);
-          }
-        } catch (e) { /* silent */ }
-      }
-      // Normalize phone format before Telegram/SMS dispatch
-      if (respondentPhone) respondentPhone = normalizePhone(respondentPhone);
+      // ── BONUS: Telegram via phone if linked (supplemental to email) ──────
+      const respondentPhone = c.respondent_phone ? normalizePhone(c.respondent_phone) : null;
       if (respondentPhone) {
-        const smsText = `New message on case #${c.case_number || c.id} from ${author.role.toLowerCase()} ${author.username}. Login to the respondent portal to view and respond.`;
-        // Prefer Telegram (free) over Twilio SMS
-        const sentViaTelegram = await sendViaTelegramIfLinked(respondentPhone, `⚖️ Court Update — Case #${c.case_number || c.id}\n\n${smsText}`);
-        let smsStatus = 'sent';
-        let smsError = null;
-        if (!sentViaTelegram) {
-          try {
-            await sms.sendSms(respondentPhone, smsText);
-            console.log(`[Remark SMS] ✅ SMS dispatched to ${respondentPhone}`);
-          } catch (smsErr) {
-            smsStatus = 'failed';
-            smsError = smsErr.message;
-            console.warn('[Remark SMS] ❌ Twilio error:', smsErr.message);
-          }
-        } else {
-          smsStatus = 'telegram';
+        const tgText = `⚖️ Court Update — Case #${c.case_number || c.id}\n\nA staff member (${author.username}) has posted a new message on your case. Check your email or login to the respondent portal for details.`;
+        const sentViaTelegram = await sendViaTelegramIfLinked(respondentPhone, tgText);
+        if (sentViaTelegram) {
+          console.log(`[Remark Telegram] ✅ Telegram also sent to ${respondentPhone}`);
         }
-        try {
-          await db.run(
-            `INSERT INTO sms_logs (complaint_id, recipient_phone, message, status) VALUES (?, ?, ?, ?)`,
-            [c.id, respondentPhone, smsText, smsStatus]
-          );
-          if (smsError) {
-            console.warn('[Remark SMS] SMS failed and logged with status=failed:', smsError);
-          }
-        } catch (logErr) {
-          console.warn('[Remark SMS] Could not write to sms_logs:', logErr.message);
-        }
-      } else {
-        console.log(`[Remark SMS] No respondent phone on complaint #${complaintId} — SMS skipped.`);
       }
     } else if (author.role === 'RESPONDENT') {
       // Notify complainant and all admins/clerks
@@ -270,56 +240,160 @@ Review the conversation: ${linkText}`;
 async function notifyRespondentOfComplaint(complaintId) {
   try {
     const c = await db.get('SELECT * FROM complaints WHERE id = ?', [complaintId]);
-    if (!c) return;
+    if (!c) {
+      console.warn(`[Notify] Complaint #${complaintId} not found`);
+      return;
+    }
 
-    // ── NOTIFY RESPONDENT (Telegram preferred, falls back to Twilio) ─────────
-    if (c.respondent_phone) {
-      // Normalize phone so lookup matches the format stored during Telegram linking
-      c.respondent_phone = normalizePhone(c.respondent_phone);
-      const orderType = 'Legal Complaint Notice';
-      const orderDetails = `A legal complaint titled "${c.title}" has been officially served against you at ${c.court_name || 'the court'}. Case ref: ${c.case_number || '#' + c.id}. Please login to the respondent portal immediately to review.`;
+    const caseRef = c.case_number || '#' + c.id;
+    const courtName = c.court_name || 'the relevant court';
 
-      // Generate AI-personalised message (falls back to template if no Gemini key)
-      const messageText = await sms.generateSmsContent(c, orderDetails, orderType);
+    // ── PRIMARY: Gmail Email to Respondent ───────────────────────────────────
+    if (c.respondent_email) {
+      const subject = `⚖️ Court Notice: Legal Complaint Served — Case ${caseRef}`;
+      const html = `
+        <div style="font-family:Arial,sans-serif;max-width:600px;margin:0 auto;border:1px solid #ddd;border-radius:8px;overflow:hidden">
+          <div style="background:#1a3c5e;color:#fff;padding:20px 24px">
+            <h2 style="margin:0;font-size:20px">⚖️ Official Court Notice</h2>
+            <p style="margin:4px 0 0;font-size:13px;opacity:0.85">Case Reference: ${caseRef}</p>
+          </div>
+          <div style="padding:24px">
+            <p>Dear <strong>${c.defendant_name || 'Respondent'}</strong>,</p>
+            <p>A legal complaint has been officially served against you at <strong>${courtName}</strong>.</p>
+            <table style="width:100%;border-collapse:collapse;margin:16px 0">
+              <tr><td style="padding:8px;background:#f5f5f5;font-weight:bold;width:35%">Case Title</td><td style="padding:8px">${c.title}</td></tr>
+              <tr><td style="padding:8px;background:#f5f5f5;font-weight:bold">Case Reference</td><td style="padding:8px">${caseRef}</td></tr>
+              <tr><td style="padding:8px;background:#f5f5f5;font-weight:bold">Category</td><td style="padding:8px">${c.category || 'N/A'}</td></tr>
+              <tr><td style="padding:8px;background:#f5f5f5;font-weight:bold">Court</td><td style="padding:8px">${courtName}</td></tr>
+            </table>
+            <p style="color:#c0392b;font-weight:bold">Action Required: Please login to the respondent portal immediately to review the complaint and respond accordingly.</p>
+            <p style="font-size:12px;color:#666">Do not ignore this notice — timely response is required by law.</p>
+          </div>
+          <div style="background:#f5f5f5;padding:12px 24px;font-size:12px;color:#888;text-align:center">
+            This is an official automated notice from the Court Management System.
+          </div>
+        </div>`;
+      const text = `Dear ${c.defendant_name || 'Respondent'},\n\nA complaint titled "${c.title}" naming you as a respondent has been officially served at ${courtName}.\n\nCase Reference: ${caseRef}\nCategory: ${c.category || 'N/A'}\n\nPlease login to the respondent portal immediately to review and respond.\n\nDo not ignore this notice — timely response is required by law.`;
+      await sendMail({ to: c.respondent_email, subject, text, html });
+      console.log(`[Serve Email] ✅ Email sent to ${c.respondent_email} for case ${caseRef}`);
 
-      // Prefer Telegram (free) over Twilio SMS
-      const sentViaTelegram = await sendViaTelegramIfLinked(
-        c.respondent_phone,
-        `⚖️ Official Court Notice\n\n${messageText}`
-      );
-
-      let serveStatus = sentViaTelegram ? 'telegram' : 'sent';
-      if (!sentViaTelegram) {
-        try {
-          await sms.sendSms(c.respondent_phone, messageText);
-          console.log(`[Serve SMS] ✅ SMS dispatched to ${c.respondent_phone} for complaint #${complaintId}`);
-        } catch (smsErr) {
-          serveStatus = 'failed';
-          console.warn(`[Serve SMS] ❌ Twilio error for complaint #${complaintId}:`, smsErr.message);
-        }
-      }
-
-      // Log to sms_logs for audit trail & respondent portal display
+      // Log to sms_logs table (reused as notification audit log)
       try {
         await db.run(
           `INSERT INTO sms_logs (complaint_id, recipient_phone, message, status) VALUES (?, ?, ?, ?)`,
-          [complaintId, c.respondent_phone, messageText, serveStatus]
+          [complaintId, c.respondent_email, `Email notification sent to ${c.respondent_email}`, 'email_sent']
         );
       } catch (logErr) {
-        console.warn('[Serve SMS] Could not write to sms_logs:', logErr.message);
+        console.warn('[Serve Email] Could not write to sms_logs:', logErr.message);
       }
     } else {
-      console.log(`[Serve SMS] No respondent phone on complaint #${complaintId} — SMS skipped.`);
+      console.log(`[Serve Email] No respondent_email on complaint #${complaintId} — email skipped.`);
     }
 
-    // ── EMAIL TO RESPONDENT ───────────────────────────────────────────────
-    if (c.respondent_email) {
-      const subject = `Court Notice: Legal Complaint Served — Case #${c.case_number || c.id}`;
-      const text = `Dear ${c.defendant_name || 'Respondent'},\n\nA complaint titled "${c.title}" naming you as a respondent has been officially served at ${c.court_name || 'the relevant court'}.\n\nCase Reference: ${c.case_number || '#' + c.id}\n\nPlease login to the respondent portal immediately to review the complaint details and respond accordingly.\n\nDo not ignore this notice — timely response is required by law.`;
-      await sendMail({ to: c.respondent_email, subject, text });
+    // ── BONUS: Telegram if respondent has a linked phone ─────────────────────
+    if (c.respondent_phone) {
+      c.respondent_phone = normalizePhone(c.respondent_phone);
+      const tgText = `⚖️ Official Court Notice\n\nA complaint titled "${c.title}" has been served against you at ${courtName}.\nCase: ${caseRef}\n\nCheck your email for full details and login to the respondent portal immediately.`;
+      const sentViaTelegram = await sendViaTelegramIfLinked(c.respondent_phone, tgText);
+      if (sentViaTelegram) {
+        console.log(`[Serve Telegram] ✅ Telegram notification also sent to ${c.respondent_phone}`);
+      }
     }
   } catch (err) {
     console.error('notifyRespondentOfComplaint error:', err);
+  }
+}
+
+/**
+ * Notify respondent via Gmail (+ Telegram & in-app) when a court session is scheduled.
+ *
+ * @param {number} complaintId - DB id of the complaint
+ * @param {Object} session     - { judge_name, session_date, session_time, courtroom, hearing_type }
+ */
+async function notifySessionScheduled(complaintId, session) {
+  try {
+    const c = await db.get('SELECT * FROM complaints WHERE id = ?', [complaintId]);
+    if (!c) {
+      console.warn(`[Session Notify] Complaint #${complaintId} not found`);
+      return;
+    }
+
+    const caseRef = c.case_number || '#' + c.id;
+    const courtName = c.court_name || 'the relevant court';
+    const { judge_name, session_date, session_time, courtroom, hearing_type } = session;
+
+    // ── PRIMARY: Gmail to Respondent ────────────────────────────────────────
+    if (c.respondent_email) {
+      const subject = `⚖️ Court Hearing Scheduled — Case ${caseRef}`;
+      const html = `
+        <div style="font-family:Arial,sans-serif;max-width:600px;margin:0 auto;border:1px solid #ddd;border-radius:8px;overflow:hidden">
+          <div style="background:#1a3c5e;color:#fff;padding:20px 24px">
+            <h2 style="margin:0;font-size:20px">⚖️ Court Hearing Notice</h2>
+            <p style="margin:4px 0 0;font-size:13px;opacity:0.85">Case Reference: ${caseRef}</p>
+          </div>
+          <div style="padding:24px">
+            <p>Dear <strong>${c.defendant_name || 'Respondent'}</strong>,</p>
+            <p>A court hearing has been scheduled for your case at <strong>${courtName}</strong>.</p>
+            <table style="width:100%;border-collapse:collapse;margin:16px 0">
+              <tr><td style="padding:8px;background:#f5f5f5;font-weight:bold;width:35%">Case Title</td><td style="padding:8px">${c.title}</td></tr>
+              <tr><td style="padding:8px;background:#f5f5f5;font-weight:bold">Case Reference</td><td style="padding:8px">${caseRef}</td></tr>
+              <tr><td style="padding:8px;background:#f5f5f5;font-weight:bold">Hearing Type</td><td style="padding:8px">${hearing_type || 'N/A'}</td></tr>
+              <tr><td style="padding:8px;background:#f5f5f5;font-weight:bold">Date</td><td style="padding:8px">${session_date || 'TBD'}</td></tr>
+              <tr><td style="padding:8px;background:#f5f5f5;font-weight:bold">Time</td><td style="padding:8px">${session_time || 'TBD'}</td></tr>
+              <tr><td style="padding:8px;background:#f5f5f5;font-weight:bold">Courtroom</td><td style="padding:8px">${courtroom || 'TBD'}</td></tr>
+              <tr><td style="padding:8px;background:#f5f5f5;font-weight:bold">Judge</td><td style="padding:8px">${judge_name || 'TBD'}</td></tr>
+            </table>
+            <p style="color:#c0392b;font-weight:bold">Your attendance is required. Please login to the respondent portal for further case details.</p>
+            <p style="font-size:12px;color:#666">Failure to appear may result in a default judgment against you.</p>
+          </div>
+          <div style="background:#f5f5f5;padding:12px 24px;font-size:12px;color:#888;text-align:center">
+            This is an official automated notice from the Court Management System.
+          </div>
+        </div>`;
+      const text = `Dear ${c.defendant_name || 'Respondent'},\n\nA ${hearing_type || 'court hearing'} has been scheduled for case "${c.title}" (${caseRef}) at ${courtName}.\n\nDate: ${session_date || 'TBD'}\nTime: ${session_time || 'TBD'}\nCourtroom: ${courtroom || 'TBD'}\nJudge: ${judge_name || 'TBD'}\n\nYour attendance is required. Login to the respondent portal for further details.`;
+      await sendMail({ to: c.respondent_email, subject, text, html });
+      console.log(`[Session Email] ✅ Email sent to ${c.respondent_email} for case ${caseRef}`);
+
+      // Log to sms_logs for audit
+      try {
+        await db.run(
+          `INSERT INTO sms_logs (complaint_id, recipient_phone, message, status) VALUES (?, ?, ?, ?)`,
+          [complaintId, c.respondent_email, `Hearing scheduled email sent to ${c.respondent_email}`, 'email_sent']
+        );
+      } catch (logErr) {
+        console.warn('[Session Email] Could not write to sms_logs:', logErr.message);
+      }
+    } else {
+      console.log(`[Session Email] No respondent_email on complaint #${complaintId} — email skipped.`);
+    }
+
+    // ── BONUS: Telegram if respondent has a linked phone ─────────────────────
+    if (c.respondent_phone) {
+      const normalized = normalizePhone(c.respondent_phone);
+      const tgText = `⚖️ Court Hearing Scheduled — Case ${caseRef}\n\nType: ${hearing_type || 'Hearing'}\nDate: ${session_date || 'TBD'} ${session_time || ''}\nCourtroom: ${courtroom || 'TBD'}\nJudge: ${judge_name || 'TBD'}\n\nCheck your email for full details.`;
+      const sentViaTelegram = await sendViaTelegramIfLinked(normalized, tgText);
+      if (sentViaTelegram) {
+        console.log(`[Session Telegram] ✅ Telegram also sent to ${normalized}`);
+      }
+    }
+
+    // ── In-App notification for the respondent's user account ─────────────────
+    try {
+      const respUser = await db.get(
+        `SELECT id FROM users WHERE (email = ? AND email != '') OR (username = ? AND username != '')`,
+        [c.respondent_email || '', c.respondent_phone || '']
+      );
+      if (respUser) {
+        await db.run(
+          `INSERT INTO in_app_notifications (user_id, message, complaint_id) VALUES (?, ?, ?)`,
+          [respUser.id, `Court Hearing Scheduled: ${hearing_type || 'Hearing'} on ${session_date || 'TBD'} — Case ${caseRef}`, c.id]
+        );
+      }
+    } catch (inAppErr) {
+      console.warn('[Session] Could not insert in_app_notification for respondent:', inAppErr.message);
+    }
+  } catch (err) {
+    console.error('[Notification] notifySessionScheduled error:', err.message || err);
   }
 }
 
@@ -349,33 +423,24 @@ async function notifyRespondentJudgmentSms(complaintId, orderDetails, orderType,
     // Use custom text from judge if provided, else regenerate
     const messageText = customSmsText ? customSmsText : await sms.generateSmsContent(c, orderDetails, orderType);
 
-    // Send via Telegram (preferred) or Twilio fallback
+    // ── BONUS: Telegram via phone if linked (supplemental to email) ──────────
     if (c.respondent_phone) {
-      // Normalize phone so it matches the format from Telegram linking
       c.respondent_phone = normalizePhone(c.respondent_phone);
       const sentViaTelegram = await sendViaTelegramIfLinked(
         c.respondent_phone,
-        `⚖️ Court Judgment Issued\n\n${messageText}`
+        `⚖️ Court Judgment Issued — Case #${c.case_number || c.id}\n\n${messageText}\n\nCheck your email for full details.`
       );
-      let smsStatus = sentViaTelegram ? 'telegram' : 'sent';
-      let smsError = null;
-      if (!sentViaTelegram) {
-        try {
-          await sms.sendSms(c.respondent_phone, messageText);
-        } catch (smsErr) {
-          smsStatus = 'failed';
-          smsError = smsErr.message;
-          console.warn('[AI SMS] Twilio error:', smsErr.message);
-        }
+      if (sentViaTelegram) {
+        console.log(`[Judgment Telegram] ✅ Telegram also sent to ${c.respondent_phone}`);
       }
-      // Log to sms_logs table for audit trail
+      // Log to sms_logs for audit trail
       try {
         await db.run(
           `INSERT INTO sms_logs (complaint_id, recipient_phone, message, status) VALUES (?, ?, ?, ?)`,
-          [complaintId, c.respondent_phone, smsStatus === 'failed' ? `[Delivery Failed] ${smsError}\n\nOriginal Message:\n${messageText}` : messageText, smsStatus]
+          [complaintId, c.respondent_phone, messageText, sentViaTelegram ? 'telegram' : 'skipped_no_tg_link']
         );
       } catch (logErr) {
-        console.warn('[AI SMS] Could not log to sms_logs:', logErr.message);
+        console.warn('[Judgment] Could not log to sms_logs:', logErr.message);
       }
     }
 
@@ -415,6 +480,7 @@ module.exports = {
   notifyStatusChange,
   notifyRemarkAdded,
   notifyRespondentOfComplaint,
+  notifySessionScheduled,
   notifyRespondentJudgmentSms,
   sendMail
 };

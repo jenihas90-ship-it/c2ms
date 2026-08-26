@@ -85,6 +85,14 @@ router.post('/schedule', requireRole(['CLERK', 'JUDGE']), async (req, res) => {
              VALUES (?, ?, ?, ?, ?, ?, ?)`,
             [complaint_id, session_number || 1, judge_name || '', session_date, session_time || '', courtroom || '', hearing_type]
         );
+
+        // Notify respondent of the newly scheduled hearing via Gmail/Telegram/in-app
+        try {
+            await notifications.notifySessionScheduled(complaint_id, { judge_name, session_date, session_time, courtroom, hearing_type });
+        } catch (notifErr) {
+            console.error('[Schedule] notifySessionScheduled failed:', notifErr.message || notifErr);
+        }
+
         res.status(201).json({ message: 'Hearing scheduled successfully.', id: result.id });
     } catch (err) {
         console.error('Schedule error:', err);

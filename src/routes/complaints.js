@@ -116,9 +116,6 @@ router.post('/', requireLogin, upload.fields([{ name: 'attachment', maxCount: 1 
 });
 
 // Get Complaints List
-// DEFINITIVE FIX: Read directly from the shared Vercel Blob JSON (cms_complaints.json).
-// This ensures ALL Vercel serverless workers — which have isolated in-memory SQLite —
-// always serve the same, up-to-date complaint data. Falls back to SQLite for local dev.
 router.get('/', requireLogin, async (req, res) => {
     const userId = req.session.userId;
     const role = req.session.role;
@@ -136,8 +133,33 @@ router.get('/', requireLogin, async (req, res) => {
         });
         res.json(list);
     } catch (err) {
-        console.error('Fetch complaints error:', err);
-        res.status(500).json({ error: 'Internal Server Error while fetching complaints.' });
+        console.error('Fetch complaints error (blob path):', err.message || err);
+        // Emergency SQLite fallback — never return a 500 to the user
+        try {
+            const isStaff = ['admin', 'ADMIN', 'CLERK', 'JUDGE'].includes(role);
+            let query = `
+                SELECT c.*, COALESCE(u.username, 'Anonymous') as complainant_name
+                FROM complaints c
+                LEFT JOIN users u ON c.user_id = u.id
+                WHERE c.status != 'Deleted'
+            `;
+            const params = [];
+            if (!isStaff && userId) { query += ' AND c.user_id = ?'; params.push(userId); }
+            if (status) { query += ' AND c.status = ?'; params.push(status); }
+            if (category) { query += ' AND c.category = ?'; params.push(category); }
+            if (region) { query += ' AND c.complainant_region = ?'; params.push(region); }
+            if (search) {
+                query += ' AND (c.title LIKE ? OR c.description LIKE ?)';
+                params.push(`%${search}%`, `%${search}%`);
+            }
+            query += ' ORDER BY c.created_at DESC';
+            const fallbackList = await db.all(query, params);
+            console.log(`[Complaints] Served ${fallbackList.length} complaints via SQLite fallback.`);
+            res.json(fallbackList);
+        } catch (sqlErr) {
+            console.error('Fetch complaints SQLite fallback also failed:', sqlErr.message || sqlErr);
+            res.status(500).json({ error: 'Internal Server Error while fetching complaints.' });
+        }
     }
 });
 
