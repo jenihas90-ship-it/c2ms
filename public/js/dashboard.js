@@ -293,7 +293,7 @@ async function loadComplaintsList() {
             container.appendChild(card);
         });
     } catch (error) {
-        container.innerHTML = '<div class="no-complaints error">Failed to synchronize logs from system API.</div>';
+        container.innerHTML = `<div class="no-complaints error">Failed to synchronize logs from system API: ${error.message}</div>`;
     }
 }
 
