@@ -513,9 +513,19 @@ router.patch('/:id', requireLogin, async (req, res) => {
 router.delete('/:id', requireRole(['ADMIN']), async (req, res) => {
     const complaintId = req.params.id;
     try {
-        const complaint = await db.get('SELECT id FROM complaints WHERE id = ?', [complaintId]);
+        const complaint = await db.get('SELECT id, created_at FROM complaints WHERE id = ?', [complaintId]);
         if (!complaint) {
             return res.status(404).json({ error: 'Complaint not found.' });
+        }
+
+        // 1-year retention check: do not allow deletion if complaint is less than 1 year old
+        if (complaint.created_at) {
+            const createdDate = new Date(complaint.created_at);
+            const oneYearAgo = new Date();
+            oneYearAgo.setFullYear(oneYearAgo.getFullYear() - 1);
+            if (createdDate > oneYearAgo) {
+                return res.status(403).json({ error: 'Complaints must be displayed permanently and cannot be deleted until one year has passed.' });
+            }
         }
 
         // Soft Delete in SQLite memory

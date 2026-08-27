@@ -21,7 +21,7 @@ async function fetchWithRetry(url, retries = 2, delayMs = 500) {
       if (process.env.BLOB_READ_WRITE_TOKEN) {
         headers['Authorization'] = `Bearer ${process.env.BLOB_READ_WRITE_TOKEN}`;
       }
-      const res = await fetch(url, { headers });
+      const res = await fetch(url, { headers, cache: 'no-store' });
       if (res.ok) return res;
       lastErr = new Error(`HTTP ${res.status} from blob URL`);
     } catch (e) {
