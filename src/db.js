@@ -114,31 +114,19 @@ async function run(sql, params = []) {
     const id = result.length > 0 ? result[0].values[0][0] : 0;
     const changes = result.length > 0 ? result[0].values[0][1] : 0;
 
-    // Persist to Vercel's /tmp filesystem synchronously and wait for blob on serverless
+    // Persist to local /tmp so the same Vercel worker can reuse this DB within its lifetime.
+    // NOTE: We do NOT upload cms_vercel.sqlite to Blob on every run() because:
+    //  1. It is a large binary upload that consumes most of Vercel's function execution budget.
+    //  2. cms_complaints.json (written by syncComplaintToBlob) is the authoritative cross-worker
+    //     read path — getAllComplaintsFromBlob() reads from that, not from this SQLite Blob.
+    //  3. forceBackup() still exists for explicit full-DB snapshots when needed.
     if (!pauseBackup && DB_FILE && (sql.trim().toUpperCase().startsWith('INSERT') || sql.trim().toUpperCase().startsWith('UPDATE') || sql.trim().toUpperCase().startsWith('DELETE') || sql.trim().toUpperCase().startsWith('CREATE') || sql.trim().toUpperCase().startsWith('ALTER'))) {
       try {
         const buffer = Buffer.from(database.export());
-
-        // 1. Write to local /tmp synchronously
+        // Write to local /tmp synchronously — keeps this worker's in-memory state in sync
         fs.writeFileSync(DB_FILE, buffer);
-
-        // 2. Upload to Vercel Blob with retry (up to 3 attempts)
-        if ((process.env.VERCEL || process.env.NOW_REGION) && process.env.BLOB_READ_WRITE_TOKEN) {
-          let uploaded = false;
-          for (let attempt = 1; attempt <= 3 && !uploaded; attempt++) {
-            try {
-              await put('cms_vercel.sqlite', buffer, { access: 'private', addRandomSuffix: false, cacheControlMaxAge: 0 });
-              console.log(`[Persistence] Backed up database to Vercel Blob (attempt ${attempt}).`);
-              uploaded = true;
-            } catch (blobErr) {
-              console.warn(`[Persistence] Blob upload attempt ${attempt} failed:`, blobErr.message);
-              if (attempt < 3) await new Promise(r => setTimeout(r, 300 * attempt));
-            }
-          }
-          if (!uploaded) console.error('[Persistence] CRITICAL: All 3 blob upload attempts failed. Data may be lost on cold start!');
-        }
       } catch (err) {
-        console.warn('Could not export DB:', err.message);
+        console.warn('Could not export DB to /tmp:', err.message);
       }
     }
 
@@ -430,22 +418,29 @@ async function _writeComplaintsBlob(complaintsList) {
 
 async function syncComplaintToBlob(complaintObj) {
   if (!process.env.BLOB_READ_WRITE_TOKEN || !complaintObj || !complaintObj.id) return;
-  try {
-    const list = await _readComplaintsBlob();
-    const idx = list.findIndex(c => String(c.id) === String(complaintObj.id));
-    if (idx >= 0) {
-      list[idx] = { ...list[idx], ...complaintObj, updatedAt: new Date().toISOString() };
-    } else {
-      list.push({ ...complaintObj, createdAt: complaintObj.created_at || new Date().toISOString() });
+  // Retry up to 3 times — Vercel Blob writes can transiently fail
+  for (let attempt = 1; attempt <= 3; attempt++) {
+    try {
+      const list = await _readComplaintsBlob();
+      const idx = list.findIndex(c => String(c.id) === String(complaintObj.id));
+      if (idx >= 0) {
+        list[idx] = { ...list[idx], ...complaintObj, updatedAt: new Date().toISOString() };
+      } else {
+        list.push({ ...complaintObj, createdAt: complaintObj.created_at || new Date().toISOString() });
+      }
+      await _writeComplaintsBlob(list);
+      console.log(`[Blob] Synced complaint #${complaintObj.id} to cms_complaints.json (attempt ${attempt}).`);
+      return; // success
+    } catch (e) {
+      if (e.message && e.message.includes('read_failure')) {
+        console.error('[Blob] Aborting sync to prevent data wipe due to read failure.');
+        return;
+      }
+      console.warn(`[Blob] syncComplaintToBlob attempt ${attempt} failed for #${complaintObj.id}:`, e.message);
+      if (attempt < 3) await new Promise(r => setTimeout(r, 400 * attempt));
     }
-    await _writeComplaintsBlob(list);
-  } catch (e) {
-    if (e.message.includes('read_failure')) {
-      console.error('[Blob] Aborting sync to prevent data wipe due to read failure.');
-      return;
-    }
-    console.warn('[Blob] Failed to sync complaint to blob:', e.message);
   }
+  console.error(`[Blob] CRITICAL: All 3 sync attempts failed for complaint #${complaintObj.id}. Data may not persist!`);
 }
 
 async function deleteComplaintFromBlob(complaintId) {
