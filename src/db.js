@@ -84,10 +84,10 @@ async function getDb() {
         console.log('[Persistence] Successfully restored database from Vercel Blob');
       }
     } catch (err) {
-      console.error('[Persistence] CRITICAL ERROR restoring from Vercel Blob:', err.message);
-      // We must not silently create a new DB if the blob exists but failed to download,
-      // otherwise forceBackup() will overwrite the blob with an empty DB!
-      throw new Error(`Failed to restore Vercel Blob DB. To prevent data wiping, app is stopped. Error: ${err.message}`);
+      // OOM or network failure restoring from blob — start fresh.
+      // Complaints are loaded from cms_complaints.json (no sql.js involved for that path).
+      // Users are reseeded by initDatabase() — auth still works.
+      console.error('[Persistence] Failed to restore from blob, starting fresh empty DB:', err.message);
     }
   }
 
@@ -115,33 +115,17 @@ async function run(sql, params = []) {
     const id = result.length > 0 ? result[0].values[0][0] : 0;
     const changes = result.length > 0 ? result[0].values[0][1] : 0;
 
-    // Persist to Vercel's /tmp filesystem synchronously and wait for blob on serverless
+    // Write in-memory DB state to local /tmp so this worker reuses it within its lifetime.
+    // We do NOT upload cms_vercel.sqlite to Blob on every write — the file balloons with
+    // base64 attachments and causes sql.js OOM on cold-start restore.
+    // cms_complaints.json (written by syncComplaintToBlob) is the authoritative cross-worker
+    // persistence path and does not go through sql.js at all.
     if (!pauseBackup && DB_FILE && (sql.trim().toUpperCase().startsWith('INSERT') || sql.trim().toUpperCase().startsWith('UPDATE') || sql.trim().toUpperCase().startsWith('DELETE') || sql.trim().toUpperCase().startsWith('CREATE') || sql.trim().toUpperCase().startsWith('ALTER'))) {
       try {
         const buffer = Buffer.from(database.export());
-
-        // 1. Write to local /tmp synchronously
         fs.writeFileSync(DB_FILE, buffer);
-
-        // 2. Upload to Vercel Blob with retry (up to 3 attempts)
-        if ((process.env.VERCEL || process.env.NOW_REGION) && process.env.BLOB_READ_WRITE_TOKEN) {
-          let uploaded = false;
-          for (let attempt = 1; attempt <= 3 && !uploaded; attempt++) {
-            try {
-              // Note: using non-blocking put without await to prevent slowing down responses 
-              // BUT it's safer to await to avoid Vercel killing the thread.
-              await put('cms_vercel.sqlite', buffer, { access: 'private', addRandomSuffix: false, cacheControlMaxAge: 0 });
-              console.log(`[Persistence] Backed up database to Vercel Blob (attempt ${attempt}).`);
-              uploaded = true;
-            } catch (blobErr) {
-              console.warn(`[Persistence] Blob upload attempt ${attempt} failed:`, blobErr.message);
-              if (attempt < 3) await new Promise(r => setTimeout(r, 300 * attempt));
-            }
-          }
-          if (!uploaded) console.error('[Persistence] CRITICAL: All 3 blob upload attempts failed. Data may be lost on cold start!');
-        }
       } catch (err) {
-        console.warn('Could not export DB:', err.message);
+        console.warn('Could not write DB to /tmp:', err.message);
       }
     }
 
