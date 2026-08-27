@@ -23,6 +23,9 @@ const SMTP_USER = process.env.SMTP_USER;
 const SMTP_PASS = process.env.SMTP_PASS;
 const FROM_EMAIL = process.env.FROM_EMAIL || SMTP_USER || 'no-reply@resolver.local';
 
+// Respondent portal URL — hardcoded to the live Vercel deployment
+const PORTAL_URL = 'https://jenihas90-ship-it-c2ms.vercel.app/respondent.html';
+
 // Detect placeholder / unconfigured credentials so we don't attempt a real SMTP connection
 const PLACEHOLDER_PATTERNS = ['your-gmail', 'your-app-password', 'example.com', 'placeholder'];
 function isPlaceholder(val) {
@@ -267,13 +270,14 @@ async function notifyRespondentOfComplaint(complaintId) {
               <tr><td style="padding:8px;background:#f5f5f5;font-weight:bold">Court</td><td style="padding:8px">${courtName}</td></tr>
             </table>
             <p style="color:#c0392b;font-weight:bold">Action Required: Please login to the respondent portal immediately to review the complaint and respond accordingly.</p>
+            ${PORTAL_URL ? `<p style="text-align:center;margin:20px 0"><a href="${PORTAL_URL}" style="display:inline-block;background:#1a3c5e;color:#fff;padding:12px 28px;border-radius:6px;text-decoration:none;font-size:15px;font-weight:bold">🔐 Login to Respondent Portal</a></p><p style="font-size:12px;color:#555;text-align:center">Or copy this link: <a href="${PORTAL_URL}" style="color:#1a3c5e">${PORTAL_URL}</a></p>` : ''}
             <p style="font-size:12px;color:#666">Do not ignore this notice — timely response is required by law.</p>
           </div>
           <div style="background:#f5f5f5;padding:12px 24px;font-size:12px;color:#888;text-align:center">
             This is an official automated notice from the Court Management System.
           </div>
         </div>`;
-      const text = `Dear ${c.defendant_name || 'Respondent'},\n\nA complaint titled "${c.title}" naming you as a respondent has been officially served at ${courtName}.\n\nCase Reference: ${caseRef}\nCategory: ${c.category || 'N/A'}\n\nPlease login to the respondent portal immediately to review and respond.\n\nDo not ignore this notice — timely response is required by law.`;
+      const text = `Dear ${c.defendant_name || 'Respondent'},\n\nA complaint titled "${c.title}" naming you as a respondent has been officially served at ${courtName}.\n\nCase Reference: ${caseRef}\nCategory: ${c.category || 'N/A'}\n\nPlease login to the respondent portal immediately to review and respond.${PORTAL_URL ? `\nRespondent Portal: ${PORTAL_URL}` : ''}\n\nDo not ignore this notice — timely response is required by law.`;
       await sendMail({ to: c.respondent_email, subject, text, html });
       console.log(`[Serve Email] ✅ Email sent to ${c.respondent_email} for case ${caseRef}`);
 
@@ -344,13 +348,14 @@ async function notifySessionScheduled(complaintId, session) {
               <tr><td style="padding:8px;background:#f5f5f5;font-weight:bold">Judge</td><td style="padding:8px">${judge_name || 'TBD'}</td></tr>
             </table>
             <p style="color:#c0392b;font-weight:bold">Your attendance is required. Please login to the respondent portal for further case details.</p>
+            ${PORTAL_URL ? `<p style="text-align:center;margin:20px 0"><a href="${PORTAL_URL}" style="display:inline-block;background:#1a3c5e;color:#fff;padding:12px 28px;border-radius:6px;text-decoration:none;font-size:15px;font-weight:bold">🔐 Login to Respondent Portal</a></p><p style="font-size:12px;color:#555;text-align:center">Or copy this link: <a href="${PORTAL_URL}" style="color:#1a3c5e">${PORTAL_URL}</a></p>` : ''}
             <p style="font-size:12px;color:#666">Failure to appear may result in a default judgment against you.</p>
           </div>
           <div style="background:#f5f5f5;padding:12px 24px;font-size:12px;color:#888;text-align:center">
             This is an official automated notice from the Court Management System.
           </div>
         </div>`;
-      const text = `Dear ${c.defendant_name || 'Respondent'},\n\nA ${hearing_type || 'court hearing'} has been scheduled for case "${c.title}" (${caseRef}) at ${courtName}.\n\nDate: ${session_date || 'TBD'}\nTime: ${session_time || 'TBD'}\nCourtroom: ${courtroom || 'TBD'}\nJudge: ${judge_name || 'TBD'}\n\nYour attendance is required. Login to the respondent portal for further details.`;
+      const text = `Dear ${c.defendant_name || 'Respondent'},\n\nA ${hearing_type || 'court hearing'} has been scheduled for case "${c.title}" (${caseRef}) at ${courtName}.\n\nDate: ${session_date || 'TBD'}\nTime: ${session_time || 'TBD'}\nCourtroom: ${courtroom || 'TBD'}\nJudge: ${judge_name || 'TBD'}\n\nYour attendance is required. Login to the respondent portal for further details.${PORTAL_URL ? `\nRespondent Portal: ${PORTAL_URL}` : ''}`;
       await sendMail({ to: c.respondent_email, subject, text, html });
       console.log(`[Session Email] ✅ Email sent to ${c.respondent_email} for case ${caseRef}`);
 
@@ -447,7 +452,7 @@ async function notifyRespondentJudgmentSms(complaintId, orderDetails, orderType,
     // Send Email
     if (c.respondent_email) {
       const subject = `Court Judgment Issued: Case #${c.case_number || c.id}`;
-      const text = `Dear ${c.defendant_name || 'Respondent'},\n\nA ${orderType} has been issued by the court regarding complaint "${c.title}".\n\nJudgment Details:\n${orderDetails}\n\nLogin to the respondent portal to view your case updates.`;
+      const text = `Dear ${c.defendant_name || 'Respondent'},\n\nA ${orderType} has been issued by the court regarding complaint "${c.title}".\n\nJudgment Details:\n${orderDetails}\n\nLogin to the respondent portal to view your case updates.${PORTAL_URL ? `\nRespondent Portal: ${PORTAL_URL}` : ''}`;
       await sendMail({ to: c.respondent_email, subject, text });
     }
 

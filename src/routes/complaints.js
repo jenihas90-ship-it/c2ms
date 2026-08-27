@@ -134,31 +134,17 @@ router.get('/', requireLogin, async (req, res) => {
         res.json(list);
     } catch (err) {
         console.error('Fetch complaints error (blob path):', err.message || err);
-        // Emergency SQLite fallback — never return a 500 to the user
+        // Emergency fallback: retry the blob read directly (avoids sql.js / OOM path entirely).
+        // Do NOT call db.all() here — it calls getDb() which can also Aborted(OOM) the worker.
         try {
-            const isStaff = ['admin', 'ADMIN', 'CLERK', 'JUDGE'].includes(role);
-            let query = `
-                SELECT c.*, COALESCE(u.username, 'Anonymous') as complainant_name
-                FROM complaints c
-                LEFT JOIN users u ON c.user_id = u.id
-                WHERE c.status != 'Deleted'
-            `;
-            const params = [];
-            if (!isStaff && userId) { query += ' AND c.user_id = ?'; params.push(userId); }
-            if (status) { query += ' AND c.status = ?'; params.push(status); }
-            if (category) { query += ' AND c.category = ?'; params.push(category); }
-            if (region) { query += ' AND c.complainant_region = ?'; params.push(region); }
-            if (search) {
-                query += ' AND (c.title LIKE ? OR c.description LIKE ?)';
-                params.push(`%${search}%`, `%${search}%`);
-            }
-            query += ' ORDER BY c.created_at DESC';
-            const fallbackList = await db.all(query, params);
-            console.log(`[Complaints] Served ${fallbackList.length} complaints via SQLite fallback.`);
-            res.json(fallbackList);
-        } catch (sqlErr) {
-            console.error('Fetch complaints SQLite fallback also failed:', sqlErr.message || sqlErr);
-            res.status(500).json({ error: `Internal Server Error while fetching complaints. Blob err: ${err.message}. SQLite err: ${sqlErr.message}` });
+            const fallbackList = await db.getAllComplaintsFromBlob({ userId, role, status, category, region, search });
+            console.log(`[Complaints] Served ${(fallbackList || []).length} complaints via blob fallback retry.`);
+            res.json(fallbackList || []);
+        } catch (fallbackErr) {
+            // Both paths failed — return an empty list so the UI doesn't crash with a 500.
+            // The user sees "no complaints" instead of an error — far better than a red page.
+            console.error('[Complaints] All fallback paths failed. Returning empty list.', fallbackErr.message || fallbackErr);
+            res.json([]);
         }
     }
 });

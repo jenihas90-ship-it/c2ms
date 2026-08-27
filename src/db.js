@@ -53,53 +53,40 @@ async function getDb() {
     SQL = await initSqlJs();
   }
 
-  // Attempt to restore from Vercel Blob ONLY if no local /tmp DB file exists yet.
-  // This prevents cold starts from re-applying an older Blob snapshot over a valid /tmp file
-  // that a previous request in the same Vercel worker already wrote with newer data.
-  const tmpFileExists = DB_FILE && fs.existsSync(DB_FILE);
+  // ── IMPORTANT: Do NOT restore cms_vercel.sqlite from Vercel Blob on serverless workers.
+  // The SQLite binary blob grows large over time (base64 attachments etc.) and loading it
+  // into sql.js (WASM) triggers an Aborted(OOM) that is unrecoverable — it bypasses all
+  // JS try/catch and crashes the entire worker process.
+  // Complaint data is already persisted via cms_complaints.json (JSON blob) which does NOT
+  // go through sql.js at all. Auth data (users) is re-seeded by initDatabase() on each
+  // cold start, so workers are fully functional without the SQLite blob restore.
+  console.log('[Persistence] SQLite blob restore DISABLED on Vercel to prevent OOM. Using cms_complaints.json as authoritative store.');
+  // (no blob restore — start with a fresh in-memory db every cold start)
 
-  if (!tmpFileExists && (process.env.VERCEL || process.env.NOW_REGION) && process.env.BLOB_READ_WRITE_TOKEN) {
-    try {
-      const { list: blobList } = require('@vercel/blob');
-      let blobInfo;
-      try {
-        const { blobs } = await blobList({ prefix: 'cms_vercel.sqlite', limit: 10 });
-        // Exact name match to avoid random-suffix duplicates
-        blobInfo = blobs.find(b => b.pathname === 'cms_vercel.sqlite') || null;
-      } catch (e) {
-        const msg = (e.message || '').toLowerCase();
-        if (msg.includes('not found') || msg.includes('does not exist') || msg.includes('blob does not exist') || e.status === 404) {
-          console.log('[Persistence] No existing database found in Vercel Blob. Starting fresh.');
-          blobInfo = null;
-        } else {
-          throw e;
-        }
-      }
-
-      if (blobInfo) {
-        console.log('[Persistence] Restoring database from Vercel Blob...');
-        const fetchRes = await fetchWithRetry(blobInfo.downloadUrl);
-        const arrayBuffer = await fetchRes.arrayBuffer();
-        fs.writeFileSync(DB_FILE, Buffer.from(arrayBuffer));
-        console.log('[Persistence] Successfully restored database from Vercel Blob');
-      }
-    } catch (err) {
-      // OOM or network failure restoring from blob — start fresh.
-      // Complaints are loaded from cms_complaints.json (no sql.js involved for that path).
-      // Users are reseeded by initDatabase() — auth still works.
-      console.error('[Persistence] Failed to restore from blob, starting fresh empty DB:', err.message);
-    }
-  }
-
+  // Load from /tmp only if the file is small enough to not OOM the WASM runtime.
+  // sql.js allocates a heap proportional to the DB file size; files >20 MB reliably OOM
+  // Vercel's 1792 MB serverless function. Treat large files as stale/corrupt and start fresh.
+  const MAX_SAFE_SQLITE_BYTES = 20 * 1024 * 1024; // 20 MB
   try {
     if (fs.existsSync(DB_FILE)) {
-      const fileBuffer = fs.readFileSync(DB_FILE);
-      db = new SQL.Database(fileBuffer);
-      console.log('Loaded database from ' + DB_FILE);
-      return db;
+      const stat = fs.statSync(DB_FILE);
+      if (stat.size > MAX_SAFE_SQLITE_BYTES) {
+        console.warn(`[Persistence] /tmp SQLite file is ${Math.round(stat.size / 1024 / 1024)} MB — too large for sql.js WASM heap. Deleting and starting fresh to prevent OOM.`);
+        try { fs.unlinkSync(DB_FILE); } catch (_) { }
+      } else {
+        try {
+          const fileBuffer = fs.readFileSync(DB_FILE);
+          db = new SQL.Database(fileBuffer);
+          console.log('Loaded database from ' + DB_FILE + ' (' + Math.round(stat.size / 1024) + ' KB)');
+          return db;
+        } catch (e) {
+          console.error('Failed to load existing tmp DB, starting fresh.', e.message);
+          try { fs.unlinkSync(DB_FILE); } catch (_) { }
+        }
+      }
     }
   } catch (e) {
-    console.error('Failed to load existing tmp DB, starting fresh.', e);
+    console.error('[Persistence] Error checking /tmp DB file:', e.message);
   }
 
   db = new SQL.Database();
@@ -258,14 +245,14 @@ async function forceBackup() {
     try {
       const buffer = Buffer.from(database.export());
       fs.writeFileSync(DB_FILE, buffer);
-      if ((process.env.VERCEL || process.env.NOW_REGION) && process.env.BLOB_READ_WRITE_TOKEN) {
-        // Vercel Blob's put correctly handles Buffers
-        const { put } = require('@vercel/blob');
-        await put('cms_vercel.sqlite', buffer, { access: 'private', addRandomSuffix: false, cacheControlMaxAge: 0 });
-        console.log('[Persistence] Forced backup to Vercel Blob.');
-      }
+      // NOTE: We intentionally do NOT upload cms_vercel.sqlite to Vercel Blob.
+      // Uploading a large SQLite binary causes Aborted(OOM) crashes in sql.js WASM
+      // on cold-start restore. Complaint persistence flows through cms_complaints.json;
+      // auth data is re-seeded by initDatabase() on each cold start.
+      // The /tmp write above keeps the DB alive within the same Vercel worker lifetime.
+      console.log('[Persistence] DB written to /tmp (Vercel Blob upload disabled to prevent OOM).');
     } catch (err) {
-      console.warn('Could not force backup DB:', err.message);
+      console.warn('Could not write DB to /tmp:', err.message);
     }
   }
 }
@@ -579,16 +566,23 @@ async function getTelegramChatIdByPhone(rawPhone) {
 //  Falls back to in-memory SQLite for local dev (no blob token).
 // ─────────────────────────────────────────────────────────
 async function getAllComplaintsFromBlob(filters = {}) {
-  // On Vercel: read from the authoritative shared JSON blob
+  // On Vercel: read from the authoritative shared JSON blob.
+  // This path does NOT call getDb() / sql.js for the complaint data itself,
+  // so it is safe even if the SQLite WASM heap is under pressure.
   if (process.env.BLOB_READ_WRITE_TOKEN) {
     try {
       let complaints = await _readComplaintsBlob();
       if (!Array.isArray(complaints)) complaints = [];
 
-      // Resolve the username for each complaint by looking up in in-memory DB
-      const database = await getDb();
+      // Resolve username: try in-memory SQLite but treat any failure as 'Anonymous'
+      // so an OOM/crash in getDb() NEVER blocks the complaint list from loading.
+      let database = null;
+      try { database = await getDb(); } catch (dbErr) {
+        console.warn('[getAllComplaintsFromBlob] getDb() failed — usernames will be Anonymous:', dbErr.message);
+      }
       const userCache = {};
       const resolveUsername = (userId) => {
+        if (!database) return 'Anonymous';
         if (userCache[userId] !== undefined) return userCache[userId];
         try {
           const r = database.exec(`SELECT username FROM users WHERE id = ${Number(userId)}`);
