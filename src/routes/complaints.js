@@ -158,7 +158,7 @@ router.get('/', requireLogin, async (req, res) => {
             res.json(fallbackList);
         } catch (sqlErr) {
             console.error('Fetch complaints SQLite fallback also failed:', sqlErr.message || sqlErr);
-            res.status(500).json({ error: 'Internal Server Error while fetching complaints.' });
+            res.status(500).json({ error: `Internal Server Error while fetching complaints. Blob err: ${err.message}. SQLite err: ${sqlErr.message}` });
         }
     }
 });
