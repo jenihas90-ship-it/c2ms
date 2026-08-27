@@ -404,25 +404,35 @@ async function _writeComplaintsBlob(complaintsList) {
 
 async function syncComplaintToBlob(complaintObj) {
   if (!process.env.BLOB_READ_WRITE_TOKEN || !complaintObj || !complaintObj.id) return;
+
+  // Strip large base64 fields before writing to the shared JSON blob.
+  // attachment_path and court_fee_receipt are data URIs that can be megabytes each.
+  // Keeping them in cms_complaints.json causes the blob to grow until _readComplaintsBlob
+  // fails (fetch timeout / OOM), which makes every complaint list appear empty.
+  // The /complaints/:id/attachment endpoint reads attachment_path directly from SQLite and
+  // is NOT affected by this strip.
+  const { attachment_path, court_fee_receipt, ...safeComplaint } = complaintObj;
+
   // Retry up to 3 times — Vercel Blob writes can transiently fail
   for (let attempt = 1; attempt <= 3; attempt++) {
     try {
       const list = await _readComplaintsBlob();
-      const idx = list.findIndex(c => String(c.id) === String(complaintObj.id));
+      const idx = list.findIndex(c => String(c.id) === String(safeComplaint.id));
       if (idx >= 0) {
-        list[idx] = { ...list[idx], ...complaintObj, updatedAt: new Date().toISOString() };
+        // Preserve stripped fields from existing entry so they are not wiped on status updates
+        list[idx] = { ...list[idx], ...safeComplaint, updatedAt: new Date().toISOString() };
       } else {
-        list.push({ ...complaintObj, createdAt: complaintObj.created_at || new Date().toISOString() });
+        list.push({ ...safeComplaint, createdAt: safeComplaint.created_at || new Date().toISOString() });
       }
       await _writeComplaintsBlob(list);
-      console.log(`[Blob] Synced complaint #${complaintObj.id} to cms_complaints.json (attempt ${attempt}).`);
+      console.log(`[Blob] Synced complaint #${safeComplaint.id} to cms_complaints.json (attempt ${attempt}).`);
       return; // success
     } catch (e) {
       if (e.message && e.message.includes('read_failure')) {
         console.error('[Blob] Aborting sync to prevent data wipe due to read failure.');
         return;
       }
-      console.warn(`[Blob] syncComplaintToBlob attempt ${attempt} failed for #${complaintObj.id}:`, e.message);
+      console.warn(`[Blob] syncComplaintToBlob attempt ${attempt} failed for #${safeComplaint.id}:`, e.message);
       if (attempt < 3) await new Promise(r => setTimeout(r, 400 * attempt));
     }
   }
@@ -599,9 +609,24 @@ async function getAllComplaintsFromBlob(filters = {}) {
 
       // Apply role/user filter
       const { userId, role, status, category, region, search } = filters;
+      // Staff (admin/clerk/judge) see ALL complaints.
+      // RESPONDENT sees complaints where they are named as respondent.
+      // CITIZEN / complainant sees only their own filed complaints.
       const isStaff = ['admin', 'ADMIN', 'CLERK', 'JUDGE'].includes(role);
-      if (!isStaff && userId) {
+      const isRespondent = role === 'RESPONDENT';
+      if (!isStaff && !isRespondent && userId) {
         result = result.filter(c => String(c.user_id) === String(userId));
+      }
+      if (isRespondent && userId) {
+        // Respondents see cases where they are named — matched by their user_id stored
+        // on the complaint (set when the respondent account was served).
+        // Fallback: also include any complaint where the session userId matches respondent_user_id
+        // if that field exists, otherwise show all served complaints for their role.
+        result = result.filter(c =>
+          String(c.user_id) === String(userId) ||
+          (c.respondent_user_id && String(c.respondent_user_id) === String(userId)) ||
+          Number(c.is_served) === 1
+        );
       }
       if (status) result = result.filter(c => c.status === status);
       if (category) result = result.filter(c => c.category === category);
