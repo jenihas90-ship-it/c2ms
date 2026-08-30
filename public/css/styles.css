@@ -744,6 +744,80 @@ select:focus {
   }
 }
 
+/* ==========================================================================
+   MOBILE BOTTOM NAVIGATION BAR (replaces hidden sidebar on screens ≤900px)
+   ========================================================================== */
+.mobile-bottom-nav {
+  display: none;
+  /* Hidden on desktop */
+}
+
+@media (max-width: 900px) {
+
+  /* Show the bottom nav on mobile */
+  .mobile-bottom-nav {
+    display: flex;
+    position: fixed;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    z-index: 200;
+    background: rgba(255, 255, 255, 0.97);
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
+    border-top: 1px solid var(--card-border);
+    box-shadow: 0 -4px 20px rgba(0, 0, 0, 0.08);
+    padding: 0.4rem 0;
+    justify-content: space-around;
+    align-items: stretch;
+  }
+
+  /* Push main content up so bottom nav doesn't cover it */
+  .dashboard-main {
+    padding-bottom: 70px;
+  }
+
+  /* Individual tab button in mobile bottom nav */
+  .mob-nav-btn {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 0.2rem;
+    flex: 1;
+    padding: 0.5rem 0.25rem;
+    border: none;
+    background: none;
+    color: var(--text-muted);
+    font-size: 0.7rem;
+    font-weight: 600;
+    font-family: var(--font-sans);
+    cursor: pointer;
+    transition: var(--transition-fast);
+    border-radius: var(--radius-sm);
+    touch-action: manipulation;
+  }
+
+  .mob-nav-btn:active {
+    background: rgba(0, 0, 0, 0.05);
+  }
+
+  .mob-nav-btn.active {
+    color: var(--color-primary);
+  }
+
+  .mob-nav-icon {
+    font-size: 1.35rem;
+    line-height: 1;
+  }
+
+  .mob-nav-label {
+    letter-spacing: 0.01em;
+    text-transform: uppercase;
+    font-size: 0.65rem;
+  }
+}
+
 /* Dashboard Workspace content dynamic areas */
 .dashboard-content {
   padding: 2.5rem;

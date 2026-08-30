@@ -827,7 +827,7 @@ function switchNav(tab, overrideStatus = null) {
     if (workspace) workspace.style.gridTemplateColumns = '1.6fr 1fr';
 
     if (tab === 'dashboard') {
-        document.getElementById('nav-dashboard').classList.add('active');
+        document.getElementById('nav-dashboard')?.classList.add('active');
         statusFilter.value = '';
         titleEl.textContent = 'Overview';
 
@@ -844,7 +844,7 @@ function switchNav(tab, overrideStatus = null) {
             }
         }
     } else if (tab === 'complaints') {
-        document.getElementById('nav-all-complaints').classList.add('active');
+        document.getElementById('nav-all-complaints')?.classList.add('active');
 
         if (overrideStatus !== null) {
             statusFilter.value = overrideStatus;
@@ -870,7 +870,7 @@ function switchNav(tab, overrideStatus = null) {
 
         window.scrollTo({ top: 0, behavior: 'smooth' });
     } else if (tab === 'new' && (!isStaff)) {
-        document.getElementById('nav-new-complaint').classList.add('active');
+        document.getElementById('nav-new-complaint')?.classList.add('active');
         titleEl.textContent = 'Submit New Ticket';
 
         document.getElementById('metrics-panel').classList.add('hidden');
@@ -885,6 +885,13 @@ function switchNav(tab, overrideStatus = null) {
     }
 
     loadComplaintsList();
+}
+
+// Sync mobile bottom nav active state
+function setMobNavActive(activeId) {
+    document.querySelectorAll('.mob-nav-btn').forEach(btn => btn.classList.remove('active'));
+    const activeBtn = document.getElementById(activeId);
+    if (activeBtn) activeBtn.classList.add('active');
 }
 
 // Trigger query inputs searching with debouncing delay

@@ -600,7 +600,27 @@
             </div>
         </main>
 
-        <!-- 3. SLIDING DETAIL INSPECTOR DRAWER -->
+        <!-- MOBILE BOTTOM NAVIGATION (visible only on mobile where sidebar is hidden) -->
+    <nav id="mobile-bottom-nav" class="mobile-bottom-nav">
+        <button id="mob-nav-dashboard" class="mob-nav-btn active" onclick="switchNav('dashboard'); setMobNavActive('mob-nav-dashboard')">
+            <span class="mob-nav-icon">📊</span>
+            <span class="mob-nav-label">Dashboard</span>
+        </button>
+        <button id="mob-nav-complaints" class="mob-nav-btn" onclick="switchNav('complaints'); setMobNavActive('mob-nav-complaints')">
+            <span class="mob-nav-icon">📁</span>
+            <span class="mob-nav-label">Complaints</span>
+        </button>
+        <button id="mob-nav-new" class="mob-nav-btn role-citizen hidden" onclick="switchNav('new'); setMobNavActive('mob-nav-new')">
+            <span class="mob-nav-icon">➕</span>
+            <span class="mob-nav-label">New</span>
+        </button>
+        <button id="mob-nav-chat" class="mob-nav-btn role-citizen hidden" onclick="window.location.href='/chat.html'">
+            <span class="mob-nav-icon">💬</span>
+            <span class="mob-nav-label">Chat</span>
+        </button>
+    </nav>
+
+    <!-- 3. SLIDING DETAIL INSPECTOR DRAWER -->
         <div id="details-pane" class="details-pane-modal">
             <div class="details-modal-header">
                 <h3 id="inspect-title">Ticket Details</h3>
