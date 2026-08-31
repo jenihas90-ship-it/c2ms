@@ -823,9 +823,9 @@ async function handleFileComplaint(event) {
 }
 
 // Inform complainant which file is selected in styling wrapper
-function fileSelectedNotify(input) {
-    const info = document.getElementById('file-name-info');
-    const textVal = document.getElementById('upload-instruction');
+function fileSelectedNotify(input, infoId = 'file-name-info', textId = 'upload-instruction') {
+    const info = document.getElementById(infoId);
+    const textVal = document.getElementById(textId);
 
     if (input.files.length > 0) {
         const filename = input.files[0].name;

@@ -938,7 +938,10 @@
                         <label style="font-size:0.82rem; font-weight:700; display:block; margin-bottom:0.4rem;">🪪
                             National ID Attachment (Required with your first response)</label>
                         <input type="file" id="resp-national-id" accept=".pdf,.jpeg,.jpg,.png"
+                            onchange="document.getElementById('resp-nid-filename').textContent = this.files.length > 0 ? 'Selected: ' + this.files[0].name : '';"
                             style="width:100%; padding:0.4rem; background:var(--surface2, #22263a); border:1px solid var(--border); border-radius:6px; font-size:0.82rem; color:var(--text-main);">
+                        <div id="resp-nid-filename"
+                            style="font-size:0.85rem; color:var(--primary); font-weight:600; margin-top:0.4rem;"></div>
                         <div style="font-size:0.75rem; color:var(--text-muted); margin-top:0.3rem;">Upload a clear image
                             or PDF of your National ID / Passport to verify your identity.</div>
                     </div>
