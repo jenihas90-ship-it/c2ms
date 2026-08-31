@@ -133,7 +133,7 @@ const COMPLAINT_COLUMNS = new Set([
   'respondent_phone', 'respondent_email', 'respondent_country', 'respondent_region',
   'respondent_woreda', 'respondent_kebele', 'respondent_language', 'respondent_national_id',
   'clerk_language', 'judge_language',
-  'court_fee_required', 'court_fee_amount', 'court_fee_paid', 'court_fee_receipt',
+  'court_fee_required', 'court_fee_amount', 'court_fee_paid', 'court_fee_receipt', 'respondent_fee_receipt',
   'is_served', 'created_at', 'updated_at'
 ]);
 
@@ -614,6 +614,14 @@ async function getAllComplaintsFromBlob(filters = {}) {
       // CITIZEN / complainant sees only their own filed complaints.
       const isStaff = ['admin', 'ADMIN', 'CLERK', 'JUDGE'].includes(role);
       const isRespondent = role === 'RESPONDENT';
+
+      // 6-Month TTL filtering for specific roles
+      if (['CLERK', 'JUDGE', 'RESPONDENT'].includes(role)) {
+        const cutOffDate = new Date();
+        cutOffDate.setMonth(cutOffDate.getMonth() - 6);
+        result = result.filter(c => new Date(c.created_at || 0) >= cutOffDate);
+      }
+
       if (!isStaff && !isRespondent && userId) {
         result = result.filter(c => String(c.user_id) === String(userId));
       }
@@ -658,6 +666,9 @@ async function getAllComplaintsFromBlob(filters = {}) {
   `;
   const params = [];
   const isStaff = ['admin', 'ADMIN', 'CLERK', 'JUDGE'].includes(role);
+  if (['CLERK', 'JUDGE', 'RESPONDENT'].includes(role)) {
+    query += " AND c.created_at >= date('now', '-6 months')";
+  }
   if (!isStaff && userId) { query += ' AND c.user_id = ?'; params.push(userId); }
   if (status) { query += ' AND c.status = ?'; params.push(status); }
   if (category) { query += ' AND c.category = ?'; params.push(category); }
@@ -753,6 +764,7 @@ async function initDatabase() {
       court_fee_amount REAL DEFAULT 0,
       court_fee_paid INTEGER DEFAULT 0,
       court_fee_receipt TEXT,
+      respondent_fee_receipt TEXT,
       is_served INTEGER DEFAULT 0,
       created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
       updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
@@ -766,7 +778,7 @@ async function initDatabase() {
       'respondent_phone TEXT', 'respondent_email TEXT', 'respondent_country TEXT', 'respondent_region TEXT', 'respondent_woreda TEXT',
       'is_served INTEGER DEFAULT 0',
       'court_address TEXT NOT NULL DEFAULT ""',
-      'court_fee_required INTEGER DEFAULT 0', 'court_fee_amount REAL', 'court_fee_paid INTEGER DEFAULT 0', 'court_fee_receipt TEXT',
+      'court_fee_required INTEGER DEFAULT 0', 'court_fee_amount REAL', 'court_fee_paid INTEGER DEFAULT 0', 'court_fee_receipt TEXT', 'respondent_fee_receipt TEXT',
       'complainant_kebele TEXT', 'respondent_kebele TEXT',
       'complainant_language TEXT', 'respondent_language TEXT', 'clerk_language TEXT', 'judge_language TEXT',
       'complainant_national_id TEXT', 'respondent_national_id TEXT'

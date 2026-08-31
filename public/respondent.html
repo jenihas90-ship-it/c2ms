@@ -967,7 +967,8 @@
                         <span id="fr-prog-1" style="color:var(--accent);">1. Position</span>
                         <span id="fr-prog-2" style="color:var(--text-muted);">2. Defense</span>
                         <span id="fr-prog-3" style="color:var(--text-muted);">3. Relief</span>
-                        <span id="fr-prog-4" style="color:var(--text-muted);">4. Review</span>
+                        <span id="fr-prog-4" style="color:var(--text-muted);">4. Court Fee</span>
+                        <span id="fr-prog-5" style="color:var(--text-muted);">5. Review</span>
                     </div>
 
                     <!-- Step 1: Position Statement -->
@@ -1024,12 +1025,109 @@
                             <button class="send-btn"
                                 style="background:transparent;border:1px solid var(--border);color:var(--text-muted);"
                                 onclick="frNextStep(2)">← Back</button>
-                            <button class="send-btn" onclick="frNextStep(4, 3)">Review →</button>
+                            <button class="send-btn" onclick="frNextStep(4, 3)">Next →</button>
                         </div>
                     </div>
 
-                    <!-- Step 4: Review & Submit -->
+                    <!-- Step 4: Court Fees & Payment -->
                     <div id="fr-step-4" style="display:none;">
+                        <div
+                            style="margin-bottom:1.25rem; padding:1.2rem; background:rgba(212,168,67,0.08); border:1px solid rgba(212,168,67,0.3); border-radius:10px;">
+                            <h5 style="margin-bottom:0.75rem; color:var(--text); font-weight:700; font-size:1rem;">⚖️
+                                Court Fees &amp; Payment</h5>
+
+                            <div style="display:flex; gap:1.5rem; margin-bottom:1rem; flex-wrap:wrap;">
+                                <label
+                                    style="display:flex; align-items:center; gap:0.4rem; cursor:pointer; font-weight:600; font-size:0.88rem;">
+                                    <input type="radio" name="resp-feeOption" value="pay" checked
+                                        onchange="toggleRespFeeView('pay')">
+                                    I will pay the required court fees
+                                </label>
+                                <label
+                                    style="display:flex; align-items:center; gap:0.4rem; cursor:pointer; font-weight:600; font-size:0.88rem;">
+                                    <input type="radio" name="resp-feeOption" value="waiver"
+                                        onchange="toggleRespFeeView('waiver')">
+                                    Apply for Low Income Fee Waiver
+                                </label>
+                            </div>
+
+                            <div id="resp-fee-payment-view"
+                                style="padding-top:0.75rem; border-top:1px dashed rgba(212,168,67,0.3);">
+                                <p style="font-size:0.83rem; color:var(--text-muted); margin-bottom:0.75rem;">Choose a
+                                    payment method to generate your order code:</p>
+                                <div
+                                    style="display:grid; grid-template-columns:1fr 1fr 1fr; gap:0.5rem; margin-bottom:1rem;">
+                                    <label style="cursor:pointer;">
+                                        <input type="radio" name="resp_payment_method" value="CBE" style="display:none;"
+                                            onchange="generateRespPaymentCode()">
+                                        <div class="resp-pay-card"
+                                            style="background:#fff; border:1px solid rgba(0,0,0,0.1); padding:0.7rem; border-radius:6px; text-align:center; transition:0.2s;">
+                                            <strong style="color:#d32f2f; font-size:0.83rem;">CBE</strong>
+                                        </div>
+                                    </label>
+                                    <label style="cursor:pointer;">
+                                        <input type="radio" name="resp_payment_method" value="CBE Birr"
+                                            style="display:none;" onchange="generateRespPaymentCode()">
+                                        <div class="resp-pay-card"
+                                            style="background:#fff; border:1px solid rgba(0,0,0,0.1); padding:0.7rem; border-radius:6px; text-align:center; transition:0.2s;">
+                                            <strong style="color:#7b1fa2; font-size:0.83rem;">CBE Birr</strong>
+                                        </div>
+                                    </label>
+                                    <label style="cursor:pointer;">
+                                        <input type="radio" name="resp_payment_method" value="Telebirr"
+                                            style="display:none;" onchange="generateRespPaymentCode()">
+                                        <div class="resp-pay-card"
+                                            style="background:#fff; border:1px solid rgba(0,0,0,0.1); padding:0.7rem; border-radius:6px; text-align:center; transition:0.2s;">
+                                            <strong style="color:#0288d1; font-size:0.83rem;">Telebirr</strong>
+                                        </div>
+                                    </label>
+                                </div>
+                                <div id="resp-payment-code-display"
+                                    style="display:none; background:rgba(99,102,241,0.05); padding:1rem; border-radius:6px; margin-bottom:0.75rem; border:1px solid rgba(99,102,241,0.2);">
+                                    <p style="font-size:0.83rem; margin-bottom:0.5rem;">Pay via <span
+                                            id="resp-pay-method-name" style="font-weight:700;"></span>:</p>
+                                    <div style="display:flex; justify-content:space-between; margin-bottom:0.35rem;">
+                                        <span style="font-size:0.78rem; color:var(--text-muted);">Order
+                                            Code:</span><strong id="resp-pay-order-code"
+                                            style="font-family:monospace; color:var(--primary);"></strong>
+                                    </div>
+                                    <div style="display:flex; justify-content:space-between;"><span
+                                            style="font-size:0.78rem; color:var(--text-muted);">Payment
+                                            Ref:</span><strong id="resp-pay-reference"
+                                            style="font-family:monospace; color:var(--primary);"></strong></div>
+                                    <div
+                                        style="display:flex; justify-content:space-between; margin-top:0.5rem; padding-top:0.5rem; border-top:1px solid rgba(0,0,0,0.1);">
+                                        <span style="font-size:0.88rem; font-weight:600;">Amount Due:</span><strong
+                                            id="resp-pay-amount" style="color:#d32f2f;"></strong>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div id="resp-fee-waiver-view"
+                                style="display:none; padding-top:0.75rem; border-top:1px dashed rgba(212,168,67,0.3);">
+                                <p style="font-size:0.83rem; color:var(--text-muted);">You are applying for a fee
+                                    waiver. A certified poverty document is required below.</p>
+                            </div>
+
+                            <div style="margin-top:1rem;">
+                                <label id="resp-fee-upload-label"
+                                    style="font-size:0.85rem; display:block; margin-bottom:0.4rem; font-weight:600;">Upload
+                                    Payment Receipt (Required)</label>
+                                <input type="file" id="resp-fee-receipt-file" accept=".pdf,.jpeg,.jpg,.png"
+                                    style="width:100%; padding:0.45rem; background:var(--surface2); border:1px solid var(--border); border-radius:6px; font-size:0.83rem;">
+                            </div>
+                        </div>
+
+                        <div style="display:flex; gap:0.5rem; justify-content:flex-end;">
+                            <button class="send-btn"
+                                style="background:transparent;border:1px solid var(--border);color:var(--text-muted);"
+                                onclick="frNextStep(3)">← Back</button>
+                            <button class="send-btn" onclick="frNextStep(5, 4)">Review →</button>
+                        </div>
+                    </div>
+
+                    <!-- Step 5: Review & Submit -->
+                    <div id="fr-step-5" style="display:none;">
                         <div class="field-label" style="margin-bottom:0.5rem;">Review Your Formal Response</div>
                         <div id="fr-preview"
                             style="background:var(--surface2);border:1px solid var(--border);border-radius:8px;padding:1rem;font-size:0.83rem;line-height:1.7;white-space:pre-wrap;color:var(--text-main);max-height:220px;overflow-y:auto;margin-bottom:1rem;">
@@ -1041,7 +1139,7 @@
                         <div style="display:flex; gap:0.5rem; justify-content:flex-end;">
                             <button class="send-btn"
                                 style="background:transparent;border:1px solid var(--border);color:var(--text-muted);"
-                                onclick="frNextStep(3)">← Edit</button>
+                                onclick="frNextStep(4)">← Edit</button>
                             <button class="send-btn" id="fr-submit-btn" style="background:#2ea043;"
                                 onclick="submitFormalResponse()">⚖️ Submit Formal Response</button>
                         </div>
@@ -1738,7 +1836,7 @@
         }
 
         // ── Formal response step navigation ──
-        const frSteps = 4;
+        const frSteps = 5;
         function frNextStep(goTo, validateFrom = null) {
             // Validation
             if (validateFrom === 1) {
@@ -1756,7 +1854,14 @@
                 if (!document.getElementById('fr-relief').value.trim()) {
                     showToast('Please state what relief you are requesting.', true); return;
                 }
-                // Build preview for step 4
+            }
+            if (validateFrom === 4) {
+                // Validate fee receipt uploaded
+                const feeFile = document.getElementById('resp-fee-receipt-file');
+                if (!feeFile || !feeFile.files || feeFile.files.length === 0) {
+                    showToast('Please upload your court fee payment receipt or poverty certificate.', true); return;
+                }
+                // Build preview for step 5
                 const pos = document.querySelector('input[name="fr-position"]:checked')?.value || '';
                 const opening = document.getElementById('fr-opening').value.trim();
                 const defense = document.getElementById('fr-defense').value.trim();
@@ -1786,9 +1891,60 @@ ${closing ? '\nCLOSING STATEMENT:\n' + closing : ''}
 
             // Switch steps
             for (let i = 1; i <= frSteps; i++) {
-                document.getElementById('fr-step-' + i).style.display = i === goTo ? '' : 'none';
+                const stepEl = document.getElementById('fr-step-' + i);
+                if (stepEl) stepEl.style.display = i === goTo ? '' : 'none';
                 const prog = document.getElementById('fr-prog-' + i);
                 if (prog) prog.style.color = i === goTo ? 'var(--accent)' : (i < goTo ? '#2ea043' : 'var(--text-muted)');
+            }
+        }
+
+        // ── Fee view toggle ──
+        function toggleRespFeeView(mode) {
+            const paymentView = document.getElementById('resp-fee-payment-view');
+            const waiverView = document.getElementById('resp-fee-waiver-view');
+            const label = document.getElementById('resp-fee-upload-label');
+            if (mode === 'pay') {
+                paymentView.style.display = '';
+                waiverView.style.display = 'none';
+                label.textContent = 'Upload Payment Receipt (Required)';
+            } else {
+                paymentView.style.display = 'none';
+                waiverView.style.display = '';
+                label.textContent = 'Upload Low Income Certificate (Required for waiver)';
+            }
+        }
+
+        // ── Fee payment code generator ──
+        function generateRespPaymentCode() {
+            const methods = document.querySelectorAll('input[name="resp_payment_method"]');
+            let selectedMethod = '';
+            methods.forEach(m => {
+                const card = m.nextElementSibling;
+                if (m.checked) {
+                    selectedMethod = m.value;
+                    card.style.borderColor = 'var(--primary)';
+                    card.style.boxShadow = '0 0 0 2px rgba(99,102,241,0.2)';
+                    card.style.background = 'rgba(99,102,241,0.05)';
+                } else {
+                    card.style.borderColor = 'rgba(0,0,0,0.1)';
+                    card.style.boxShadow = 'none';
+                    card.style.background = '#fff';
+                }
+            });
+            if (selectedMethod) {
+                document.getElementById('resp-payment-code-display').style.display = '';
+                document.getElementById('resp-pay-method-name').textContent = selectedMethod;
+                if (!window._respPayData) window._respPayData = {};
+                if (!window._respPayData[selectedMethod]) {
+                    window._respPayData[selectedMethod] = {
+                        orderCode: Math.floor(100000 + Math.random() * 900000),
+                        ref: Math.random().toString(36).substring(2, 10).toUpperCase() + Math.floor(10 + Math.random() * 90)
+                    };
+                }
+                document.getElementById('resp-pay-order-code').textContent = window._respPayData[selectedMethod].orderCode;
+                document.getElementById('resp-pay-reference').textContent = window._respPayData[selectedMethod].ref;
+                // Flat respondent fee (500 ETB for all case types)
+                document.getElementById('resp-pay-amount').textContent = '500 ETB';
             }
         }
 
@@ -1821,9 +1977,22 @@ ${closing ? '\nClosing: ' + closing : ''}`;
             btn.disabled = true;
 
             try {
+                const formData = new FormData();
+                formData.append('remark', formalDoc);
+
+                const nationalIdInput = document.getElementById('resp-national-id');
+                if (nationalIdInput && nationalIdInput.files && nationalIdInput.files.length > 0) {
+                    formData.append('national_id', nationalIdInput.files[0]);
+                }
+
+                const feeReceiptInput = document.getElementById('resp-fee-receipt-file');
+                if (feeReceiptInput && feeReceiptInput.files && feeReceiptInput.files.length > 0) {
+                    formData.append('court_fee_receipt', feeReceiptInput.files[0]);
+                }
+
                 await apiRequest(`/api/respondent/case/${currentCaseId}/respond`, {
                     method: 'POST',
-                    body: JSON.stringify({ remark: formalDoc })
+                    body: formData
                 });
                 showToast('✅ Formal response submitted to the court.');
                 // Clear fields and go back to step 1
@@ -1831,6 +2000,7 @@ ${closing ? '\nClosing: ' + closing : ''}`;
                     document.getElementById(id).value = '';
                 });
                 document.querySelectorAll('input[name="fr-position"]').forEach(r => r.checked = false);
+                if (feeReceiptInput) feeReceiptInput.value = '';
                 frNextStep(1);
                 switchResponseTab('quick');
                 // Reload remarks

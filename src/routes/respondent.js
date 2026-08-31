@@ -41,6 +41,7 @@ router.get('/cases', requireRespondent, async (req, res) => {
              FROM complaints c
              JOIN users u ON c.user_id = u.id
              WHERE (c.respondent_email = ? OR c.respondent_phone = ? OR c.respondent_phone = ?)
+             AND c.created_at >= date('now', '-6 months')
              AND (c.is_served = 1 
                   OR c.id IN (SELECT complaint_id FROM case_orders)
                   OR c.id IN (SELECT complaint_id FROM remarks WHERE user_id IN (SELECT id FROM users WHERE role IN ('ADMIN', 'CLERK', 'JUDGE', 'admin', 'clerk', 'judge')))
@@ -147,7 +148,7 @@ const notifications = require('../notifications');
  * POST /api/respondent/case/:id/respond
  * Allow respondent to post a reply/remark to a case they are named in.
  */
-router.post('/case/:id/respond', requireRespondent, upload.fields([{ name: 'national_id', maxCount: 1 }]), async (req, res) => {
+router.post('/case/:id/respond', requireRespondent, upload.fields([{ name: 'national_id', maxCount: 1 }, { name: 'court_fee_receipt', maxCount: 1 }]), async (req, res) => {
     const complaintId = req.params.id;
     const { remark } = req.body;
 
@@ -187,8 +188,22 @@ router.post('/case/:id/respond', requireRespondent, upload.fields([{ name: 'nati
             }
         }
 
-        if (nationalIdPath) {
-            await db.run('UPDATE complaints SET respondent_national_id = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?', [nationalIdPath, complaintId]);
+        let feeReceiptPath = null;
+        if (req.files && req.files.court_fee_receipt && req.files.court_fee_receipt.length > 0) {
+            const feeFile = req.files.court_fee_receipt[0];
+            if (feeFile.buffer) {
+                feeReceiptPath = `data:${feeFile.mimetype};base64,${feeFile.buffer.toString('base64')}`;
+            }
+        }
+
+        if (nationalIdPath || feeReceiptPath) {
+            const updates = [];
+            const params = [];
+            if (nationalIdPath) { updates.push('respondent_national_id = ?'); params.push(nationalIdPath); }
+            if (feeReceiptPath) { updates.push('respondent_fee_receipt = ?'); params.push(feeReceiptPath); }
+            updates.push('updated_at = CURRENT_TIMESTAMP');
+
+            await db.run(`UPDATE complaints SET ${updates.join(', ')} WHERE id = ?`, [...params, complaintId]);
             const updatedComplaint = await db.get('SELECT * FROM complaints WHERE id = ?', [complaintId]);
             if (updatedComplaint) await db.syncComplaintToBlob(updatedComplaint).catch(() => { });
         }
