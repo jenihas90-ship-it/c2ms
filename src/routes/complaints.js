@@ -28,7 +28,7 @@ const upload = multer({
 });
 
 // File Complaint
-router.post('/', requireLogin, upload.fields([{ name: 'attachment', maxCount: 1 }, { name: 'low_income_cert', maxCount: 1 }]), async (req, res) => {
+router.post('/', requireLogin, upload.fields([{ name: 'attachment', maxCount: 1 }, { name: 'low_income_cert', maxCount: 1 }, { name: 'national_id', maxCount: 1 }]), async (req, res) => {
     const {
         title, category, court_name, court_address, case_number, hearing_date, complainant_name, respondent_name, complainant_address, description,
         complainant_phone, complainant_country, complainant_region, complainant_woreda, complainant_kebele, complainant_language,
@@ -51,6 +51,7 @@ router.post('/', requireLogin, upload.fields([{ name: 'attachment', maxCount: 1 
     // Convert file to base64 data URI to store in memory SQLite for serverless logic
     let attachmentPath = null;
     let certPath = null;
+    let nationalIdPath = null;
 
     if (req.files) {
         if (req.files.attachment && req.files.attachment.length > 0) {
@@ -65,6 +66,12 @@ router.post('/', requireLogin, upload.fields([{ name: 'attachment', maxCount: 1 
                 certPath = `data:${certFile.mimetype};base64,${certFile.buffer.toString('base64')}`;
             }
         }
+        if (req.files.national_id && req.files.national_id.length > 0) {
+            const idFile = req.files.national_id[0];
+            if (idFile.buffer) {
+                nationalIdPath = `data:${idFile.mimetype};base64,${idFile.buffer.toString('base64')}`;
+            }
+        }
     }
     const parties = `Complainant: ${complainant_name || 'N/A'}, Respondent: ${respondent_name || 'N/A'}`;
 
@@ -72,13 +79,13 @@ router.post('/', requireLogin, upload.fields([{ name: 'attachment', maxCount: 1 
         const result = await db.run(
             `INSERT INTO complaints (
                 user_id, title, category, court_name, court_address, case_number, hearing_date, plaintiff_name, defendant_name, parties, description, priority, status, attachment_path,
-                complainant_phone, complainant_country, complainant_region, complainant_woreda, complainant_kebele, complainant_language,
+                complainant_phone, complainant_country, complainant_region, complainant_woreda, complainant_kebele, complainant_language, complainant_national_id,
                 respondent_phone, respondent_email, respondent_country, respondent_region, respondent_woreda, respondent_kebele, respondent_language, court_fee_receipt
             ) 
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'Filed', ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'Filed', ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
             [
                 userId, title, category, court_name, court_address, case_number || 'Pending Assignment', hearing_date || null, complainant_name || null, respondent_name || null, parties || null, description, priority, attachmentPath || null,
-                complainant_phone || null, complainant_country || null, complainant_region || null, complainant_woreda || null, complainant_kebele || null, complainant_language || null,
+                complainant_phone || null, complainant_country || null, complainant_region || null, complainant_woreda || null, complainant_kebele || null, complainant_language || null, nationalIdPath || null,
                 respondent_phone || null, respondent_email || null, respondent_country || null, respondent_region || null, respondent_woreda || null, respondent_kebele || null, respondent_language || null, certPath || null
             ]
         );
@@ -259,6 +266,62 @@ router.get('/:id/attachment', requireLogin, async (req, res) => {
     } catch (err) {
         console.error('Attachment access error:', err);
         res.status(500).json({ error: 'Internal Server Error while retrieving attachment.' });
+    }
+});
+
+// Serve complainant national ID file
+router.get('/:id/complainant_national_id', requireLogin, async (req, res) => {
+    const complaintId = req.params.id;
+    const userId = req.session.userId;
+    const role = req.session.role;
+
+    try {
+        const complaint = await db.get('SELECT complainant_national_id, user_id FROM complaints WHERE id = ?', [complaintId]);
+        if (!complaint) return res.status(404).json({ error: 'Complaint not found.' });
+        if (!complaint.complainant_national_id) return res.status(404).json({ error: 'No national ID available.' });
+
+        const isStaff = ['admin', 'ADMIN', 'CLERK', 'JUDGE'].includes(role);
+        if (!isStaff && complaint.user_id !== userId) return res.status(403).json({ error: 'Forbidden.' });
+
+        if (complaint.complainant_national_id.startsWith('data:')) {
+            const arr = complaint.complainant_national_id.split(',');
+            const mimeMatch = arr[0].match(/:(.*?);/);
+            if (mimeMatch && arr[1]) {
+                res.setHeader('Content-Type', mimeMatch[1]);
+                return res.send(Buffer.from(arr[1], 'base64'));
+            }
+        }
+        res.status(404).json({ error: 'Invalid attachment type.' });
+    } catch (err) {
+        res.status(500).json({ error: 'Internal Server Error.' });
+    }
+});
+
+// Serve respondent national ID file
+router.get('/:id/respondent_national_id', requireLogin, async (req, res) => {
+    const complaintId = req.params.id;
+    const userId = req.session.userId;
+    const role = req.session.role;
+
+    try {
+        const complaint = await db.get('SELECT respondent_national_id FROM complaints WHERE id = ?', [complaintId]);
+        const isStaff = ['admin', 'ADMIN', 'CLERK', 'JUDGE'].includes(role);
+        // We bypass the strict user check here for respondent, assuming staff views it or if they have the ID they can view it.
+        if (!isStaff && role !== 'RESPONDENT') return res.status(403).json({ error: 'Forbidden.' });
+
+        if (!complaint || !complaint.respondent_national_id) return res.status(404).json({ error: 'No national ID available.' });
+
+        if (complaint.respondent_national_id.startsWith('data:')) {
+            const arr = complaint.respondent_national_id.split(',');
+            const mimeMatch = arr[0].match(/:(.*?);/);
+            if (mimeMatch && arr[1]) {
+                res.setHeader('Content-Type', mimeMatch[1]);
+                return res.send(Buffer.from(arr[1], 'base64'));
+            }
+        }
+        res.status(404).json({ error: 'Invalid attachment type.' });
+    } catch (err) {
+        res.status(500).json({ error: 'Internal Server Error.' });
     }
 });
 

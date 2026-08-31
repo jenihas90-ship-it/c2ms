@@ -1,7 +1,14 @@
 const express = require('express');
 const router = express.Router();
 const db = require('../db');
+const multer = require('multer');
 const requireRole = require('../middleware/roleCheck');
+
+const storage = multer.memoryStorage();
+const upload = multer({
+    storage: storage,
+    limits: { fileSize: 10 * 1024 * 1024 } // 10MB limit
+});
 
 // Middleware: only RESPONDENT role allowed
 const requireRespondent = requireRole(['RESPONDENT']);
@@ -140,7 +147,7 @@ const notifications = require('../notifications');
  * POST /api/respondent/case/:id/respond
  * Allow respondent to post a reply/remark to a case they are named in.
  */
-router.post('/case/:id/respond', requireRespondent, async (req, res) => {
+router.post('/case/:id/respond', requireRespondent, upload.fields([{ name: 'national_id', maxCount: 1 }]), async (req, res) => {
     const complaintId = req.params.id;
     const { remark } = req.body;
 
@@ -171,6 +178,20 @@ router.post('/case/:id/respond', requireRespondent, async (req, res) => {
             'INSERT INTO remarks (complaint_id, user_id, remark) VALUES (?, ?, ?)',
             [complaintId, req.session.userId, remark.trim()]
         );
+
+        let nationalIdPath = null;
+        if (req.files && req.files.national_id && req.files.national_id.length > 0) {
+            const idFile = req.files.national_id[0];
+            if (idFile.buffer) {
+                nationalIdPath = `data:${idFile.mimetype};base64,${idFile.buffer.toString('base64')}`;
+            }
+        }
+
+        if (nationalIdPath) {
+            await db.run('UPDATE complaints SET respondent_national_id = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?', [nationalIdPath, complaintId]);
+            const updatedComplaint = await db.get('SELECT * FROM complaints WHERE id = ?', [complaintId]);
+            if (updatedComplaint) await db.syncComplaintToBlob(updatedComplaint).catch(() => { });
+        }
 
         const newRemark = await db.get(
             `SELECT r.*, COALESCE(u.username, 'Anonymous') as username, u.role FROM remarks r LEFT JOIN users u ON r.user_id = u.id WHERE r.id = ?`,

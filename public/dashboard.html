@@ -570,6 +570,11 @@
                                     }
                                 </script>
                                 <h4>Step 4: Evidence & Document Upload</h4>
+                                <div class="form-group" style="margin-bottom:1rem;">
+                                    <label>National ID Attachment (Required)</label>
+                                    <input type="file" id="comp-national-id" accept=".pdf,.jpeg,.jpg,.png" required
+                                        style="width:100%; padding:0.5rem; background:var(--input-bg, #fff); border:1px solid rgba(0,0,0,0.1); border-radius:6px; font-size:0.85rem;">
+                                </div>
                                 <div class="form-group">
                                     <label>Add Evidence (Optional)</label>
                                     <div class="file-upload-wrapper">
@@ -601,26 +606,30 @@
         </main>
 
         <!-- MOBILE BOTTOM NAVIGATION (visible only on mobile where sidebar is hidden) -->
-    <nav id="mobile-bottom-nav" class="mobile-bottom-nav">
-        <button id="mob-nav-dashboard" class="mob-nav-btn active" onclick="switchNav('dashboard'); setMobNavActive('mob-nav-dashboard')">
-            <span class="mob-nav-icon">📊</span>
-            <span class="mob-nav-label">Dashboard</span>
-        </button>
-        <button id="mob-nav-complaints" class="mob-nav-btn" onclick="switchNav('complaints'); setMobNavActive('mob-nav-complaints')">
-            <span class="mob-nav-icon">📁</span>
-            <span class="mob-nav-label">Complaints</span>
-        </button>
-        <button id="mob-nav-new" class="mob-nav-btn role-citizen hidden" onclick="switchNav('new'); setMobNavActive('mob-nav-new')">
-            <span class="mob-nav-icon">➕</span>
-            <span class="mob-nav-label">New</span>
-        </button>
-        <button id="mob-nav-chat" class="mob-nav-btn role-citizen hidden" onclick="window.location.href='/chat.html'">
-            <span class="mob-nav-icon">💬</span>
-            <span class="mob-nav-label">Chat</span>
-        </button>
-    </nav>
+        <nav id="mobile-bottom-nav" class="mobile-bottom-nav">
+            <button id="mob-nav-dashboard" class="mob-nav-btn active"
+                onclick="switchNav('dashboard'); setMobNavActive('mob-nav-dashboard')">
+                <span class="mob-nav-icon">📊</span>
+                <span class="mob-nav-label">Dashboard</span>
+            </button>
+            <button id="mob-nav-complaints" class="mob-nav-btn"
+                onclick="switchNav('complaints'); setMobNavActive('mob-nav-complaints')">
+                <span class="mob-nav-icon">📁</span>
+                <span class="mob-nav-label">Complaints</span>
+            </button>
+            <button id="mob-nav-new" class="mob-nav-btn role-citizen hidden"
+                onclick="switchNav('new'); setMobNavActive('mob-nav-new')">
+                <span class="mob-nav-icon">➕</span>
+                <span class="mob-nav-label">New</span>
+            </button>
+            <button id="mob-nav-chat" class="mob-nav-btn role-citizen hidden"
+                onclick="window.location.href='/chat.html'">
+                <span class="mob-nav-icon">💬</span>
+                <span class="mob-nav-label">Chat</span>
+            </button>
+        </nav>
 
-    <!-- 3. SLIDING DETAIL INSPECTOR DRAWER -->
+        <!-- 3. SLIDING DETAIL INSPECTOR DRAWER -->
         <div id="details-pane" class="details-pane-modal">
             <div class="details-modal-header">
                 <h3 id="inspect-title">Ticket Details</h3>
@@ -738,6 +747,27 @@
                         <a href="#" id="inspect-attachment-link" target="_blank" class="attachment-link-btn">
                             <span>📎</span> View Attachment File
                         </a>
+                    </div>
+
+                    <!-- National ID section (visible to Clerk/Judge/Admin) -->
+                    <div id="inspect-national-id-container" class="hidden role-staff"
+                        style="margin-top:0.75rem; padding:0.75rem; background:rgba(99,102,241,0.05); border:1px solid rgba(99,102,241,0.2); border-radius:8px;">
+                        <div class="inspector-label" style="font-weight:700; margin-bottom:0.5rem;">🪪 Identity
+                            Documents</div>
+                        <div style="display:flex; flex-direction:column; gap:0.4rem;">
+                            <div id="inspect-complainant-id-row" class="hidden">
+                                <a href="#" id="inspect-complainant-id-link" target="_blank"
+                                    style="font-size:0.88rem; color:var(--primary, #7c69ef); text-decoration:underline;">
+                                    📄 View Complainant National ID
+                                </a>
+                            </div>
+                            <div id="inspect-respondent-id-row" class="hidden">
+                                <a href="#" id="inspect-respondent-id-link" target="_blank"
+                                    style="font-size:0.88rem; color:var(--primary, #7c69ef); text-decoration:underline;">
+                                    📄 View Respondent National ID
+                                </a>
+                            </div>
+                        </div>
                     </div>
                 </article>
 

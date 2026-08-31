@@ -370,6 +370,29 @@ async function openDetailsInspector(id) {
             docContainer.classList.add('hidden');
         }
 
+        // National ID links (staff only: Clerk, Judge, Admin)
+        const isStaffViewer = currentUser && ['ADMIN', 'admin', 'CLERK', 'JUDGE'].includes(currentUser.role);
+        const nationalIdContainer = document.getElementById('inspect-national-id-container');
+        const complainantIdRow = document.getElementById('inspect-complainant-id-row');
+        const respondentIdRow = document.getElementById('inspect-respondent-id-row');
+        if (nationalIdContainer && isStaffViewer) {
+            nationalIdContainer.classList.remove('hidden');
+            if (c.complainant_national_id) {
+                complainantIdRow.classList.remove('hidden');
+                document.getElementById('inspect-complainant-id-link').href = `/api/complaints/${c.id}/complainant_national_id`;
+            } else {
+                complainantIdRow.classList.add('hidden');
+            }
+            if (c.respondent_national_id) {
+                respondentIdRow.classList.remove('hidden');
+                document.getElementById('inspect-respondent-id-link').href = `/api/complaints/${c.id}/respondent_national_id`;
+            } else {
+                respondentIdRow.classList.add('hidden');
+            }
+        } else if (nationalIdContainer) {
+            nationalIdContainer.classList.add('hidden');
+        }
+
         // Show citizen edit button if eligible
         if (currentUser && currentUser.role === 'CITIZEN' && c.user_id === currentUser.id && (c.status === 'Filed' || c.status === 'Pending')) {
             document.getElementById('citizen-edit-btn').classList.remove('hidden');
@@ -724,7 +747,14 @@ async function handleFileComplaint(event) {
 
     const fileInput = document.getElementById('comp-attachment');
     const certInput = document.getElementById('comp-low-income-cert');
+    const nationalIdInput = document.getElementById('comp-national-id');
     const submitBtn = event.target.querySelector('button[type="submit"]');
+
+    if (!nationalIdInput || !nationalIdInput.files || nationalIdInput.files.length === 0) {
+        showToast('National ID attachment is required. Please upload your National ID.', true);
+        nextWizardStep(4);
+        return;
+    }
 
     const formData = new FormData();
     formData.append('title', title);
@@ -752,6 +782,8 @@ async function handleFileComplaint(event) {
     formData.append('respondent_woreda', respondentWoreda);
     formData.append('respondent_kebele', respondentKebele);
     formData.append('respondent_language', respondentLanguage);
+
+    formData.append('national_id', nationalIdInput.files[0]);
 
     if (fileInput.files.length > 0) {
         formData.append('attachment', fileInput.files[0]);

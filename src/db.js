@@ -129,9 +129,9 @@ const COMPLAINT_COLUMNS = new Set([
   'description', 'priority', 'status', 'assignment_status', 'assigned_judge',
   'attachment_path', 'legal_representation',
   'complainant_phone', 'complainant_country', 'complainant_region', 'complainant_woreda',
-  'complainant_kebele', 'complainant_language',
+  'complainant_kebele', 'complainant_language', 'complainant_national_id',
   'respondent_phone', 'respondent_email', 'respondent_country', 'respondent_region',
-  'respondent_woreda', 'respondent_kebele', 'respondent_language',
+  'respondent_woreda', 'respondent_kebele', 'respondent_language', 'respondent_national_id',
   'clerk_language', 'judge_language',
   'court_fee_required', 'court_fee_amount', 'court_fee_paid', 'court_fee_receipt',
   'is_served', 'created_at', 'updated_at'
@@ -411,7 +411,7 @@ async function syncComplaintToBlob(complaintObj) {
   // fails (fetch timeout / OOM), which makes every complaint list appear empty.
   // The /complaints/:id/attachment endpoint reads attachment_path directly from SQLite and
   // is NOT affected by this strip.
-  const { attachment_path, court_fee_receipt, ...safeComplaint } = complaintObj;
+  const { attachment_path, court_fee_receipt, complainant_national_id, respondent_national_id, ...safeComplaint } = complaintObj;
 
   // Retry up to 3 times — Vercel Blob writes can transiently fail
   for (let attempt = 1; attempt <= 3; attempt++) {
@@ -745,6 +745,8 @@ async function initDatabase() {
       respondent_woreda TEXT,
       complainant_language TEXT,
       respondent_language TEXT,
+      complainant_national_id TEXT,
+      respondent_national_id TEXT,
       clerk_language TEXT,
       judge_language TEXT,
       court_fee_required INTEGER DEFAULT 0,
@@ -766,7 +768,8 @@ async function initDatabase() {
       'court_address TEXT NOT NULL DEFAULT ""',
       'court_fee_required INTEGER DEFAULT 0', 'court_fee_amount REAL', 'court_fee_paid INTEGER DEFAULT 0', 'court_fee_receipt TEXT',
       'complainant_kebele TEXT', 'respondent_kebele TEXT',
-      'complainant_language TEXT', 'respondent_language TEXT', 'clerk_language TEXT', 'judge_language TEXT'
+      'complainant_language TEXT', 'respondent_language TEXT', 'clerk_language TEXT', 'judge_language TEXT',
+      'complainant_national_id TEXT', 'respondent_national_id TEXT'
     ];
     for (const colDef of newCols) {
       try {
