@@ -612,8 +612,8 @@ async function getAllComplaintsFromBlob(filters = {}) {
       // Staff (admin/clerk/judge) see ALL complaints.
       // RESPONDENT sees complaints where they are named as respondent.
       // CITIZEN / complainant sees only their own filed complaints.
-      const isStaff = ['admin', 'ADMIN', 'CLERK', 'JUDGE'].includes(role);
-      const isRespondent = role === 'RESPONDENT';
+      const isStaff = ['ADMIN', 'CLERK', 'JUDGE'].includes(role?.toUpperCase());
+      const isRespondent = role?.toUpperCase() === 'RESPONDENT';
 
       // 6-Month TTL filtering REMOVED per user request.
       // Complaints now stay permanently and are viewable by all authorized actors until explicitly deleted by an admin.
@@ -661,7 +661,7 @@ async function getAllComplaintsFromBlob(filters = {}) {
     WHERE c.status != 'Deleted'
   `;
   const params = [];
-  const isStaff = ['admin', 'ADMIN', 'CLERK', 'JUDGE'].includes(role);
+  const isStaff = ['ADMIN', 'CLERK', 'JUDGE'].includes(role?.toUpperCase());
   // 6-Month TTL REMOVED per user request
   if (!isStaff && userId) { query += ' AND c.user_id = ?'; params.push(userId); }
   if (status) { query += ' AND c.status = ?'; params.push(status); }

@@ -172,7 +172,8 @@ async function notifyRemarkAdded(complaintId, remark, authorId) {
     const excerpt = remark.length > 200 ? remark.slice(0, 197) + '...' : remark;
     const linkText = `/dashboard.html`; // relative UI link
 
-    if (author.role === 'ADMIN' || author.role === 'CLERK' || author.role === 'JUDGE' || author.role === 'admin' || author.role === 'clerk' || author.role === 'judge') {
+    const upperRole = author.role ? author.role.toUpperCase() : '';
+    if (upperRole === 'ADMIN' || upperRole === 'CLERK' || upperRole === 'JUDGE') {
       // Notify complainant
       const text = `A staff member (${author.username}) has posted a new message on your complaint #${c.id}.
 
@@ -196,7 +197,7 @@ View the conversation: ${linkText}`;
           console.log(`[Remark Telegram] ✅ Telegram also sent to ${respondentPhone}`);
         }
       }
-    } else if (author.role === 'RESPONDENT') {
+    } else if (upperRole === 'RESPONDENT') {
       // Notify complainant and all admins/clerks
       const text = `The respondent (${author.username}) has added a new message to complaint #${c.id}.
 

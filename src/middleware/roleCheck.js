@@ -6,10 +6,10 @@ module.exports = function requireRole(allowedRoles) {
 
         const userRole = req.session.role;
 
-        // If allowedRoles is a string, convert to array
+        const upperRole = userRole ? userRole.toUpperCase() : '';
         const rolesToCheck = Array.isArray(allowedRoles) ? allowedRoles : [allowedRoles];
 
-        if (rolesToCheck.includes(userRole) || userRole === 'ADMIN') { // ADMIN usually overrides or has access
+        if (rolesToCheck.includes(upperRole) || upperRole === 'ADMIN') { // ADMIN usually overrides or has access
             next();
         } else {
             res.status(403).json({ error: 'Forbidden. You do not have permission to perform this action.' });

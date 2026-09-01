@@ -192,7 +192,7 @@ router.get('/:id', requireLogin, async (req, res) => {
         }
 
         // Authorization: User must be either staff or creator of the complaint
-        const isStaff = ['admin', 'ADMIN', 'CLERK', 'JUDGE'].includes(role);
+        const isStaff = ['ADMIN', 'CLERK', 'JUDGE'].includes(role?.toUpperCase());
         if (!isStaff && complaint.user_id !== userId) {
             return res.status(403).json({ error: 'Forbidden. You do not have permission to view this complaint.' });
         }
@@ -240,7 +240,7 @@ router.get('/:id/attachment', requireLogin, async (req, res) => {
             return res.status(404).json({ error: 'No attachment available for this complaint.' });
         }
 
-        const isStaff = ['admin', 'ADMIN', 'CLERK', 'JUDGE'].includes(role);
+        const isStaff = ['ADMIN', 'CLERK', 'JUDGE'].includes(role?.toUpperCase());
         if (!isStaff && complaint.user_id !== userId) {
             return res.status(403).json({ error: 'Forbidden. You do not have permission to access this attachment.' });
         }
@@ -280,7 +280,7 @@ router.get('/:id/complainant_national_id', requireLogin, async (req, res) => {
         if (!complaint) return res.status(404).json({ error: 'Complaint not found.' });
         if (!complaint.complainant_national_id) return res.status(404).json({ error: 'No national ID available.' });
 
-        const isStaff = ['admin', 'ADMIN', 'CLERK', 'JUDGE'].includes(role);
+        const isStaff = ['ADMIN', 'CLERK', 'JUDGE'].includes(role?.toUpperCase());
         if (!isStaff && complaint.user_id !== userId) return res.status(403).json({ error: 'Forbidden.' });
 
         if (complaint.complainant_national_id.startsWith('data:')) {
@@ -305,9 +305,9 @@ router.get('/:id/respondent_national_id', requireLogin, async (req, res) => {
 
     try {
         const complaint = await db.get('SELECT respondent_national_id FROM complaints WHERE id = ?', [complaintId]);
-        const isStaff = ['admin', 'ADMIN', 'CLERK', 'JUDGE'].includes(role);
+        const isStaff = ['ADMIN', 'CLERK', 'JUDGE'].includes(role?.toUpperCase());
         // We bypass the strict user check here for respondent, assuming staff views it or if they have the ID they can view it.
-        if (!isStaff && role !== 'RESPONDENT') return res.status(403).json({ error: 'Forbidden.' });
+        if (!isStaff && role?.toUpperCase() !== 'RESPONDENT') return res.status(403).json({ error: 'Forbidden.' });
 
         if (!complaint || !complaint.respondent_national_id) return res.status(404).json({ error: 'No national ID available.' });
 
@@ -343,7 +343,7 @@ router.post('/:id/remarks', requireLogin, async (req, res) => {
             return res.status(404).json({ error: 'Complaint not found.' });
         }
 
-        const isStaff = ['admin', 'ADMIN', 'CLERK', 'JUDGE'].includes(role);
+        const isStaff = ['ADMIN', 'CLERK', 'JUDGE'].includes(role?.toUpperCase());
         if (!isStaff && complaint.user_id !== userId) {
             return res.status(403).json({ error: 'Forbidden. You do not have permission to remark on this complaint.' });
         }
@@ -393,7 +393,7 @@ router.patch('/:id/status', requireRole(['ADMIN', 'CLERK']), async (req, res) =>
 
         if (status) {
             let validStatuses = ['Filed', 'Pending', 'In Progress', 'Under Review', 'Scheduled', 'Resolved', 'Rejected', 'Closed'];
-            if (role === 'CLERK') {
+            if (role?.toUpperCase() === 'CLERK') {
                 validStatuses = ['Pending', 'Under Review', 'Scheduled', 'Rejected'];
             }
             if (!validStatuses.includes(status)) {
@@ -474,18 +474,19 @@ router.patch('/:id', requireLogin, async (req, res) => {
         }
 
         // RBAC logic to determine if the user can edit this complaint
-        if (role === 'CITIZEN' || role === 'complainant') {
+        const upperRole = role?.toUpperCase();
+        if (upperRole === 'CITIZEN' || role === 'complainant') {
             if (complaint.user_id !== userId) {
                 return res.status(403).json({ error: 'Forbidden. You can only edit your own complaints.' });
             }
             if (complaint.status !== 'Filed' && complaint.status !== 'Pending') {
                 return res.status(403).json({ error: 'Forbidden. You cannot edit a complaint after it is officially accepted.' });
             }
-        } else if (role === 'CLERK') {
+        } else if (upperRole === 'CLERK') {
             if (complaint.status !== 'Filed' && complaint.status !== 'Pending') {
                 return res.status(403).json({ error: 'Forbidden. Clerks can only edit before judicial review.' });
             }
-        } else if (role !== 'ADMIN' && role !== 'admin') {
+        } else if (upperRole !== 'ADMIN' && role !== 'admin') {
             return res.status(403).json({ error: 'Forbidden. You do not have permission to edit complaints.' });
         }
 
