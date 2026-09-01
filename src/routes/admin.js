@@ -155,4 +155,62 @@ router.patch('/users/:id/role', requireRole(['ADMIN']), async (req, res) => {
     }
 });
 
+// GET /api/admin/debug-blob  — Admin-only endpoint to diagnose Vercel Blob connectivity.
+// Hit this on the live Vercel URL to see the real blob error from inside the serverless runtime.
+router.get('/debug-blob', requireRole(['ADMIN']), async (req, res) => {
+    const token = process.env.BLOB_READ_WRITE_TOKEN;
+    if (!token) {
+        return res.status(500).json({
+            status: 'error',
+            message: 'BLOB_READ_WRITE_TOKEN is NOT set in this environment.',
+            hint: 'Go to Vercel project → Settings → Environment Variables and add a valid BLOB_READ_WRITE_TOKEN from your Blob store.',
+            complaints_count: 0
+        });
+    }
+
+    try {
+        const { list: blobList } = require('@vercel/blob');
+        const { blobs } = await blobList({ prefix: 'cms_complaints.json', limit: 10 });
+        const blobInfo = blobs.find(b => b.pathname === 'cms_complaints.json') || null;
+
+        if (!blobInfo) {
+            // Blob doesn't exist yet — create it
+            const { put } = require('@vercel/blob');
+            await put('cms_complaints.json', JSON.stringify([]), {
+                access: 'public',
+                addRandomSuffix: false,
+                contentType: 'application/json',
+                cacheControlMaxAge: 0
+            });
+            return res.json({
+                status: 'initialized',
+                message: 'cms_complaints.json did not exist. Created an empty one with public access.',
+                complaints_count: 0
+            });
+        }
+
+        // Fetch and parse the blob
+        const fetchRes = await fetch(blobInfo.downloadUrl + '?t=' + Date.now());
+        const data = fetchRes.ok ? await fetchRes.json() : null;
+
+        return res.json({
+            status: 'ok',
+            blob_url: blobInfo.downloadUrl?.substring(0, 60) + '...',
+            blob_size_bytes: blobInfo.size,
+            fetch_status: fetchRes.status,
+            complaints_count: Array.isArray(data) ? data.length : 'parse error',
+            sample: Array.isArray(data) ? data.slice(0, 2).map(c => ({ id: c.id, title: c.title, status: c.status })) : null
+        });
+    } catch (err) {
+        return res.status(500).json({
+            status: 'error',
+            message: err.message,
+            type: err.constructor?.name,
+            hint: err.message?.includes('BlobStoreNotFound')
+                ? 'Your BLOB_READ_WRITE_TOKEN points to a Blob store that no longer exists. Re-link the Blob store in the Vercel dashboard under Storage → Blob, and update the env variable.'
+                : 'Check Vercel logs for more details.'
+        });
+    }
+});
+
 module.exports = router;

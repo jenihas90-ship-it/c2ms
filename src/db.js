@@ -17,12 +17,10 @@ async function fetchWithRetry(url, retries = 2, delayMs = 500) {
   let lastErr;
   for (let i = 0; i <= retries; i++) {
     try {
-      const headers = {};
-      if (process.env.BLOB_READ_WRITE_TOKEN) {
-        headers['Authorization'] = `Bearer ${process.env.BLOB_READ_WRITE_TOKEN}`;
-      }
+      // Public blob URLs are served by Vercel's CDN and don't require Authorization.
+      // Appending a cache-busting timestamp prevents stale CDN responses.
       const finalUrl = url + (url.includes('?') ? '&' : '?') + 't=' + Date.now();
-      const res = await fetch(finalUrl, { headers });
+      const res = await fetch(finalUrl);
       if (res.ok) return res;
       lastErr = new Error(`HTTP ${res.status} from blob URL`);
     } catch (e) {
@@ -292,7 +290,7 @@ async function _writeStatsBlob(data) {
   if (!process.env.BLOB_READ_WRITE_TOKEN) return;
   try {
     const json = JSON.stringify(data);
-    await put(STATS_BLOB_KEY, json, { access: 'private', addRandomSuffix: false, contentType: 'application/json', cacheControlMaxAge: 0 });
+    await put(STATS_BLOB_KEY, json, { access: 'public', addRandomSuffix: false, contentType: 'application/json', cacheControlMaxAge: 0 });
   } catch (e) {
     console.warn('[Stats] Could not write cms_stats.json:', e.message);
   }
@@ -377,16 +375,23 @@ async function _readComplaintsBlob() {
       // Exact name match to prevent picking random-suffix duplicates
       blobInfo = blobs.find(b => b.pathname === COMPLAINTS_BLOB_KEY) || null;
     } catch (e) {
+      const errType = e.constructor?.name || 'UnknownError';
       const msg = (e.message || '').toLowerCase();
+      // Log the FULL error so it appears in Vercel function logs
+      console.error(`[Blob] _readComplaintsBlob list() failed [${errType}]:`, e.message);
+      if (errType === 'BlobStoreNotFoundError' || msg.includes('store does not exist') || msg.includes('blobstorenotfound')) {
+        console.error('[Blob] CRITICAL: BLOB_READ_WRITE_TOKEN points to a deleted/invalid Blob store. Go to Vercel dashboard → Storage → Blob and re-link the store, then update BLOB_READ_WRITE_TOKEN in environment variables.');
+      }
       if (msg.includes('not found') || msg.includes('does not exist') || msg.includes('blob does not exist') || e.status === 404) return [];
-      throw e; // Important: do not swallow real errors
+      throw e; // Propagate real errors
     }
     if (!blobInfo) return [];
+    // Public blobs: fetch without Authorization header (avoids pre-signed URL expiry issues)
     const fetchRes = await fetchWithRetry(blobInfo.downloadUrl);
     const data = await fetchRes.json();
     return Array.isArray(data) ? data : [];
   } catch (e) {
-    console.warn('[Blob] Could not read cms_complaints.json:', e.message);
+    console.error('[Blob] CRITICAL: Could not read cms_complaints.json:', e.constructor?.name, e.message);
     throw new Error('read_failure'); // Propagate to prevent wiping json
   }
 }
@@ -395,10 +400,13 @@ async function _writeComplaintsBlob(complaintsList) {
   if (!process.env.BLOB_READ_WRITE_TOKEN) return;
   try {
     const json = JSON.stringify(complaintsList);
-    await put(COMPLAINTS_BLOB_KEY, json, { access: 'private', addRandomSuffix: false, contentType: 'application/json', cacheControlMaxAge: 0 });
+    // Use 'public' access so downloadUrl works without Authorization headers.
+    // Private blob pre-signed URLs expire and can 403 on cross-worker reads,
+    // causing complaint data to silently disappear.
+    await put(COMPLAINTS_BLOB_KEY, json, { access: 'public', addRandomSuffix: false, contentType: 'application/json', cacheControlMaxAge: 0 });
     console.log('[Blob] cms_complaints.json updated with', complaintsList.length, 'complaints.');
   } catch (e) {
-    console.warn('[Blob] Could not write cms_complaints.json:', e.message);
+    console.error('[Blob] Could not write cms_complaints.json:', e.constructor?.name, e.message);
   }
 }
 
