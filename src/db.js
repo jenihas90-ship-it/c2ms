@@ -615,23 +615,8 @@ async function getAllComplaintsFromBlob(filters = {}) {
       const isStaff = ['admin', 'ADMIN', 'CLERK', 'JUDGE'].includes(role);
       const isRespondent = role === 'RESPONDENT';
 
-      // 6-Month TTL filtering for specific roles
-      // IMPORTANT: SQLite stores dates as "2026-08-31 21:13:06" (space, not T).
-      // new Date("2026-08-31 21:13:06") => Invalid Date in JS, and
-      // Invalid Date >= anything is always false, which silently hides every complaint.
-      // Fix: replace the space separator with 'T' to produce a valid ISO 8601 string.
-      // Also check the camelCase `createdAt` field written by syncComplaintToBlob.
-      // If the date is genuinely missing/unparseable, default to KEEP the complaint.
-      if (['CLERK', 'JUDGE', 'RESPONDENT'].includes(role)) {
-        const cutOffDate = new Date();
-        cutOffDate.setMonth(cutOffDate.getMonth() - 6);
-        result = result.filter(c => {
-          const raw = c.created_at || c.createdAt || null;
-          if (!raw) return true; // keep if date is unknown
-          const d = new Date(String(raw).replace(' ', 'T'));
-          return isNaN(d.getTime()) ? true : d >= cutOffDate;
-        });
-      }
+      // 6-Month TTL filtering REMOVED per user request.
+      // Complaints now stay permanently and are viewable by all authorized actors until explicitly deleted by an admin.
 
       if (!isStaff && !isRespondent && userId) {
         result = result.filter(c => String(c.user_id) === String(userId));
@@ -677,9 +662,7 @@ async function getAllComplaintsFromBlob(filters = {}) {
   `;
   const params = [];
   const isStaff = ['admin', 'ADMIN', 'CLERK', 'JUDGE'].includes(role);
-  if (['CLERK', 'JUDGE', 'RESPONDENT'].includes(role)) {
-    query += " AND c.created_at >= date('now', '-6 months')";
-  }
+  // 6-Month TTL REMOVED per user request
   if (!isStaff && userId) { query += ' AND c.user_id = ?'; params.push(userId); }
   if (status) { query += ' AND c.status = ?'; params.push(status); }
   if (category) { query += ' AND c.category = ?'; params.push(category); }
