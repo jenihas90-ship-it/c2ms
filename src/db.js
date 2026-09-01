@@ -616,10 +616,21 @@ async function getAllComplaintsFromBlob(filters = {}) {
       const isRespondent = role === 'RESPONDENT';
 
       // 6-Month TTL filtering for specific roles
+      // IMPORTANT: SQLite stores dates as "2026-08-31 21:13:06" (space, not T).
+      // new Date("2026-08-31 21:13:06") => Invalid Date in JS, and
+      // Invalid Date >= anything is always false, which silently hides every complaint.
+      // Fix: replace the space separator with 'T' to produce a valid ISO 8601 string.
+      // Also check the camelCase `createdAt` field written by syncComplaintToBlob.
+      // If the date is genuinely missing/unparseable, default to KEEP the complaint.
       if (['CLERK', 'JUDGE', 'RESPONDENT'].includes(role)) {
         const cutOffDate = new Date();
         cutOffDate.setMonth(cutOffDate.getMonth() - 6);
-        result = result.filter(c => new Date(c.created_at || 0) >= cutOffDate);
+        result = result.filter(c => {
+          const raw = c.created_at || c.createdAt || null;
+          if (!raw) return true; // keep if date is unknown
+          const d = new Date(String(raw).replace(' ', 'T'));
+          return isNaN(d.getTime()) ? true : d >= cutOffDate;
+        });
       }
 
       if (!isStaff && !isRespondent && userId) {

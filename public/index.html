@@ -192,6 +192,7 @@
     .hero-headline .gold-word {
       background: linear-gradient(135deg, var(--gold), var(--gold-light));
       -webkit-background-clip: text;
+      background-clip: text;
       -webkit-text-fill-color: transparent;
     }
 
@@ -790,6 +791,30 @@
       cursor: pointer;
       border: none;
       font-family: inherit;
+    }
+
+    /* ── Desktop nav: show links, hide hamburger ── */
+    @media (min-width: 768px) {
+      .desktop-nav-links {
+        display: flex;
+        align-items: center;
+        gap: 2rem;
+      }
+
+      .hamburger-menu-btn {
+        display: none !important;
+      }
+    }
+
+    /* ── Mobile nav: hide desktop links, show hamburger ── */
+    @media (max-width: 767px) {
+      .desktop-nav-links {
+        display: none !important;
+      }
+
+      .hamburger-menu-btn {
+        display: block;
+      }
     }
 
     /* ── WELCOME MARQUEE BANNER ── */
@@ -1400,8 +1425,17 @@
       <span class="landing-logo-icon">⚖️</span>
       <span class="landing-logo-text">Justice Connect</span>
     </a>
+    <!-- Desktop inline nav links (hidden on mobile) -->
+    <div class="landing-nav-links desktop-nav-links">
+      <a href="/">Home</a>
+      <a href="/#why">Why Choose Us</a>
+      <a href="/about.html">About Us</a>
+      <button onclick="openAuthModal()" class="nav-cta">Sign In / Register →</button>
+    </div>
+    <!-- Hamburger button (hidden on desktop, shown on mobile) -->
     <button class="hamburger-menu-btn" onclick="toggleHamburgerMenu()"
-      style="background:none; border:none; font-size:2rem; cursor:pointer; color:var(--navy);">☰</button>
+      style="background:none; border:none; font-size:2rem; cursor:pointer; color:var(--navy);"
+      aria-label="Open menu">☰</button>
   </nav>
 
   <!-- Hamburger Menu Overlay -->

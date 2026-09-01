@@ -439,6 +439,15 @@ router.patch('/:id/status', requireRole(['ADMIN', 'CLERK']), async (req, res) =>
         const sql = `UPDATE complaints SET ${updates.join(', ')} WHERE id = ?`;
         await db.run(sql, params);
 
+        // Sync updated complaint to the shared JSON blob so all Vercel workers see the change.
+        // Without this, status updates are lost on cold-start worker rotation.
+        const updatedComplaintForBlob = await db.get('SELECT * FROM complaints WHERE id = ?', [complaintId]);
+        if (updatedComplaintForBlob) {
+            await db.syncComplaintToBlob(updatedComplaintForBlob).catch(err =>
+                console.error('[Blob] Failed to sync status update to blob:', err.message)
+            );
+        }
+
         // Notify user of status change if status was updated (await for Vercel)
         if (status) {
             await notifications.notifyStatusChange(complaintId, status).catch(err => console.error('notifyStatusChange failed', err));
