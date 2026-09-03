@@ -41,7 +41,7 @@ router.get('/cases', requireRespondent, async (req, res) => {
              FROM complaints c
              JOIN users u ON c.user_id = u.id
              WHERE (c.respondent_email = ? OR c.respondent_phone = ? OR c.respondent_phone = ?)
-             AND c.created_at >= date('now', '-6 months')
+             AND c.status != 'Deleted'
              AND (c.is_served = 1 
                   OR c.id IN (SELECT complaint_id FROM case_orders)
                   OR c.id IN (SELECT complaint_id FROM remarks WHERE user_id IN (SELECT id FROM users WHERE role IN ('ADMIN', 'CLERK', 'JUDGE', 'admin', 'clerk', 'judge')))
@@ -257,6 +257,7 @@ router.get('/notifications', requireRespondent, async (req, res) => {
         const cases = await db.all(
             `SELECT id, title, case_number, court_name, status FROM complaints
              WHERE (respondent_email = ? OR respondent_phone = ? OR respondent_phone = ?)
+             AND status != 'Deleted'
              AND (is_served = 1 
                   OR id IN (SELECT complaint_id FROM case_orders)
                   OR id IN (SELECT complaint_id FROM remarks WHERE user_id IN (SELECT id FROM users WHERE role IN ('ADMIN', 'CLERK', 'JUDGE', 'admin', 'clerk', 'judge')))

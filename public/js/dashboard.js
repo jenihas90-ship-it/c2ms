@@ -375,6 +375,8 @@ async function openDetailsInspector(id) {
         const nationalIdContainer = document.getElementById('inspect-national-id-container');
         const complainantIdRow = document.getElementById('inspect-complainant-id-row');
         const respondentIdRow = document.getElementById('inspect-respondent-id-row');
+        const respondentFeeRow = document.getElementById('inspect-respondent-fee-row');
+
         if (nationalIdContainer && isStaffViewer) {
             nationalIdContainer.classList.remove('hidden');
             if (c.complainant_national_id) {
@@ -388,6 +390,14 @@ async function openDetailsInspector(id) {
                 document.getElementById('inspect-respondent-id-link').href = `/api/complaints/${c.id}/respondent_national_id`;
             } else {
                 respondentIdRow.classList.add('hidden');
+            }
+            if (respondentFeeRow) {
+                if (c.respondent_fee_receipt) {
+                    respondentFeeRow.classList.remove('hidden');
+                    document.getElementById('inspect-respondent-fee-link').href = `/api/complaints/${c.id}/respondent_fee_receipt`;
+                } else {
+                    respondentFeeRow.classList.add('hidden');
+                }
             }
         } else if (nationalIdContainer) {
             nationalIdContainer.classList.add('hidden');
@@ -427,6 +437,21 @@ async function openDetailsInspector(id) {
             } else {
                 document.getElementById('inspector-orders-section').classList.add('hidden');
                 ordersContainer.innerHTML = '';
+            }
+        }
+
+        // Render Formal Response Prominently
+        const frSection = document.getElementById('inspector-formal-response-section');
+        if (frSection) {
+            const formalRespRemark = remarks.find(r => r.remark.startsWith('[FORMAL RESPONSE]'));
+            if (formalRespRemark) {
+                frSection.classList.remove('hidden');
+                let frText = escapeHTML(formalRespRemark.remark);
+                frText = frText.replace('[FORMAL RESPONSE]\\n', '').replace('[FORMAL RESPONSE]', '');
+                document.getElementById('inspect-formal-response-text').innerHTML = frText;
+            } else {
+                frSection.classList.add('hidden');
+                document.getElementById('inspect-formal-response-text').innerHTML = '';
             }
         }
 
@@ -505,7 +530,22 @@ function renderTimelineRemarks(remarks) {
     };
 
     remarks.forEach(r => {
-        const style = roleColors[r.role] || { bg: '#f5f5f5', accent: '#333', label: r.role };
+        const baseStyle = roleColors[r.role] || { bg: '#f5f5f5', accent: '#333', label: r.role };
+        const style = { ...baseStyle };
+
+        let safeRemark = escapeHTML(r.remark);
+        let bubbleTypeLabel = style.label;
+
+        // Enhance [FORMAL RESPONSE] for pronounced visibility
+        if (safeRemark.startsWith('[FORMAL RESPONSE]')) {
+            bubbleTypeLabel = `⚖️ OFFICIAL FORMAL RESPONSE (${style.label})`;
+            safeRemark = safeRemark.replace('[FORMAL RESPONSE]', '<div style="color:#d32f2f; font-weight:bold; font-size:1.05rem; margin-bottom:8px; border-bottom:1px solid rgba(211,47,47,0.3); padding-bottom:4px;">⚖️ OFFICIAL FORMAL RESPONSE</div>');
+            safeRemark = safeRemark.replace(/═══════════════════════════════════════/g, '<hr style="opacity:0.2; margin:0.5rem 0;">');
+
+            style.bg = '#fff8e1';
+            style.accent = '#d32f2f';
+        }
+
         const bubble = document.createElement('div');
         bubble.style.cssText = `
             background: ${style.bg};
@@ -514,13 +554,14 @@ function renderTimelineRemarks(remarks) {
             padding: 0.5rem 0.75rem;
             max-width: 90%;
             align-self: ${['CITIZEN'].includes(r.role) ? 'flex-start' : 'flex-end'};
+            box-shadow: ${safeRemark.includes('OFFICIAL FORMAL RESPONSE') ? '0 4px 6px rgba(0,0,0,0.1)' : 'none'};
         `;
         bubble.innerHTML = `
             <div style="display:flex; justify-content:space-between; gap:1rem; margin-bottom:3px; font-size:0.78rem;">
-                <span style="font-weight:700; color:${style.accent};">${style.label} — ${escapeHTML(r.username)}</span>
+                <span style="font-weight:700; color:${style.accent};">${bubbleTypeLabel} — ${escapeHTML(r.username)}</span>
                 <span style="color:#999; white-space:nowrap;">${formatDate(r.created_at)}</span>
             </div>
-            <div style="font-size:0.9rem; color:#333; white-space:pre-wrap;">${escapeHTML(r.remark)}</div>
+            <div style="font-size:0.9rem; color:#333; white-space:pre-wrap;">${safeRemark}</div>
         `;
         container.appendChild(bubble);
     });

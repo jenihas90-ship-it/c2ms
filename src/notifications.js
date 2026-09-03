@@ -23,7 +23,8 @@ const SMTP_USER = process.env.SMTP_USER;
 const SMTP_PASS = process.env.SMTP_PASS;
 const FROM_EMAIL = process.env.FROM_EMAIL || SMTP_USER || 'no-reply@resolver.local';
 
-// Respondent portal URL — hardcoded to the live Vercel deployment
+// Base and Respondent portal URL — hardcoded to the live Vercel deployment
+const BASE_URL = 'https://jenihas90-ship-it-c2ms.vercel.app';
 const PORTAL_URL = 'https://jenihas90-ship-it-c2ms.vercel.app/respondent.html';
 
 // Detect placeholder / unconfigured credentials so we don't attempt a real SMTP connection
@@ -92,7 +93,7 @@ async function notifyNewComplaint(complaintId) {
     // Notify admins (all admin users)
     const admins = await db.all("SELECT email, username FROM users WHERE role = 'admin'");
     const subject = `New Complaint Filed: #${c.id} - ${c.title}`;
-    const text = `A new complaint was filed by ${c.username} (${c.email}).\n\nTitle: ${c.title}\nCategory: ${c.category}\nPriority: ${c.priority}\n\nView in dashboard: /dashboard.html`;
+    const text = `A new complaint was filed by ${c.username} (${c.email}).\n\nTitle: ${c.title}\nCategory: ${c.category}\nPriority: ${c.priority}\n\nView in dashboard: ${BASE_URL}/dashboard.html`;
 
     for (const a of admins) {
       await sendMail({ to: a.email, subject, text });
@@ -170,7 +171,7 @@ async function notifyRemarkAdded(complaintId, remark, authorId) {
 
     const subject = `New message on complaint #${c.id}: ${c.title}`;
     const excerpt = remark.length > 200 ? remark.slice(0, 197) + '...' : remark;
-    const linkText = `/dashboard.html`; // relative UI link
+    const linkText = `${BASE_URL}/dashboard.html`; // absolute UI link
 
     const upperRole = author.role ? author.role.toUpperCase() : '';
     if (upperRole === 'ADMIN' || upperRole === 'CLERK' || upperRole === 'JUDGE') {
@@ -184,7 +185,7 @@ View the conversation: ${linkText}`;
 
       // Notify respondent if they have email
       if (c.respondent_email) {
-        const respText = `A staff member (${author.username}) has posted a new message on the case where you are named as respondent (${c.title}).\n\nLogin to the respondent portal to view.`;
+        const respText = `A staff member (${author.username}) has posted a new message on the case where you are named as respondent (${c.title}).\n\nLogin to the respondent portal to view:\n${PORTAL_URL}`;
         await sendMail({ to: c.respondent_email, subject, text: respText });
       }
 
@@ -232,7 +233,7 @@ Review the conversation: ${linkText}`;
       }
 
       if (c.respondent_email) {
-        const respText = `The complainant (${author.username}) has posted a new message on the case where you are named as respondent (${c.title}).\n\nLogin to the respondent portal to view.`;
+        const respText = `The complainant (${author.username}) has posted a new message on the case where you are named as respondent (${c.title}).\n\nLogin to the respondent portal to view:\n${PORTAL_URL}`;
         await sendMail({ to: c.respondent_email, subject, text: respText });
       }
     }
@@ -271,7 +272,7 @@ async function notifyRespondentOfComplaint(complaintId) {
               <tr><td style="padding:8px;background:#f5f5f5;font-weight:bold">Court</td><td style="padding:8px">${courtName}</td></tr>
             </table>
             <p style="color:#c0392b;font-weight:bold">Action Required: Please login to the respondent portal immediately to review the complaint and respond accordingly.</p>
-            ${PORTAL_URL ? `<p style="text-align:center;margin:20px 0"><a href="${PORTAL_URL}" style="display:inline-block;background:#1a3c5e;color:#fff;padding:12px 28px;border-radius:6px;text-decoration:none;font-size:15px;font-weight:bold">🔐 Login to Respondent Portal</a></p><p style="font-size:12px;color:#555;text-align:center">Or copy this link: <a href="${PORTAL_URL}" style="color:#1a3c5e">${PORTAL_URL}</a></p>` : ''}
+            ${PORTAL_URL ? `<p style="text-align:center;margin:20px 0"><a href="${PORTAL_URL}" target="_blank" style="display:inline-block;background:#1a3c5e;color:#fff;padding:12px 28px;border-radius:6px;text-decoration:none;font-size:15px;font-weight:bold">🔐 Login to Respondent Portal</a></p><p style="font-size:12px;color:#555;text-align:center">Or copy this link: <a href="${PORTAL_URL}" target="_blank" style="color:#1a3c5e">${PORTAL_URL}</a></p>` : ''}
             <p style="font-size:12px;color:#666">Do not ignore this notice — timely response is required by law.</p>
           </div>
           <div style="background:#f5f5f5;padding:12px 24px;font-size:12px;color:#888;text-align:center">
@@ -349,7 +350,7 @@ async function notifySessionScheduled(complaintId, session) {
               <tr><td style="padding:8px;background:#f5f5f5;font-weight:bold">Judge</td><td style="padding:8px">${judge_name || 'TBD'}</td></tr>
             </table>
             <p style="color:#c0392b;font-weight:bold">Your attendance is required. Please login to the respondent portal for further case details.</p>
-            ${PORTAL_URL ? `<p style="text-align:center;margin:20px 0"><a href="${PORTAL_URL}" style="display:inline-block;background:#1a3c5e;color:#fff;padding:12px 28px;border-radius:6px;text-decoration:none;font-size:15px;font-weight:bold">🔐 Login to Respondent Portal</a></p><p style="font-size:12px;color:#555;text-align:center">Or copy this link: <a href="${PORTAL_URL}" style="color:#1a3c5e">${PORTAL_URL}</a></p>` : ''}
+            ${PORTAL_URL ? `<p style="text-align:center;margin:20px 0"><a href="${PORTAL_URL}" target="_blank" style="display:inline-block;background:#1a3c5e;color:#fff;padding:12px 28px;border-radius:6px;text-decoration:none;font-size:15px;font-weight:bold">🔐 Login to Respondent Portal</a></p><p style="font-size:12px;color:#555;text-align:center">Or copy this link: <a href="${PORTAL_URL}" target="_blank" style="color:#1a3c5e">${PORTAL_URL}</a></p>` : ''}
             <p style="font-size:12px;color:#666">Failure to appear may result in a default judgment against you.</p>
           </div>
           <div style="background:#f5f5f5;padding:12px 24px;font-size:12px;color:#888;text-align:center">

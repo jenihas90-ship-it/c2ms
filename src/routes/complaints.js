@@ -297,6 +297,32 @@ router.get('/:id/complainant_national_id', requireLogin, async (req, res) => {
     }
 });
 
+// Serve complainant national ID file (staff only)
+router.get('/:id/complainant_national_id', requireLogin, async (req, res) => {
+    const complaintId = req.params.id;
+    const role = req.session.role;
+
+    try {
+        const complaint = await db.get('SELECT complainant_national_id FROM complaints WHERE id = ?', [complaintId]);
+        const isStaff = ['ADMIN', 'CLERK', 'JUDGE'].includes(role?.toUpperCase());
+        if (!isStaff) return res.status(403).json({ error: 'Forbidden. Staff access only.' });
+
+        if (!complaint || !complaint.complainant_national_id) return res.status(404).json({ error: 'No national ID available.' });
+
+        if (complaint.complainant_national_id.startsWith('data:')) {
+            const arr = complaint.complainant_national_id.split(',');
+            const mimeMatch = arr[0].match(/:(.*?);/);
+            if (mimeMatch && arr[1]) {
+                res.setHeader('Content-Type', mimeMatch[1]);
+                return res.send(Buffer.from(arr[1], 'base64'));
+            }
+        }
+        res.status(404).json({ error: 'Invalid attachment type.' });
+    } catch (err) {
+        res.status(500).json({ error: 'Internal Server Error.' });
+    }
+});
+
 // Serve respondent national ID file
 router.get('/:id/respondent_national_id', requireLogin, async (req, res) => {
     const complaintId = req.params.id;
@@ -313,6 +339,34 @@ router.get('/:id/respondent_national_id', requireLogin, async (req, res) => {
 
         if (complaint.respondent_national_id.startsWith('data:')) {
             const arr = complaint.respondent_national_id.split(',');
+            const mimeMatch = arr[0].match(/:(.*?);/);
+            if (mimeMatch && arr[1]) {
+                res.setHeader('Content-Type', mimeMatch[1]);
+                return res.send(Buffer.from(arr[1], 'base64'));
+            }
+        }
+        res.status(404).json({ error: 'Invalid attachment type.' });
+    } catch (err) {
+        res.status(500).json({ error: 'Internal Server Error.' });
+    }
+});
+
+// Serve respondent fee receipt file
+router.get('/:id/respondent_fee_receipt', requireLogin, async (req, res) => {
+    const complaintId = req.params.id;
+    const userId = req.session.userId;
+    const role = req.session.role;
+
+    try {
+        const complaint = await db.get('SELECT respondent_fee_receipt FROM complaints WHERE id = ?', [complaintId]);
+        const isStaff = ['ADMIN', 'CLERK', 'JUDGE'].includes(role?.toUpperCase());
+        // We bypass the strict user check here for respondent, assuming staff views it
+        if (!isStaff && role?.toUpperCase() !== 'RESPONDENT') return res.status(403).json({ error: 'Forbidden.' });
+
+        if (!complaint || !complaint.respondent_fee_receipt) return res.status(404).json({ error: 'No fee receipt available.' });
+
+        if (complaint.respondent_fee_receipt.startsWith('data:')) {
+            const arr = complaint.respondent_fee_receipt.split(',');
             const mimeMatch = arr[0].match(/:(.*?);/);
             if (mimeMatch && arr[1]) {
                 res.setHeader('Content-Type', mimeMatch[1]);
@@ -572,31 +626,20 @@ router.patch('/:id', requireLogin, async (req, res) => {
 router.delete('/:id', requireRole(['ADMIN']), async (req, res) => {
     const complaintId = req.params.id;
     try {
-        const complaint = await db.get('SELECT id, created_at FROM complaints WHERE id = ?', [complaintId]);
+        const complaint = await db.get('SELECT id FROM complaints WHERE id = ?', [complaintId]);
         if (!complaint) {
             return res.status(404).json({ error: 'Complaint not found.' });
         }
 
-        // 1-year retention check: do not allow deletion if complaint is less than 1 year old
-        if (complaint.created_at) {
-            const createdDate = new Date(complaint.created_at);
-            const oneYearAgo = new Date();
-            oneYearAgo.setFullYear(oneYearAgo.getFullYear() - 1);
-            if (createdDate > oneYearAgo) {
-                return res.status(403).json({ error: 'Complaints must be displayed permanently and cannot be deleted until one year has passed.' });
-            }
-        }
-
-        // Soft Delete in SQLite memory
+        // Soft-delete: only admins can remove a complaint from all lists.
+        // Complaints stay visible for every role until this action is taken.
         await db.run('UPDATE complaints SET status = \'Deleted\', updated_at = CURRENT_TIMESTAMP WHERE id = ?', [complaintId]);
 
-        // Sync the soft-deleted state to Vercel Blob explicitly
-        const updatedComplaint = await db.get('SELECT * FROM complaints WHERE id = ?', [complaintId]);
-        if (updatedComplaint) {
-            await db.syncComplaintToBlob(updatedComplaint).catch(err => console.error('[Blob] Failed to sync soft-deleted complaint to blob:', err.message));
-        }
+        await db.deleteComplaintFromBlob(complaintId).catch(err =>
+            console.error('[Blob] Failed to mark complaint deleted in blob:', err.message)
+        );
 
-        res.json({ success: true, message: 'Complaint legally soft-deleted' });
+        res.json({ success: true, message: 'Complaint removed from the system by administrator.' });
     } catch (err) {
         console.error('Delete complaint error:', err);
         res.status(500).json({ error: 'Internal Server Error during deletion.' });

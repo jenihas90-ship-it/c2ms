@@ -583,6 +583,64 @@ async function getTelegramChatIdByPhone(rawPhone) {
 //  shared JSON Blob so ALL Vercel workers see the same data.
 //  Falls back to in-memory SQLite for local dev (no blob token).
 // ─────────────────────────────────────────────────────────
+function _applyComplaintListFilters(complaints, filters, resolveUsername = () => 'Anonymous') {
+  let result = complaints
+    .filter(c => c && c.status !== 'Deleted')
+    .map(c => ({ ...c, complainant_name: c.complainant_name || resolveUsername(c.user_id) }));
+
+  const { userId, role, status, category, region, search } = filters;
+  const isStaff = ['ADMIN', 'CLERK', 'JUDGE'].includes(role?.toUpperCase());
+  const isRespondent = role?.toUpperCase() === 'RESPONDENT';
+
+  // Complaints stay permanently until an admin explicitly deletes them.
+  if (!isStaff && !isRespondent && userId) {
+    result = result.filter(c => String(c.user_id) === String(userId));
+  }
+  if (isRespondent && userId) {
+    result = result.filter(c =>
+      String(c.user_id) === String(userId) ||
+      (c.respondent_user_id && String(c.respondent_user_id) === String(userId)) ||
+      Number(c.is_served) === 1
+    );
+  }
+  if (status) result = result.filter(c => c.status === status);
+  if (category) result = result.filter(c => c.category === category);
+  if (region) result = result.filter(c => c.complainant_region === region);
+  if (search) {
+    const s = search.toLowerCase();
+    result = result.filter(c =>
+      (c.title || '').toLowerCase().includes(s) ||
+      (c.description || '').toLowerCase().includes(s)
+    );
+  }
+
+  result.sort((a, b) => new Date(b.created_at || 0) - new Date(a.created_at || 0));
+  return result;
+}
+
+async function _querySqliteComplaints(filters = {}) {
+  const { userId, role, status, category, region, search } = filters;
+  let query = `
+    SELECT c.*, COALESCE(u.username, 'Anonymous') as complainant_name
+    FROM complaints c
+    LEFT JOIN users u ON c.user_id = u.id
+    WHERE c.status != 'Deleted'
+  `;
+  const params = [];
+  const isStaff = ['ADMIN', 'CLERK', 'JUDGE'].includes(role?.toUpperCase());
+  const isRespondent = role?.toUpperCase() === 'RESPONDENT';
+  if (!isStaff && !isRespondent && userId) { query += ' AND c.user_id = ?'; params.push(userId); }
+  if (status) { query += ' AND c.status = ?'; params.push(status); }
+  if (category) { query += ' AND c.category = ?'; params.push(category); }
+  if (region) { query += ' AND c.complainant_region = ?'; params.push(region); }
+  if (search) {
+    query += ' AND (c.title LIKE ? OR c.description LIKE ?)';
+    params.push(`%${search}%`, `%${search}%`);
+  }
+  query += ' ORDER BY c.created_at DESC';
+  return all(query, params);
+}
+
 async function getAllComplaintsFromBlob(filters = {}) {
   // On Vercel: read from the authoritative shared JSON blob.
   // This path does NOT call getDb() / sql.js for the complaint data itself,
@@ -591,6 +649,12 @@ async function getAllComplaintsFromBlob(filters = {}) {
     try {
       let complaints = await _readComplaintsBlob();
       if (!Array.isArray(complaints)) complaints = [];
+
+      // If the blob is empty, use SQLite (may contain complaints not yet synced).
+      if (complaints.length === 0) {
+        console.warn('[getAllComplaintsFromBlob] Blob empty — using SQLite fallback.');
+        return _querySqliteComplaints(filters);
+      }
 
       // Resolve username: try in-memory SQLite but treat any failure as 'Anonymous'
       // so an OOM/crash in getDb() NEVER blocks the complaint list from loading.
@@ -610,49 +674,25 @@ async function getAllComplaintsFromBlob(filters = {}) {
         } catch (_) { return 'Anonymous'; }
       };
 
-      // Build filtered list (mirrors SQLite-level filters)
-      let result = complaints
-        .filter(c => c && c.status !== 'Deleted')
-        .map(c => ({ ...c, complainant_name: resolveUsername(c.user_id) }));
+      let result = _applyComplaintListFilters(complaints, filters, resolveUsername);
 
-      // Apply role/user filter
-      const { userId, role, status, category, region, search } = filters;
-      // Staff (admin/clerk/judge) see ALL complaints.
-      // RESPONDENT sees complaints where they are named as respondent.
-      // CITIZEN / complainant sees only their own filed complaints.
-      const isStaff = ['ADMIN', 'CLERK', 'JUDGE'].includes(role?.toUpperCase());
-      const isRespondent = role?.toUpperCase() === 'RESPONDENT';
-
-      // 6-Month TTL filtering REMOVED per user request.
-      // Complaints now stay permanently and are viewable by all authorized actors until explicitly deleted by an admin.
-
-      if (!isStaff && !isRespondent && userId) {
-        result = result.filter(c => String(c.user_id) === String(userId));
-      }
-      if (isRespondent && userId) {
-        // Respondents see cases where they are named — matched by their user_id stored
-        // on the complaint (set when the respondent account was served).
-        // Fallback: also include any complaint where the session userId matches respondent_user_id
-        // if that field exists, otherwise show all served complaints for their role.
-        result = result.filter(c =>
-          String(c.user_id) === String(userId) ||
-          (c.respondent_user_id && String(c.respondent_user_id) === String(userId)) ||
-          Number(c.is_served) === 1
-        );
-      }
-      if (status) result = result.filter(c => c.status === status);
-      if (category) result = result.filter(c => c.category === category);
-      if (region) result = result.filter(c => c.complainant_region === region);
-      if (search) {
-        const s = search.toLowerCase();
-        result = result.filter(c =>
-          (c.title || '').toLowerCase().includes(s) ||
-          (c.description || '').toLowerCase().includes(s)
-        );
+      // Supplement with SQLite-only complaints (e.g. just filed but blob sync lagged).
+      try {
+        const sqliteRows = await _querySqliteComplaints(filters);
+        const knownIds = new Set(result.map(c => String(c.id)));
+        for (const row of sqliteRows) {
+          if (!knownIds.has(String(row.id))) {
+            result.push(row);
+            syncComplaintToBlob(row).catch(err =>
+              console.warn(`[Blob] Auto-sync complaint #${row.id} from SQLite supplement failed:`, err.message)
+            );
+          }
+        }
+        result.sort((a, b) => new Date(b.created_at || 0) - new Date(a.created_at || 0));
+      } catch (suppErr) {
+        console.warn('[Blob] SQLite supplement skipped:', suppErr.message);
       }
 
-      // Sort newest first
-      result.sort((a, b) => new Date(b.created_at || 0) - new Date(a.created_at || 0));
       return result;
     } catch (e) {
       console.warn('[Blob] getAllComplaintsFromBlob failed, falling back to SQLite:', e.message);
@@ -661,26 +701,7 @@ async function getAllComplaintsFromBlob(filters = {}) {
   }
 
   // Local dev fallback: use in-memory SQLite
-  const { userId, role, status, category, region, search } = filters;
-  let query = `
-    SELECT c.*, COALESCE(u.username, 'Anonymous') as complainant_name
-    FROM complaints c
-    LEFT JOIN users u ON c.user_id = u.id
-    WHERE c.status != 'Deleted'
-  `;
-  const params = [];
-  const isStaff = ['ADMIN', 'CLERK', 'JUDGE'].includes(role?.toUpperCase());
-  // 6-Month TTL REMOVED per user request
-  if (!isStaff && userId) { query += ' AND c.user_id = ?'; params.push(userId); }
-  if (status) { query += ' AND c.status = ?'; params.push(status); }
-  if (category) { query += ' AND c.category = ?'; params.push(category); }
-  if (region) { query += ' AND c.complainant_region = ?'; params.push(region); }
-  if (search) {
-    query += ' AND (c.title LIKE ? OR c.description LIKE ?)';
-    params.push(`%${search}%`, `%${search}%`);
-  }
-  query += ' ORDER BY c.created_at DESC';
-  return all(query, params);
+  return _querySqliteComplaints(filters);
 }
 
 // ─────────────────────────────────────────────────────────

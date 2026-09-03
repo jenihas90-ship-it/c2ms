@@ -19,17 +19,18 @@ router.get('/stats', requireRole(['ADMIN', 'CLERK', 'JUDGE']), async (req, res) 
         const permanentFiledCount = await db.getFiledCount();
 
         const categoryBreakdown = await db.all(
-            'SELECT category, COUNT(*) as count FROM complaints GROUP BY category'
+            'SELECT category, COUNT(*) as count FROM complaints WHERE status != \'Deleted\' GROUP BY category'
         );
 
         const priorityBreakdown = await db.all(
-            'SELECT priority, COUNT(*) as count FROM complaints GROUP BY priority'
+            'SELECT priority, COUNT(*) as count FROM complaints WHERE status != \'Deleted\' GROUP BY priority'
         );
 
         const recentComplaints = await db.all(
             `SELECT c.id, c.title, c.status, c.priority, c.created_at, u.username as complainant_name
        FROM complaints c
        LEFT JOIN users u ON c.user_id = u.id
+       WHERE c.status != 'Deleted'
        ORDER BY c.created_at DESC
        LIMIT 5`
         );
