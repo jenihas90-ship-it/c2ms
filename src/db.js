@@ -434,6 +434,7 @@ async function _writeComplaintsBlob(complaintsList) {
     console.log('[Blob] cms_complaints.json updated with', complaintsList.length, 'complaints.');
   } catch (e) {
     console.error('[Blob] Could not write cms_complaints.json:', e.constructor?.name, e.message);
+    throw e;
   }
 }
 
@@ -669,22 +670,23 @@ async function _querySqliteComplaints(filters = {}) {
 }
 
 async function getAllComplaintsFromBlob(filters = {}) {
-  // On Vercel: read from the authoritative shared JSON blob.
-  // This path does NOT call getDb() / sql.js for the complaint data itself,
-  // so it is safe even if the SQLite WASM heap is under pressure.
+  // On Vercel: read from the authoritative shared JSON blob AND supplement with
+  // local SQLite data. Both sources are always merged — this prevents the
+  // "empty list" bug where blob-empty → SQLite fallback on cold-start worker
+  // → SQLite also empty → returns []. By always unioning, a complaint filed
+  // on any worker is visible immediately even if blob sync is still in-flight.
   if (process.env.BLOB_READ_WRITE_TOKEN) {
     try {
-      let complaints = await _readComplaintsBlob();
-      if (!Array.isArray(complaints)) complaints = [];
-
-      // If the blob is empty, use SQLite (may contain complaints not yet synced).
-      if (complaints.length === 0) {
-        console.warn('[getAllComplaintsFromBlob] Blob empty — using SQLite fallback.');
-        return _querySqliteComplaints(filters);
+      // Read blob — non-fatal if empty or missing
+      let blobComplaints = [];
+      try {
+        const raw = await _readComplaintsBlob();
+        if (Array.isArray(raw)) blobComplaints = raw;
+      } catch (blobErr) {
+        console.warn('[getAllComplaintsFromBlob] Blob read failed (non-fatal):', blobErr.message);
       }
 
-      // Resolve username: try in-memory SQLite but treat any failure as 'Anonymous'
-      // so an OOM/crash in getDb() NEVER blocks the complaint list from loading.
+      // Resolve username from in-memory SQLite (best-effort)
       let database = null;
       try { database = await getDb(); } catch (dbErr) {
         console.warn('[getAllComplaintsFromBlob] getDb() failed — usernames will be Anonymous:', dbErr.message);
@@ -701,15 +703,18 @@ async function getAllComplaintsFromBlob(filters = {}) {
         } catch (_) { return 'Anonymous'; }
       };
 
-      let result = _applyComplaintListFilters(complaints, filters, resolveUsername);
+      // Apply filters to blob data
+      let result = _applyComplaintListFilters(blobComplaints, filters, resolveUsername);
 
-      // Supplement with SQLite-only complaints (e.g. just filed but blob sync lagged).
+      // ALWAYS supplement with SQLite complaints (covers: just-filed on this worker,
+      // blob-empty cold-start, blob sync lag). Auto-syncs any SQLite-only rows to blob.
       try {
         const sqliteRows = await _querySqliteComplaints(filters);
         const knownIds = new Set(result.map(c => String(c.id)));
         for (const row of sqliteRows) {
           if (!knownIds.has(String(row.id))) {
             result.push(row);
+            // Fire-and-forget sync so blob catches up without blocking the response
             syncComplaintToBlob(row).catch(err =>
               console.warn(`[Blob] Auto-sync complaint #${row.id} from SQLite supplement failed:`, err.message)
             );
