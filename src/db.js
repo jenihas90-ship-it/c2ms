@@ -804,7 +804,7 @@ async function initDatabase() {
       'court_fee_required INTEGER DEFAULT 0', 'court_fee_amount REAL', 'court_fee_paid INTEGER DEFAULT 0', 'court_fee_receipt TEXT', 'respondent_fee_receipt TEXT',
       'complainant_kebele TEXT', 'respondent_kebele TEXT',
       'complainant_language TEXT', 'respondent_language TEXT', 'clerk_language TEXT', 'judge_language TEXT',
-      'complainant_national_id TEXT', 'respondent_national_id TEXT'
+      'complainant_national_id TEXT', 'respondent_national_id TEXT', 'formal_response TEXT'
     ];
     for (const colDef of newCols) {
       try {

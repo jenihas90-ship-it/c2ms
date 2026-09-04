@@ -443,12 +443,17 @@ async function openDetailsInspector(id) {
         // Render Formal Response Prominently
         const frSection = document.getElementById('inspector-formal-response-section');
         if (frSection) {
-            const formalRespRemark = remarks.find(r => r.remark.startsWith('[FORMAL RESPONSE]'));
-            if (formalRespRemark) {
+            let frText = data.complaint.formal_response;
+            if (!frText) {
+                const formalRespRemark = remarks.find(r => r.remark.startsWith('[FORMAL RESPONSE]'));
+                if (formalRespRemark) frText = formalRespRemark.remark;
+            }
+
+            if (frText) {
                 frSection.classList.remove('hidden');
-                let frText = escapeHTML(formalRespRemark.remark);
-                frText = frText.replace('[FORMAL RESPONSE]\\n', '').replace('[FORMAL RESPONSE]', '');
-                document.getElementById('inspect-formal-response-text').innerHTML = frText;
+                let formattedText = escapeHTML(frText);
+                formattedText = formattedText.replace('[FORMAL RESPONSE]\\n', '').replace('[FORMAL RESPONSE]', '');
+                document.getElementById('inspect-formal-response-text').innerHTML = formattedText;
             } else {
                 frSection.classList.add('hidden');
                 document.getElementById('inspect-formal-response-text').innerHTML = '';

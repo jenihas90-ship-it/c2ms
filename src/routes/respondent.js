@@ -175,9 +175,15 @@ router.post('/case/:id/respond', requireRespondent, upload.fields([{ name: 'nati
             return res.status(403).json({ error: 'You are not the named respondent on this case.' });
         }
 
+        // Automatically prepend [FORMAL RESPONSE] if not already present
+        let finalRemark = remark.trim();
+        if (!finalRemark.startsWith('[FORMAL RESPONSE]')) {
+            finalRemark = `[FORMAL RESPONSE]\n${finalRemark}`;
+        }
+
         const result = await db.run(
             'INSERT INTO remarks (complaint_id, user_id, remark) VALUES (?, ?, ?)',
-            [complaintId, req.session.userId, remark.trim()]
+            [complaintId, req.session.userId, finalRemark]
         );
 
         let nationalIdPath = null;
@@ -196,16 +202,20 @@ router.post('/case/:id/respond', requireRespondent, upload.fields([{ name: 'nati
             }
         }
 
-        if (nationalIdPath || feeReceiptPath) {
-            const updates = [];
-            const params = [];
-            if (nationalIdPath) { updates.push('respondent_national_id = ?'); params.push(nationalIdPath); }
-            if (feeReceiptPath) { updates.push('respondent_fee_receipt = ?'); params.push(feeReceiptPath); }
-            updates.push('updated_at = CURRENT_TIMESTAMP');
+        const updates = [];
+        const params = [];
+        if (nationalIdPath) { updates.push('respondent_national_id = ?'); params.push(nationalIdPath); }
+        if (feeReceiptPath) { updates.push('respondent_fee_receipt = ?'); params.push(feeReceiptPath); }
 
-            await db.run(`UPDATE complaints SET ${updates.join(', ')} WHERE id = ?`, [...params, complaintId]);
-            const updatedComplaint = await db.get('SELECT * FROM complaints WHERE id = ?', [complaintId]);
-            if (updatedComplaint) await db.syncComplaintToBlob(updatedComplaint).catch(() => { });
+        // Save the formal response on the complaint itself to ensure it survives Vercel cold starts
+        updates.push('formal_response = ?');
+        params.push(finalRemark);
+        updates.push('updated_at = CURRENT_TIMESTAMP');
+
+        await db.run(`UPDATE complaints SET ${updates.join(', ')} WHERE id = ?`, [...params, complaintId]);
+        const updatedComplaint = await db.get('SELECT * FROM complaints WHERE id = ?', [complaintId]);
+        if (updatedComplaint) {
+            await db.syncComplaintToBlob(updatedComplaint).catch(err => console.error('Failed to sync complaint to blob:', err));
         }
 
         const newRemark = await db.get(
