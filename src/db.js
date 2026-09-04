@@ -19,8 +19,16 @@ async function fetchWithRetry(url, retries = 2, delayMs = 500) {
     try {
       // Public blob URLs are served by Vercel's CDN and don't require Authorization.
       // Appending a cache-busting timestamp prevents stale CDN responses.
+      // We also pass explicit no-cache headers so that Vercel's fetch layer (and
+      // any intermediate proxy) never serves a cached copy of the blob JSON.
       const finalUrl = url + (url.includes('?') ? '&' : '?') + 't=' + Date.now();
-      const res = await fetch(finalUrl);
+      const res = await fetch(finalUrl, {
+        cache: 'no-store',
+        headers: {
+          'Cache-Control': 'no-cache, no-store, must-revalidate',
+          'Pragma': 'no-cache'
+        }
+      });
       if (res.ok) return res;
       lastErr = new Error(`HTTP ${res.status} from blob URL`);
     } catch (e) {
@@ -94,6 +102,23 @@ async function getDb() {
 // Run query (INSERT, UPDATE, DELETE, CREATE)
 async function run(sql, params = []) {
   const database = await getDb();
+
+  // CRITICAL: If we are about to INSERT into the complaints table, rehydrate first.
+  // On a fresh cold-start worker the in-memory SQLite is empty (AUTOINCREMENT at 0).
+  // Without rehydration, the new INSERT gets id=1 which collides with the existing
+  // id=1 in cms_complaints.json. The blob merge then OVERWRITES the old complaint
+  // with the new one, causing data loss. Rehydrating first loads all existing
+  // complaints from the blob, so SQLite's AUTOINCREMENT correctly continues from
+  // max(existing id) + 1.
+  const sqlUpper = sql.trim().toUpperCase();
+  if (sqlUpper.startsWith('INSERT') && sql.toLowerCase().includes('into complaints')) {
+    try {
+      await ensureComplaintsRehydrated(database);
+    } catch (rehydrateErr) {
+      console.warn('[run] Pre-INSERT rehydration failed (non-fatal):', rehydrateErr.message);
+    }
+  }
+
   try {
     database.run(sql, params);
     const result = database.exec("SELECT last_insert_rowid() as id, changes() as changes");
@@ -105,7 +130,7 @@ async function run(sql, params = []) {
     // base64 attachments and causes sql.js OOM on cold-start restore.
     // cms_complaints.json (written by syncComplaintToBlob) is the authoritative cross-worker
     // persistence path and does not go through sql.js at all.
-    if (!pauseBackup && DB_FILE && (sql.trim().toUpperCase().startsWith('INSERT') || sql.trim().toUpperCase().startsWith('UPDATE') || sql.trim().toUpperCase().startsWith('DELETE') || sql.trim().toUpperCase().startsWith('CREATE') || sql.trim().toUpperCase().startsWith('ALTER'))) {
+    if (!pauseBackup && DB_FILE && (sqlUpper.startsWith('INSERT') || sqlUpper.startsWith('UPDATE') || sqlUpper.startsWith('DELETE') || sqlUpper.startsWith('CREATE') || sqlUpper.startsWith('ALTER'))) {
       try {
         const buffer = Buffer.from(database.export());
         fs.writeFileSync(DB_FILE, buffer);
@@ -132,7 +157,9 @@ const COMPLAINT_COLUMNS = new Set([
   'respondent_woreda', 'respondent_kebele', 'respondent_language', 'respondent_national_id',
   'clerk_language', 'judge_language',
   'court_fee_required', 'court_fee_amount', 'court_fee_paid', 'court_fee_receipt', 'respondent_fee_receipt',
-  'is_served', 'created_at', 'updated_at'
+  'is_served', 'created_at', 'updated_at',
+  // Respondent formal response — must be listed here so it survives cold-start rehydration
+  'formal_response', 'respondent_user_id'
 ]);
 
 // Start at -Infinity so the very first request on a fresh worker ALWAYS reads from Blob.
@@ -804,7 +831,9 @@ async function initDatabase() {
       'court_fee_required INTEGER DEFAULT 0', 'court_fee_amount REAL', 'court_fee_paid INTEGER DEFAULT 0', 'court_fee_receipt TEXT', 'respondent_fee_receipt TEXT',
       'complainant_kebele TEXT', 'respondent_kebele TEXT',
       'complainant_language TEXT', 'respondent_language TEXT', 'clerk_language TEXT', 'judge_language TEXT',
-      'complainant_national_id TEXT', 'respondent_national_id TEXT', 'formal_response TEXT'
+      'complainant_national_id TEXT', 'respondent_national_id TEXT', 'formal_response TEXT',
+      // Added later — must be here so cold-start workers get the schema migration on every restart
+      'respondent_user_id INTEGER'
     ];
     for (const colDef of newCols) {
       try {
