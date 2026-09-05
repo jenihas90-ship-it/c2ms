@@ -620,7 +620,8 @@ function _applyComplaintListFilters(complaints, filters, resolveUsername = () =>
   const isStaff = ['ADMIN', 'CLERK', 'JUDGE'].includes(role?.toUpperCase());
   const isRespondent = role?.toUpperCase() === 'RESPONDENT';
 
-  // Complaints stay permanently until an admin explicitly deletes them.
+  // INVARIANT: Complaints stay permanently visible to all actors (until explicitly deleted by Admin).
+  // There are NO time-based expiration filters (e.g. no 6-month or 1-year auto-hide).
   if (!isStaff && !isRespondent && userId) {
     result = result.filter(c => String(c.user_id) === String(userId));
   }
