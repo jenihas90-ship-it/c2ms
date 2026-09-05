@@ -170,7 +170,7 @@ let lastRehydrateTime = -Infinity;
 async function ensureComplaintsRehydrated(database) {
   if (!process.env.BLOB_READ_WRITE_TOKEN) return;
   const now = Date.now();
-  if (now - lastRehydrateTime < 5000) return; // 5-second throttle per-worker after the first read
+  if (now - lastRehydrateTime < 30000) return; // 30-second throttle per-worker — first request always runs
   lastRehydrateTime = now;
 
   try {
@@ -709,6 +709,10 @@ async function getAllComplaintsFromBlob(filters = {}) {
 
       // ALWAYS supplement with SQLite complaints (covers: just-filed on this worker,
       // blob-empty cold-start, blob sync lag). Auto-syncs any SQLite-only rows to blob.
+      // First, warm up SQLite from blob on cold-start so the supplement is also populated.
+      try {
+        if (database) await ensureComplaintsRehydrated(database);
+      } catch (_) { /* non-fatal */ }
       try {
         const sqliteRows = await _querySqliteComplaints(filters);
         const knownIds = new Set(result.map(c => String(c.id)));
@@ -733,7 +737,13 @@ async function getAllComplaintsFromBlob(filters = {}) {
     }
   }
 
-  // Local dev fallback: use in-memory SQLite
+  // Local dev / last-resort fallback: ensure SQLite is warm from blob, then query it.
+  // Without rehydration here a cold-start Vercel worker returns an empty list even when
+  // cms_complaints.json has data — because in-memory SQLite starts empty on every cold start.
+  try {
+    const database = await getDb();
+    await ensureComplaintsRehydrated(database);
+  } catch (_) { /* non-fatal */ }
   return _querySqliteComplaints(filters);
 }
 
