@@ -7,43 +7,55 @@ const requireRole = require('../middleware/roleCheck');
 // Get global analytics summary (Admin, Clerk, Judge can view)
 router.get('/stats', requireRole(['ADMIN', 'CLERK', 'JUDGE']), async (req, res) => {
     try {
-        const totalCount = await db.get('SELECT COUNT(*) as val FROM complaints WHERE status != \'Deleted\'');
-        const pendingCount = await db.get("SELECT COUNT(*) as val FROM complaints WHERE status IN ('Pending', 'Filed')");
-        const progressCount = await db.get("SELECT COUNT(*) as val FROM complaints WHERE status IN ('In Progress', 'Under Review', 'Scheduled')");
-        const resolvedCount = await db.get("SELECT COUNT(*) as val FROM complaints WHERE status = 'Resolved'");
+        // Read ALL complaints from the authoritative blob (same source the list endpoint uses).
+        // This guarantees stats are accurate on cold-start Vercel workers where SQLite is empty.
+        const allComplaints = await db.getAllComplaintsFromBlob({
+            userId: req.session.userId,
+            role: 'ADMIN'  // Force staff-level view so ALL complaints are counted
+        });
 
-        // Use the permanent blob-backed filed count so the metric survives Vercel cold starts.
-        // The blob counter (cms_stats.json) is incremented every time a complaint is filed
-        // and is never decremented — it shows the total ever filed, even after deletions.
-        // Falls back to the SQLite ledger (filed_complaints_log) on first deploy or locally.
+        // Filter out deleted complaints
+        const active = allComplaints.filter(c => c.status !== 'Deleted');
+
+        const total = active.length;
+        const pending = active.filter(c => c.status === 'Pending' || c.status === 'Filed').length;
+        const inProgress = active.filter(c => ['In Progress', 'Under Review', 'Scheduled'].includes(c.status)).length;
+        const resolved = active.filter(c => c.status === 'Resolved').length;
+
+        // Use the permanent blob-backed filed count for "Total Filed" metric
         const permanentFiledCount = await db.getFiledCount();
 
-        const categoryBreakdown = await db.all(
-            'SELECT category, COUNT(*) as count FROM complaints WHERE status != \'Deleted\' GROUP BY category'
-        );
+        // Category breakdown
+        const catMap = {};
+        active.forEach(c => {
+            catMap[c.category] = (catMap[c.category] || 0) + 1;
+        });
+        const categoryBreakdown = Object.entries(catMap).map(([category, count]) => ({ category, count }));
 
-        const priorityBreakdown = await db.all(
-            'SELECT priority, COUNT(*) as count FROM complaints WHERE status != \'Deleted\' GROUP BY priority'
-        );
+        // Priority breakdown
+        const prioMap = {};
+        active.forEach(c => {
+            prioMap[c.priority] = (prioMap[c.priority] || 0) + 1;
+        });
+        const priorityBreakdown = Object.entries(prioMap).map(([priority, count]) => ({ priority, count }));
 
-        const recentComplaints = await db.all(
-            `SELECT c.id, c.title, c.status, c.priority, c.created_at, u.username as complainant_name
-       FROM complaints c
-       LEFT JOIN users u ON c.user_id = u.id
-       WHERE c.status != 'Deleted'
-       ORDER BY c.created_at DESC
-       LIMIT 5`
-        );
+        // Recent 5 complaints
+        const recentComplaints = active.slice(0, 5).map(c => ({
+            id: c.id,
+            title: c.title,
+            status: c.status,
+            priority: c.priority,
+            created_at: c.created_at,
+            complainant_name: c.complainant_name || 'Anonymous'
+        }));
 
-        // Format stats response
         res.json({
             summary: {
-                total: totalCount.val || 0,
-                // totalFiled: permanent ever-filed count from blob — survives cold starts
-                totalFiled: permanentFiledCount || totalCount.val || 0,
-                pending: pendingCount.val || 0,
-                inProgress: progressCount.val || 0,
-                resolved: resolvedCount.val || 0
+                total,
+                totalFiled: permanentFiledCount || total,
+                pending,
+                inProgress,
+                resolved
             },
             categoryBreakdown,
             priorityBreakdown,
