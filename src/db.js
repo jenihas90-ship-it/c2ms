@@ -113,7 +113,9 @@ async function run(sql, params = []) {
   const sqlUpper = sql.trim().toUpperCase();
   if (sqlUpper.startsWith('INSERT') && sql.toLowerCase().includes('into complaints')) {
     try {
-      await ensureComplaintsRehydrated(database);
+      // Force rehydration (bypass throttle) so SQLite has the latest IDs from the blob
+      // before AUTOINCREMENT picks the next value — prevents ID collisions across workers.
+      await ensureComplaintsRehydrated(database, true);
     } catch (rehydrateErr) {
       console.warn('[run] Pre-INSERT rehydration failed (non-fatal):', rehydrateErr.message);
     }
@@ -167,10 +169,11 @@ const COMPLAINT_COLUMNS = new Set([
 // Without an immediate first-read, a new worker will never learn about complaints filed
 // on a different worker.
 let lastRehydrateTime = -Infinity;
-async function ensureComplaintsRehydrated(database) {
+async function ensureComplaintsRehydrated(database, force = false) {
   if (!process.env.BLOB_READ_WRITE_TOKEN) return;
   const now = Date.now();
-  if (now - lastRehydrateTime < 30000) return; // 30-second throttle per-worker — first request always runs
+  // Allow callers to bypass the throttle (e.g. before an INSERT) to prevent ID collisions
+  if (!force && (now - lastRehydrateTime < 30000)) return;
   lastRehydrateTime = now;
 
   try {

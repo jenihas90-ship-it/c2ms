@@ -65,6 +65,16 @@ router.post('/verify', requireRole(['CLERK']), async (req, res) => {
                 `UPDATE complaints SET ${updates.join(', ')}, updated_at = CURRENT_TIMESTAMP WHERE id = ?`,
                 params
             );
+
+            // Sync clerk-verified fields to Vercel Blob so they persist across cold starts.
+            // Without this sync, judge assignments, priority changes and court fee updates
+            // would be lost the moment this Vercel worker shuts down.
+            const updatedComplaint = await db.get('SELECT * FROM complaints WHERE id = ?', [complaint_id]);
+            if (updatedComplaint) {
+                await db.syncComplaintToBlob(updatedComplaint).catch(err =>
+                    console.error('[Verify] Failed to sync verified complaint to blob:', err.message)
+                );
+            }
         }
         res.json({ message: 'Complaint updated successfully.' });
     } catch (err) {

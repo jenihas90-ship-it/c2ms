@@ -79,6 +79,14 @@ router.post('/adjudicate', requireRole(['JUDGE']), async (req, res) => {
 
         if (status) {
             await db.run(`UPDATE complaints SET status = ? WHERE id = ?`, [status, complaint_id]);
+
+            // Sync the updated status to Vercel Blob so it persists across cold starts.
+            const updatedComplaint = await db.get('SELECT * FROM complaints WHERE id = ?', [complaint_id]);
+            if (updatedComplaint) {
+                await db.syncComplaintToBlob(updatedComplaint).catch(err =>
+                    console.error('[Adjudicate] Failed to sync complaint status to blob:', err.message)
+                );
+            }
         }
 
         // Add a system remark for the timeline
