@@ -393,108 +393,142 @@ async function incrementFiledCount() {
 // ─────────────────────────────────────────────────────────
 //  PERMANENT COMPLAINTS BACKUP BLOB (cms_complaints.json)
 // ─────────────────────────────────────────────────────────
-const COMPLAINTS_BLOB_KEY = 'cms_complaints.json';
+const LEGACY_COMPLAINTS_BLOB_KEY = 'cms_complaints.json';
 
 async function _readComplaintsBlob() {
   if (!process.env.BLOB_READ_WRITE_TOKEN) return [];
   try {
     const { list: blobList } = require('@vercel/blob');
-    let blobInfo;
-    try {
-      const { blobs } = await blobList({ prefix: COMPLAINTS_BLOB_KEY, limit: 10 });
-      // Exact name match to prevent picking random-suffix duplicates
-      blobInfo = blobs.find(b => b.pathname === COMPLAINTS_BLOB_KEY) || null;
-    } catch (e) {
-      const errType = e.constructor?.name || 'UnknownError';
-      const msg = (e.message || '').toLowerCase();
-      // Log the FULL error so it appears in Vercel function logs
-      console.error(`[Blob] _readComplaintsBlob list() failed [${errType}]:`, e.message);
-      if (errType === 'BlobStoreNotFoundError' || msg.includes('store does not exist') || msg.includes('blobstorenotfound')) {
-        console.error('[Blob] CRITICAL: BLOB_READ_WRITE_TOKEN points to a deleted/invalid Blob store. Go to Vercel dashboard → Storage → Blob and re-link the store, then update BLOB_READ_WRITE_TOKEN in environment variables.');
-      }
-      if (msg.includes('not found') || msg.includes('does not exist') || msg.includes('blob does not exist') || e.status === 404) return [];
-      throw e; // Propagate real errors
+    let hasMore = true;
+    let cursor = undefined;
+    const allBlobs = [];
+
+    // First, list all individual complaint blobs
+    while (hasMore) {
+      const { blobs, cursor: nextCursor, hasMore: more } = await blobList({ prefix: 'cms_complaint_', cursor, limit: 1000 });
+      if (blobs) allBlobs.push(...blobs);
+      cursor = nextCursor;
+      hasMore = more;
     }
-    if (!blobInfo) return [];
-    // Public blobs: fetch without Authorization header (avoids pre-signed URL expiry issues)
-    const fetchRes = await fetchWithRetry(blobInfo.downloadUrl);
-    const data = await fetchRes.json();
-    return Array.isArray(data) ? data : [];
+
+    // Group by ID to locate the most recently timestamped blob per complaint
+    const latestBlobsMap = new Map();
+    for (const b of allBlobs) {
+      // match: cms_complaint_ID_TIMESTAMP.json
+      const match = b.pathname.match(/^cms_complaint_(\d+)_(\d+)\.json$/);
+      if (match) {
+        const id = match[1];
+        const ts = parseInt(match[2], 10);
+        if (!latestBlobsMap.has(id) || latestBlobsMap.get(id).ts < ts) {
+          latestBlobsMap.set(id, { ts, url: b.downloadUrl });
+        }
+      }
+    }
+
+    // Download all latest blobs in parallel
+    const urlsToFetch = Array.from(latestBlobsMap.values()).map(x => x.url);
+    const maxConcurrency = 20;
+    const results = [];
+
+    for (let i = 0; i < urlsToFetch.length; i += maxConcurrency) {
+      const batch = urlsToFetch.slice(i, i + maxConcurrency);
+      const batchResults = await Promise.all(batch.map(async url => {
+        try {
+          const res = await fetchWithRetry(url);
+          return await res.json();
+        } catch (e) {
+          console.error('[Blob] Failed to read complaint blob:', url, e.message);
+          return null;
+        }
+      }));
+      results.push(...batchResults.filter(x => x !== null));
+    }
+
+    // Attempt fetching legacy cms_complaints.json for backwards compatibility
+    try {
+      const { blobs } = await blobList({ prefix: LEGACY_COMPLAINTS_BLOB_KEY, limit: 10 });
+      const legacyInfo = blobs.find(b => b.pathname === LEGACY_COMPLAINTS_BLOB_KEY) || null;
+      if (legacyInfo) {
+        const fetchRes = await fetchWithRetry(legacyInfo.downloadUrl);
+        const legacyData = await fetchRes.json();
+        if (Array.isArray(legacyData)) {
+          const existingIds = new Set(results.map(c => String(c.id)));
+          for (const lc of legacyData) {
+            if (lc && lc.id && !existingIds.has(String(lc.id))) {
+              results.push(lc);
+              // Auto-migrate it to individual blob quietly
+              syncComplaintToBlob(lc).catch(() => { });
+            }
+          }
+        }
+      }
+    } catch (e) {
+      // ignore legacy fetch failure
+    }
+
+    return results;
   } catch (e) {
-    console.error('[Blob] CRITICAL: Could not read cms_complaints.json:', e.constructor?.name, e.message);
-    throw new Error('read_failure'); // Propagate to prevent wiping json
+    console.error('[Blob] CRITICAL: Could not read individual complaint blobs:', e.message);
+    throw new Error('read_failure');
   }
 }
 
 async function _writeComplaintsBlob(complaintsList) {
-  if (!process.env.BLOB_READ_WRITE_TOKEN) return;
-  try {
-    const json = JSON.stringify(complaintsList);
-    // Use 'public' access so downloadUrl works without Authorization headers.
-    // Private blob pre-signed URLs expire and can 403 on cross-worker reads,
-    // causing complaint data to silently disappear.
-    await put(COMPLAINTS_BLOB_KEY, json, { access: 'public', addRandomSuffix: false, contentType: 'application/json', cacheControlMaxAge: 0 });
-    console.log('[Blob] cms_complaints.json updated with', complaintsList.length, 'complaints.');
-  } catch (e) {
-    console.error('[Blob] Could not write cms_complaints.json:', e.constructor?.name, e.message);
-    throw e;
-  }
+  // Deprecated: We no longer write the monolithic array.
+  return;
 }
 
 async function syncComplaintToBlob(complaintObj) {
   if (!process.env.BLOB_READ_WRITE_TOKEN || !complaintObj || !complaintObj.id) return;
-
-  // Strip large base64 fields before writing to the shared JSON blob.
-  // attachment_path and court_fee_receipt are data URIs that can be megabytes each.
-  // Keeping them in cms_complaints.json causes the blob to grow until _readComplaintsBlob
-  // fails (fetch timeout / OOM), which makes every complaint list appear empty.
-  // The /complaints/:id/attachment endpoint reads attachment_path directly from SQLite and
-  // is NOT affected by this strip.
   const { attachment_path, court_fee_receipt, complainant_national_id, respondent_national_id, ...safeComplaint } = complaintObj;
 
-  // Retry up to 3 times — Vercel Blob writes can transiently fail
-  for (let attempt = 1; attempt <= 3; attempt++) {
-    try {
-      const list = await _readComplaintsBlob();
-      const idx = list.findIndex(c => String(c.id) === String(safeComplaint.id));
-      if (idx >= 0) {
-        // Preserve stripped fields from existing entry so they are not wiped on status updates
-        list[idx] = { ...list[idx], ...safeComplaint, updatedAt: new Date().toISOString() };
-      } else {
-        list.push({ ...safeComplaint, createdAt: safeComplaint.created_at || new Date().toISOString() });
-      }
-      await _writeComplaintsBlob(list);
-      console.log(`[Blob] Synced complaint #${safeComplaint.id} to cms_complaints.json (attempt ${attempt}).`);
-      return; // success
-    } catch (e) {
-      if (e.message && e.message.includes('read_failure')) {
-        console.error('[Blob] Aborting sync to prevent data wipe due to read failure.');
-        return;
-      }
-      console.warn(`[Blob] syncComplaintToBlob attempt ${attempt} failed for #${safeComplaint.id}:`, e.message);
-      if (attempt < 3) await new Promise(r => setTimeout(r, 400 * attempt));
+  const timestamp = Date.now();
+  const complaintToSave = { ...safeComplaint, createdAt: safeComplaint.created_at || new Date().toISOString() };
+  const json = JSON.stringify(complaintToSave);
+
+  try {
+    const { put, list, del } = require('@vercel/blob');
+
+    // 1. Write the new unique file to prevent CDN cache and Read-Modify-Write issues
+    await put(`cms_complaint_${safeComplaint.id}_${timestamp}.json`, json, { access: 'public', addRandomSuffix: false, contentType: 'application/json', cacheControlMaxAge: 0 });
+    console.log(`[Blob] Synced complaint #${safeComplaint.id} to individual json blob.`);
+
+    // 2. Clean up older versions of this specific complaint
+    const { blobs } = await list({ prefix: `cms_complaint_${safeComplaint.id}_` });
+    const oldBlobs = blobs.filter(b => !b.pathname.includes(`${timestamp}`));
+    if (oldBlobs.length > 0) {
+      await del(oldBlobs.map(b => b.url));
     }
+  } catch (e) {
+    console.error(`[Blob] CRITICAL: syncComplaintToBlob failed for #${safeComplaint.id}:`, e.message);
   }
-  console.error(`[Blob] CRITICAL: All 3 sync attempts failed for complaint #${complaintObj.id}. Data may not persist!`);
 }
 
 async function deleteComplaintFromBlob(complaintId) {
   if (!process.env.BLOB_READ_WRITE_TOKEN || !complaintId) return;
   try {
-    const list = await _readComplaintsBlob();
-    // Soft-delete: mark as Deleted so it is excluded from lists but still in blob for count purposes
-    const idx = list.findIndex(c => String(c.id) === String(complaintId));
-    if (idx >= 0) {
-      list[idx] = { ...list[idx], status: 'Deleted', updatedAt: new Date().toISOString() };
+    const { put, list, del } = require('@vercel/blob');
+    const timestamp = Date.now();
+
+    // We soft-delete by writing a new blob for this ID with status: 'Deleted'
+    const deletedState = { id: complaintId, status: 'Deleted', updatedAt: new Date().toISOString() };
+    const json = JSON.stringify(deletedState);
+
+    await put(`cms_complaint_${complaintId}_${timestamp}.json`, json, { access: 'public', addRandomSuffix: false, contentType: 'application/json', cacheControlMaxAge: 0 });
+
+    const { blobs } = await list({ prefix: `cms_complaint_${complaintId}_` });
+    const oldBlobs = blobs.filter(b => !b.pathname.includes(`${timestamp}`));
+    if (oldBlobs.length > 0) {
+      await del(oldBlobs.map(b => b.url));
     }
-    await _writeComplaintsBlob(list);
-    console.log('[Blob] Marked complaint', complaintId, 'as Deleted in cms_complaints.json');
+
+    console.log('[Blob] Soft-deleted complaint', complaintId, 'via individual blob');
   } catch (e) {
-    if (e.message.includes('read_failure')) {
+    if (e.message && e.message.includes('read_failure')) {
       console.error('[Blob] Aborting delete to prevent metadata wipe due to read failure.');
       return;
     }
-    console.warn('[Blob] Failed to delete complaint from blob:', e.message);
+    console.warn('[Blob] Failed to mark complaint deleted in individual blob:', e.message);
   }
 }
 
