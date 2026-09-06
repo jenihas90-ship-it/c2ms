@@ -259,11 +259,8 @@
                                     <textarea id="comp-court-address" required rows="2"
                                         placeholder="Physical address of the court"></textarea>
                                 </div>
-                                <div
-                                    style="margin-top:0.75rem; padding:0.8rem 1rem; border:1px solid rgba(229,201,66,0.25); background:rgba(229,201,66,0.08); border-radius:8px; font-size:0.9rem; color:var(--text-main); line-height:1.6;">
-                                    <strong>Court Fees:</strong> According to the court rules, you must pay the required
-                                    fee in full, or if you are low-income, you may present a certificate of indigency
-                                    (poverty certificate) to request to be served free of charge.
+                                <div style="margin-top:0.75rem; padding:0.8rem 1rem; border:1px solid rgba(229,201,66,0.25); background:rgba(229,201,66,0.08); border-radius:8px; font-size:0.9rem; color:var(--text-main); line-height:1.6;">
+                                    <strong>Court Fees:</strong> According to the court rules, you must pay the required fee in full, or if you are low-income, you may present a certificate of indigency (poverty certificate) to request to be served free of charge.
                                 </div>
                                 <div class="inspector-row-grid">
                                     <div class="form-group">
@@ -395,194 +392,7 @@
 
                             <!-- STEP 4: Documents Upload & Review -->
                             <div id="wizard-step-4" class="wizard-step hidden">
-                                <div
-                                    style="margin-bottom:1.5rem; padding:1.2rem; background:rgba(212, 168, 67, 0.08); border:1px solid rgba(212, 168, 67, 0.3); border-radius:10px;">
-                                    <h5
-                                        style="margin-bottom:0.6rem; color:var(--text-main); font-weight:700; font-size:1rem;">
-                                        ⚖️ Court Fees Calculation & Payment</h5>
-
-                                    <div style="display:flex; gap:1.5rem; margin-bottom:1.2rem; align-items:center;">
-                                        <label
-                                            style="display:flex; align-items:center; gap:0.4rem; cursor:pointer; font-weight:600; font-size:0.9rem;">
-                                            <input type="radio" name="feeOption" value="pay" checked
-                                                onchange="toggleFeeView('pay')">
-                                            I will pay the required court fees
-                                        </label>
-                                        <label
-                                            style="display:flex; align-items:center; gap:0.4rem; cursor:pointer; font-weight:600; font-size:0.9rem;">
-                                            <input type="radio" name="feeOption" value="waiver"
-                                                onchange="toggleFeeView('waiver')">
-                                            Apply for Low Income Fee Waiver
-                                        </label>
-                                    </div>
-
-                                    <!-- Payment Options View -->
-                                    <div id="fee-payment-view"
-                                        style="padding-top:1rem; border-top:1px dashed rgba(212, 168, 67, 0.3);">
-                                        <p style="font-size:0.85rem; color:var(--text-muted); margin-bottom:0.75rem;">
-                                            Please choose a payment method to generate your payment order code and
-                                            reference:</p>
-
-                                        <div style="display:grid; grid-template-columns:1fr 1fr 1fr; gap:0.5rem; margin-bottom:1rem;"
-                                            id="payment-methods-grid">
-                                            <label style="cursor:pointer; display:block;">
-                                                <input type="radio" name="payment_method" value="CBE"
-                                                    style="display:none;" onchange="generatePaymentCode()">
-                                                <div class="payment-card"
-                                                    style="background:#fff; border:1px solid rgba(0,0,0,0.1); padding:0.75rem; border-radius:6px; text-align:center; transition:0.2s;">
-                                                    <strong style="color:#d32f2f; font-size:0.85rem;">CBE</strong>
-                                                </div>
-                                            </label>
-                                            <label style="cursor:pointer; display:block;">
-                                                <input type="radio" name="payment_method" value="CBE Birr"
-                                                    style="display:none;" onchange="generatePaymentCode()">
-                                                <div class="payment-card"
-                                                    style="background:#fff; border:1px solid rgba(0,0,0,0.1); padding:0.75rem; border-radius:6px; text-align:center; transition:0.2s;">
-                                                    <strong style="color:#7b1fa2; font-size:0.85rem;">CBE Birr</strong>
-                                                </div>
-                                            </label>
-                                            <label style="cursor:pointer; display:block;">
-                                                <input type="radio" name="payment_method" value="Telebirr"
-                                                    style="display:none;" onchange="generatePaymentCode()">
-                                                <div class="payment-card"
-                                                    style="background:#fff; border:1px solid rgba(0,0,0,0.1); padding:0.75rem; border-radius:6px; text-align:center; transition:0.2s;">
-                                                    <strong style="color:#0288d1; font-size:0.85rem;">Telebirr</strong>
-                                                </div>
-                                            </label>
-                                        </div>
-
-                                        <!-- Code Display Section -->
-                                        <div id="payment-code-display" class="hidden"
-                                            style="background:rgba(99,102,241,0.05); padding:1rem; border-radius:6px; margin-bottom:1rem; border:1px solid rgba(99,102,241,0.2);">
-                                            <p style="font-size:0.85rem; margin-bottom:0.5rem; color:var(--text-main);">
-                                                Use the following details to complete your payment via <span
-                                                    id="pay-method-name" style="font-weight:700;"></span>:</p>
-                                            <div
-                                                style="display:flex; justify-content:space-between; margin-bottom:0.4rem;">
-                                                <span style="font-size:0.8rem; color:var(--text-muted);">Order
-                                                    Code:</span>
-                                                <strong id="pay-order-code"
-                                                    style="font-family:monospace; font-size:1.1rem; color:var(--primary);"></strong>
-                                            </div>
-                                            <div style="display:flex; justify-content:space-between;">
-                                                <span style="font-size:0.8rem; color:var(--text-muted);">Payment
-                                                    Ref:</span>
-                                                <strong id="pay-reference"
-                                                    style="font-family:monospace; font-size:1.1rem; color:var(--primary);"></strong>
-                                            </div>
-                                            <div
-                                                style="display:flex; justify-content:space-between; margin-top:0.6rem; padding-top:0.6rem; border-top:1px solid rgba(0,0,0,0.1);">
-                                                <span
-                                                    style="font-size:0.9rem; font-weight:600; color:var(--text-main);">Amount
-                                                    Due:</span>
-                                                <strong id="pay-amount"
-                                                    style="font-size:1.1rem; color:#d32f2f;"></strong>
-                                            </div>
-                                        </div>
-
-                                    </div>
-
-                                    <!-- Waiver View -->
-                                    <div id="fee-waiver-view" class="hidden"
-                                        style="padding-top:1rem; border-top:1px dashed rgba(212, 168, 67, 0.3);">
-                                        <p style="font-size:0.85rem; color:var(--text-muted); margin-bottom:0.75rem;">
-                                            You are applying for a fee waiver due to low income. A certified poverty
-                                            document is required.</p>
-                                    </div>
-
-                                    <!-- Shared Upload Input -->
-                                    <div style="margin-top:1rem;">
-                                        <label id="fee-upload-label"
-                                            style="font-size:0.85rem; display:block; margin-bottom:0.5rem; font-weight:600;">Upload
-                                            Payment Receipt (Required)</label>
-                                        <input type="file" id="comp-low-income-cert" accept=".pdf,.jpeg,.jpg,.png"
-                                            style="width:100%; padding:0.5rem; background:var(--input-bg, #fff); border:1px solid rgba(0,0,0,0.1); border-radius:6px; font-size:0.85rem;">
-                                    </div>
-                                </div>
-                                <script>
-                                    function toggleFeeView(mode) {
-                                        const paymentView = document.getElementById('fee-payment-view');
-                                        const waiverView = document.getElementById('fee-waiver-view');
-                                        const label = document.getElementById('fee-upload-label');
-                                        if (mode === 'pay') {
-                                            paymentView.classList.remove('hidden');
-                                            waiverView.classList.add('hidden');
-                                            label.textContent = 'Upload Payment Receipt (Required)';
-                                        } else {
-                                            paymentView.classList.add('hidden');
-                                            waiverView.classList.remove('hidden');
-                                            label.textContent = 'Upload Low Income Free Certificate (Required for waiver)';
-                                        }
-                                    }
-
-                                    function generatePaymentCode() {
-                                        const methods = document.querySelectorAll('input[name="payment_method"]');
-                                        let selectedMethod = '';
-
-                                        methods.forEach(m => {
-                                            const card = m.nextElementSibling;
-                                            if (m.checked) {
-                                                selectedMethod = m.value;
-                                                card.style.borderColor = 'var(--primary)';
-                                                card.style.boxShadow = '0 0 0 2px rgba(99,102,241,0.2)';
-                                                card.style.background = 'rgba(99,102,241,0.05)';
-                                            } else {
-                                                card.style.borderColor = 'rgba(0,0,0,0.1)';
-                                                card.style.boxShadow = 'none';
-                                                card.style.background = '#fff';
-                                            }
-                                        });
-
-                                        if (selectedMethod) {
-                                            document.getElementById('payment-code-display').classList.remove('hidden');
-                                            document.getElementById('pay-method-name').textContent = selectedMethod;
-
-                                            // Mock generation for visual demonstration
-                                            // Real implementation would fetch this from an API endpoint linked to the provider
-                                            if (!window._generatedPaymentData) window._generatedPaymentData = {};
-                                            if (!window._generatedPaymentData[selectedMethod]) {
-                                                window._generatedPaymentData[selectedMethod] = {
-                                                    orderCode: Math.floor(100000 + Math.random() * 900000),
-                                                    ref: Math.random().toString(36).substring(2, 10).toUpperCase() + Math.floor(10 + Math.random() * 90)
-                                                };
-                                            }
-
-                                            document.getElementById('pay-order-code').textContent = window._generatedPaymentData[selectedMethod].orderCode;
-                                            document.getElementById('pay-reference').textContent = window._generatedPaymentData[selectedMethod].ref;
-
-                                            // Dynamically generate fee based on case category
-                                            const categoryInput = document.getElementById('comp-category');
-                                            const selectedCat = categoryInput ? categoryInput.value : 'Other';
-                                            const feeMap = {
-                                                'Civil': '500 ETB',
-                                                'Criminal': 'Free (State)',
-                                                'Family': '150 ETB',
-                                                'Property': '1,000 ETB',
-                                                'Administrative': '400 ETB',
-                                                'Other': '200 ETB'
-                                            };
-
-                                            // Handle edge case where user hasn't selected a category yet
-                                            let finalAmount = selectedCat ? (feeMap[selectedCat] || '200 ETB') : 'Please select a category in Step 1';
-
-                                            document.getElementById('pay-amount').textContent = finalAmount;
-                                        }
-                                    }
-                                </script>
                                 <h4>Step 4: Evidence & Document Upload</h4>
-                                <div class="form-group" style="margin-bottom:1rem;">
-                                    <label>National ID Attachment (Required)</label>
-                                    <div class="file-upload-wrapper">
-                                        <input type="file" id="comp-national-id" accept=".pdf,.jpeg,.jpg,.png" required
-                                            onchange="fileSelectedNotify(this, 'nid-file-name-info', 'nid-upload-instruction')">
-                                        <div class="file-upload-text">
-                                            <span class="file-upload-icon">🪪</span>
-                                            <span id="nid-upload-instruction">Drop National ID here or click</span>
-                                            <span style="font-size: 11px; opacity:0.7;">Required (PDF/Image)</span>
-                                        </div>
-                                    </div>
-                                    <div id="nid-file-name-info" class="file-name-chosen hidden"></div>
-                                </div>
                                 <div class="form-group">
                                     <label>Add Evidence (Optional)</label>
                                     <div class="file-upload-wrapper">
@@ -612,30 +422,6 @@
                 </section>
             </div>
         </main>
-
-        <!-- MOBILE BOTTOM NAVIGATION (visible only on mobile where sidebar is hidden) -->
-        <nav id="mobile-bottom-nav" class="mobile-bottom-nav">
-            <button id="mob-nav-dashboard" class="mob-nav-btn active"
-                onclick="switchNav('dashboard'); setMobNavActive('mob-nav-dashboard')">
-                <span class="mob-nav-icon">📊</span>
-                <span class="mob-nav-label">Dashboard</span>
-            </button>
-            <button id="mob-nav-complaints" class="mob-nav-btn"
-                onclick="switchNav('complaints'); setMobNavActive('mob-nav-complaints')">
-                <span class="mob-nav-icon">📁</span>
-                <span class="mob-nav-label">Complaints</span>
-            </button>
-            <button id="mob-nav-new" class="mob-nav-btn role-citizen hidden"
-                onclick="switchNav('new'); setMobNavActive('mob-nav-new')">
-                <span class="mob-nav-icon">➕</span>
-                <span class="mob-nav-label">New</span>
-            </button>
-            <button id="mob-nav-chat" class="mob-nav-btn role-citizen hidden"
-                onclick="window.location.href='/chat.html'">
-                <span class="mob-nav-icon">💬</span>
-                <span class="mob-nav-label">Chat</span>
-            </button>
-        </nav>
 
         <!-- 3. SLIDING DETAIL INSPECTOR DRAWER -->
         <div id="details-pane" class="details-pane-modal">
@@ -756,33 +542,6 @@
                             <span>📎</span> View Attachment File
                         </a>
                     </div>
-
-                    <!-- National ID section (visible to Clerk/Judge/Admin) -->
-                    <div id="inspect-national-id-container" class="hidden role-staff"
-                        style="margin-top:0.75rem; padding:0.75rem; background:rgba(99,102,241,0.05); border:1px solid rgba(99,102,241,0.2); border-radius:8px;">
-                        <div class="inspector-label" style="font-weight:700; margin-bottom:0.5rem;">🪪 Identity
-                            Documents</div>
-                        <div style="display:flex; flex-direction:column; gap:0.4rem;">
-                            <div id="inspect-complainant-id-row" class="hidden">
-                                <a href="#" id="inspect-complainant-id-link" target="_blank"
-                                    style="font-size:0.88rem; color:var(--primary, #7c69ef); text-decoration:underline;">
-                                    📄 View Complainant National ID
-                                </a>
-                            </div>
-                            <div id="inspect-respondent-id-row" class="hidden">
-                                <a href="#" id="inspect-respondent-id-link" target="_blank"
-                                    style="font-size:0.88rem; color:var(--primary, #7c69ef); text-decoration:underline;">
-                                    📄 View Respondent National ID
-                                </a>
-                            </div>
-                            <div id="inspect-respondent-fee-row" class="hidden">
-                                <a href="#" id="inspect-respondent-fee-link" target="_blank"
-                                    style="font-size:0.88rem; color:var(--primary, #7c69ef); text-decoration:underline;">
-                                    🧾 View Respondent Formal Response Fee Receipt
-                                </a>
-                            </div>
-                        </div>
-                    </div>
                 </article>
 
                 <!-- ===== ORDERS & JUDGMENTS ===== -->
@@ -795,18 +554,6 @@
                     </div>
                 </section>
                 <!-- ===== END ORDERS & JUDGMENTS ===== -->
-
-                <!-- ===== FORMAL RESPONSE ===== -->
-                <section id="inspector-formal-response-section" class="hidden"
-                    style="margin-top: 1rem; border: 1px solid rgba(211,47,47,0.3); border-radius: 10px; background: #fff8e1; padding: 1rem;">
-                    <div style="font-weight:700; color:#d32f2f; margin-bottom:0.75rem; font-size:1.05rem;">⚖️ OFFICIAL
-                        FORMAL RESPONSE</div>
-                    <div id="inspect-formal-response-text"
-                        style="font-size:0.93rem; color:#333; white-space:pre-wrap; line-height: 1.5;">
-                        <!-- JS injected -->
-                    </div>
-                </section>
-                <!-- ===== END FORMAL RESPONSE ===== -->
 
                 <!-- ===== CHAT PANEL ===== -->
                 <section id="chat-panel"
@@ -1052,9 +799,6 @@
         <div id="jitsi-container" style="flex:1; width:100%; height:100%;"></div>
     </div>
     <!-- ===== END JITSI MEET MODAL ===== -->
-
-    <!-- SweetAlert2 for Premium Modals -->
-    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
 
     <!-- JavaScript Scripts -->
     <script src="/js/utils.js"></script>

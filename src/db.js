@@ -493,9 +493,16 @@ async function syncComplaintToBlob(complaintObj) {
     await put(`cms_complaint_${safeComplaint.id}_${timestamp}.json`, json, { access: 'public', addRandomSuffix: false, contentType: 'application/json', cacheControlMaxAge: 0 });
     console.log(`[Blob] Synced complaint #${safeComplaint.id} to individual json blob.`);
 
-    // 2. Clean up older versions of this specific complaint
+    // 2. Clean up strictly OLDER versions of this specific complaint
+    // This prevents a critical race condition where concurrent syncs would mutually delete each other.
     const { blobs } = await list({ prefix: `cms_complaint_${safeComplaint.id}_` });
-    const oldBlobs = blobs.filter(b => !b.pathname.includes(`${timestamp}`));
+    const oldBlobs = blobs.filter(b => {
+      const match = b.pathname.match(/^cms_complaint_\d+_(\d+)\.json$/);
+      if (match) {
+        return parseInt(match[1], 10) < timestamp;
+      }
+      return false; // don't delete unrecognized files just in case
+    });
     if (oldBlobs.length > 0) {
       await del(oldBlobs.map(b => b.url));
     }
@@ -517,7 +524,14 @@ async function deleteComplaintFromBlob(complaintId) {
     await put(`cms_complaint_${complaintId}_${timestamp}.json`, json, { access: 'public', addRandomSuffix: false, contentType: 'application/json', cacheControlMaxAge: 0 });
 
     const { blobs } = await list({ prefix: `cms_complaint_${complaintId}_` });
-    const oldBlobs = blobs.filter(b => !b.pathname.includes(`${timestamp}`));
+    // Clean up strictly OLDER versions to prevent concurrent deletion race conditions
+    const oldBlobs = blobs.filter(b => {
+      const match = b.pathname.match(/^cms_complaint_\d+_(\d+)\.json$/);
+      if (match) {
+        return parseInt(match[1], 10) < timestamp;
+      }
+      return false;
+    });
     if (oldBlobs.length > 0) {
       await del(oldBlobs.map(b => b.url));
     }
