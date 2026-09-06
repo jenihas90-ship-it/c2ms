@@ -42,10 +42,6 @@ router.get('/cases', requireRespondent, async (req, res) => {
              JOIN users u ON c.user_id = u.id
              WHERE (c.respondent_email = ? OR c.respondent_phone = ? OR c.respondent_phone = ?)
              AND c.status != 'Deleted'
-             AND (c.is_served = 1 
-                  OR c.id IN (SELECT complaint_id FROM case_orders)
-                  OR c.id IN (SELECT complaint_id FROM remarks WHERE user_id IN (SELECT id FROM users WHERE role IN ('ADMIN', 'CLERK', 'JUDGE', 'admin', 'clerk', 'judge')))
-                  OR c.user_id IN (SELECT id FROM users WHERE role IN ('ADMIN', 'CLERK', 'JUDGE', 'admin', 'clerk', 'judge')))
              ORDER BY c.created_at DESC`,
             [user.email, user.username, userPhone]
         );
@@ -70,7 +66,8 @@ router.get('/case/:id', requireRespondent, async (req, res) => {
             `SELECT c.*, u.username as complainant_username, u.email as complainant_email
              FROM complaints c
              LEFT JOIN users u ON c.user_id = u.id
-             WHERE c.id = ?`,
+             WHERE c.id = ?
+             AND c.status != 'Deleted'`,
             [complaintId]
         );
 
