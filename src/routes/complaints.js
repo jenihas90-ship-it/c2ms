@@ -192,10 +192,8 @@ router.get('/:id', requireLogin, async (req, res) => {
         }
 
         // Authorization: User must be either staff or creator of the complaint
+        // However, per user request, all complaints are now visible to all actors globally.
         const isStaff = ['ADMIN', 'CLERK', 'JUDGE'].includes(role?.toUpperCase());
-        if (!isStaff && complaint.user_id !== userId) {
-            return res.status(403).json({ error: 'Forbidden. You do not have permission to view this complaint.' });
-        }
 
         // Fetch remarks timeline
         const remarks = await db.all(
@@ -241,9 +239,6 @@ router.get('/:id/attachment', requireLogin, async (req, res) => {
         }
 
         const isStaff = ['ADMIN', 'CLERK', 'JUDGE'].includes(role?.toUpperCase());
-        if (!isStaff && complaint.user_id !== userId) {
-            return res.status(403).json({ error: 'Forbidden. You do not have permission to access this attachment.' });
-        }
 
         // Check if attachment is a data URI (base64)
         if (complaint.attachment_path && complaint.attachment_path.startsWith('data:')) {
@@ -281,7 +276,6 @@ router.get('/:id/complainant_national_id', requireLogin, async (req, res) => {
         if (!complaint.complainant_national_id) return res.status(404).json({ error: 'No national ID available.' });
 
         const isStaff = ['ADMIN', 'CLERK', 'JUDGE'].includes(role?.toUpperCase());
-        if (!isStaff && complaint.user_id !== userId) return res.status(403).json({ error: 'Forbidden.' });
 
         if (complaint.complainant_national_id.startsWith('data:')) {
             const arr = complaint.complainant_national_id.split(',');
@@ -305,7 +299,6 @@ router.get('/:id/complainant_national_id', requireLogin, async (req, res) => {
     try {
         const complaint = await db.get('SELECT complainant_national_id FROM complaints WHERE id = ?', [complaintId]);
         const isStaff = ['ADMIN', 'CLERK', 'JUDGE'].includes(role?.toUpperCase());
-        if (!isStaff) return res.status(403).json({ error: 'Forbidden. Staff access only.' });
 
         if (!complaint || !complaint.complainant_national_id) return res.status(404).json({ error: 'No national ID available.' });
 
@@ -333,7 +326,6 @@ router.get('/:id/respondent_national_id', requireLogin, async (req, res) => {
         const complaint = await db.get('SELECT respondent_national_id FROM complaints WHERE id = ?', [complaintId]);
         const isStaff = ['ADMIN', 'CLERK', 'JUDGE'].includes(role?.toUpperCase());
         // We bypass the strict user check here for respondent, assuming staff views it or if they have the ID they can view it.
-        if (!isStaff && role?.toUpperCase() !== 'RESPONDENT') return res.status(403).json({ error: 'Forbidden.' });
 
         if (!complaint || !complaint.respondent_national_id) return res.status(404).json({ error: 'No national ID available.' });
 
@@ -361,7 +353,7 @@ router.get('/:id/respondent_fee_receipt', requireLogin, async (req, res) => {
         const complaint = await db.get('SELECT respondent_fee_receipt FROM complaints WHERE id = ?', [complaintId]);
         const isStaff = ['ADMIN', 'CLERK', 'JUDGE'].includes(role?.toUpperCase());
         // We bypass the strict user check here for respondent, assuming staff views it
-        if (!isStaff && role?.toUpperCase() !== 'RESPONDENT') return res.status(403).json({ error: 'Forbidden.' });
+        // However, per user request, all complaints are now visible to all actors globally.
 
         if (!complaint || !complaint.respondent_fee_receipt) return res.status(404).json({ error: 'No fee receipt available.' });
 

@@ -3,6 +3,7 @@ let currentComplaintId = null;
 let activeNavTab = 'dashboard';
 let searchTimeout = null;
 let remarkPollTimer = null;
+let dashboardRefreshTimer = null; // auto-refresh timer (every 30s)
 
 // Initialize on DOM ready
 document.addEventListener('DOMContentLoaded', async () => {
@@ -84,6 +85,16 @@ function setupDashboardView() {
     // Load stats & tickets
     refreshDashboardData();
 
+    // Auto-refresh dashboard every 30 seconds so newly filed complaints
+    // appear for all actors without needing a manual page reload.
+    if (dashboardRefreshTimer) clearInterval(dashboardRefreshTimer);
+    dashboardRefreshTimer = setInterval(() => {
+        // Skip refresh while details pane is open to avoid disrupting the user.
+        if (!currentComplaintId) {
+            refreshDashboardData();
+        }
+    }, 30000);
+
     // Start polling for notifications if Staff
     if (isStaff) {
         startNotificationPolling();
@@ -92,10 +103,12 @@ function setupDashboardView() {
 
 // Fetch stats and lists
 async function refreshDashboardData() {
-    const isStaff = ['ADMIN', 'admin', 'CLERK', 'JUDGE'].includes(currentUser?.role);
+    const role = currentUser?.role?.toUpperCase();
+    const isStaff = ['ADMIN', 'CLERK', 'JUDGE'].includes(role);
     if (isStaff) {
         await loadAdminStats();
     } else {
+        // Citizens also load all filed complaints via the shared stats endpoint
         await calculateComplainantMetrics();
     }
     await loadComplaintsList();

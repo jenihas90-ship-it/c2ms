@@ -13,7 +13,7 @@ let pauseBackup = false; // Guards against blob uploads during DB initialisation
  * Fetches a URL with up to `retries` attempts (default 2), waiting `delayMs` between each.
  * Needed because Vercel private blob downloadUrls are pre-signed and can transiently 403.
  */
-async function fetchWithRetry(url, retries = 2, delayMs = 500) {
+async function fetchWithRetry(url, retries = 4, delayMs = 1000) {
   let lastErr;
   for (let i = 0; i <= retries; i++) {
     try {
@@ -437,11 +437,13 @@ async function _readComplaintsBlob() {
           const res = await fetchWithRetry(url);
           return await res.json();
         } catch (e) {
-          console.error('[Blob] Failed to read complaint blob:', url, e.message);
+          // Non-fatal: a single blob URL failing should not wipe out the entire list.
+          // Log the error and return null so the complaint is skipped, not lost.
+          console.error('[Blob] Non-fatal: Failed to read individual complaint blob:', url, e.message);
           return null;
         }
       }));
-      results.push(...batchResults.filter(x => x !== null));
+      results.push(...batchResults.filter(x => x !== null && x.id !== undefined));
     }
 
     // Attempt fetching legacy cms_complaints.json for backwards compatibility
@@ -468,7 +470,11 @@ async function _readComplaintsBlob() {
 
     return results;
   } catch (e) {
-    console.error('[Blob] CRITICAL: Could not read individual complaint blobs:', e.message);
+    // Return whatever partial results were collected thus far rather than throwing.
+    // This ensures a transient Blob API error never causes the entire complaint list
+    // to vanish. A partial list is far better than an empty one.
+    console.error('[Blob] Warning: Partial failure reading complaint blobs:', e.message, '— returning', results.length, 'partial results.');
+    if (results.length > 0) return results;
     throw new Error('read_failure');
   }
 }
@@ -673,16 +679,7 @@ function _applyComplaintListFilters(complaints, filters, resolveUsername = () =>
 
   // INVARIANT: Complaints stay permanently visible to all actors (until explicitly deleted by Admin).
   // There are NO time-based expiration filters (e.g. no 6-month or 1-year auto-hide).
-  if (!isStaff && !isRespondent && userId) {
-    result = result.filter(c => String(c.user_id) === String(userId));
-  }
-  if (isRespondent && userId) {
-    result = result.filter(c =>
-      String(c.user_id) === String(userId) ||
-      (c.respondent_user_id && String(c.respondent_user_id) === String(userId)) ||
-      Number(c.is_served) === 1
-    );
-  }
+  // Furthermore, user requested that all complaints be public to all actors.
   if (status) result = result.filter(c => c.status === status);
   if (category) result = result.filter(c => c.category === category);
   if (region) result = result.filter(c => c.complainant_region === region);
@@ -709,7 +706,6 @@ async function _querySqliteComplaints(filters = {}) {
   const params = [];
   const isStaff = ['ADMIN', 'CLERK', 'JUDGE'].includes(role?.toUpperCase());
   const isRespondent = role?.toUpperCase() === 'RESPONDENT';
-  if (!isStaff && !isRespondent && userId) { query += ' AND c.user_id = ?'; params.push(userId); }
   if (status) { query += ' AND c.status = ?'; params.push(status); }
   if (category) { query += ' AND c.category = ?'; params.push(category); }
   if (region) { query += ' AND c.complainant_region = ?'; params.push(region); }

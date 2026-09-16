@@ -1,14 +1,16 @@
-const db = require('./src/db.js');
-(async () => {
-    await db.initDatabase();
-    console.log('Filing complaint as user1...');
-    const res = await db.run("INSERT INTO complaints (user_id, title, category, description, priority, status) VALUES (2, 'Test Ticket', 'Property', 'Test desc', 'Medium', 'Filed')");
-    console.log("inserted ID", res.id);
-    const comp = await db.get('SELECT * FROM complaints WHERE id = ?', [res.id]);
-    await db.syncComplaintToBlob(comp);
+const formData = new FormData();
+formData.append('remark', '[FORMAL RESPONSE] Test');
+formData.append('court_fee_receipt', new Blob(['test']), 'test.pdf');
 
-    console.log('Fetching as Clerk...');
-    const list = await db.getAllComplaintsFromBlob({ role: 'CLERK' });
-    console.log('Clerk can see:', list.length, 'complaints');
-    console.log(list.slice(0, 1));
-})().catch(console.error);
+async function test() {
+    const login = await fetch('http://localhost:3000/api/auth/login', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ loginIdentifier: 'respondent', password: 'resp123' })
+    });
+    const loginCookie = login.headers.get('set-cookie');
+    console.log('Login:', await login.json());
+
+    // First, we need a case. Let's create one directly in sqlite or using the API
+}
+test().catch(console.error);

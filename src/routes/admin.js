@@ -49,10 +49,14 @@ router.get('/stats', requireRole(['ADMIN', 'CLERK', 'JUDGE']), async (req, res) 
             complainant_name: c.complainant_name || 'Anonymous'
         }));
 
+        // totalFiled: prefer permanent blob counter (cms_stats.json) which survives deletions.
+        // Fall back to the live blob complaint count (includes deleted ones from cms_complaint_*.json
+        // listing), and finally to the active count.
+        const blobTotalFiled = permanentFiledCount > 0 ? permanentFiledCount : allComplaints.length;
         res.json({
             summary: {
                 total,
-                totalFiled: permanentFiledCount || total,
+                totalFiled: blobTotalFiled || total,
                 pending,
                 inProgress,
                 resolved
