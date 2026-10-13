@@ -932,15 +932,26 @@ function generateCitizenPaymentCode() {
     const amount = feeMap[method] || 500;
 
     const display = document.getElementById('citizen-payment-code-display');
-    const methodName = document.getElementById('citizen-pay-method-name');
-    const orderEl = document.getElementById('citizen-pay-order-code');
-    const refEl = document.getElementById('citizen-pay-reference');
-    const amountEl = document.getElementById('citizen-pay-amount');
-    if (display) display.style.display = 'block';
-    if (methodName) methodName.textContent = method;
-    if (orderEl) orderEl.textContent = orderCode;
-    if (refEl) refEl.textContent = ref;
-    if (amountEl) amountEl.textContent = amount.toLocaleString() + ' ETB';
+    if (!display) return;
+
+    // Build the entire box content dynamically so Amount Due always renders
+    // regardless of which HTML version the browser has cached.
+    display.style.display = 'block';
+    display.innerHTML = `
+        <p style="font-size:0.83rem; margin-bottom:0.5rem;">Pay via <span style="font-weight:700;">${method}</span>:</p>
+        <div style="display:flex; justify-content:space-between; margin-bottom:0.35rem;">
+            <span style="font-size:0.78rem; color:var(--text-muted);">Order Code:</span>
+            <strong style="font-family:monospace; color:var(--primary);">${orderCode}</strong>
+        </div>
+        <div style="display:flex; justify-content:space-between; margin-bottom:0.35rem;">
+            <span style="font-size:0.78rem; color:var(--text-muted);">Payment Ref:</span>
+            <strong style="font-family:monospace; color:var(--primary);">${ref}</strong>
+        </div>
+        <div style="display:flex; justify-content:space-between; margin-top:0.5rem; padding-top:0.5rem; border-top:1px dashed rgba(99,102,241,0.25);">
+            <span style="font-size:0.78rem; color:var(--text-muted); font-weight:600;">Amount Due:</span>
+            <strong style="font-family:monospace; color:#3fb950; font-size:0.95rem;">${amount.toLocaleString()} ETB</strong>
+        </div>
+    `;
 }
 
 // Inform complainant which file is selected in styling wrapper
