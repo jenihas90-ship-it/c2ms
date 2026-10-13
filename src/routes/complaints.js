@@ -132,6 +132,35 @@ router.post('/', requireLogin, upload.fields([{ name: 'attachment', maxCount: 1 
     }
 });
 
+// Get permanent filed count + live status counts (accessible to ALL logged-in roles including Citizens)
+router.get('/stats', requireLogin, async (req, res) => {
+    try {
+        const userId = req.session.userId;
+        const role = req.session.role;
+
+        // Permanent count from blob ledger — survives worker rotation and admin deletions
+        const totalFiled = await db.getFiledCount().catch(() => 0);
+
+        // Live status counts from the complaint list (blob + SQLite union)
+        const list = await db.getAllComplaintsFromBlob({ userId, role }).catch(() => []);
+        const pending = list.filter(c => c.status === 'Pending' || c.status === 'Filed').length;
+        const inProgress = list.filter(c => ['In Progress', 'Under Review', 'Scheduled'].includes(c.status)).length;
+        const resolved = list.filter(c => c.status === 'Resolved').length;
+        const total = list.length;
+
+        res.json({
+            totalFiled: totalFiled > 0 ? totalFiled : total,
+            total,
+            pending,
+            inProgress,
+            resolved
+        });
+    } catch (err) {
+        console.error('Fetch complaint stats error:', err);
+        res.status(500).json({ error: 'Internal Server Error while fetching stats.' });
+    }
+});
+
 // Get Complaints List
 router.get('/', requireLogin, async (req, res) => {
     const userId = req.session.userId;

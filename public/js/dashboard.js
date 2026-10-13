@@ -114,21 +114,27 @@ async function refreshDashboardData() {
     await loadComplaintsList();
 }
 
-// Compile metrics from citizen's own complaints list
+// Compile metrics from citizen's own complaints via the permanent stats endpoint
 async function calculateComplainantMetrics() {
     try {
-        const list = await apiRequest('/api/complaints');
-        const total = list.length;
-        const pending = list.filter(c => c.status === 'Pending' || c.status === 'Filed').length;
-        const progress = list.filter(c => c.status === 'In Progress' || c.status === 'Under Review').length;
-        const resolved = list.filter(c => c.status === 'Resolved').length;
-
-        document.getElementById('metric-total-val').textContent = total;
-        document.getElementById('metric-pending-val').textContent = pending;
-        document.getElementById('metric-progress-val').textContent = progress;
-        document.getElementById('metric-resolved-val').textContent = resolved;
+        // Use /api/complaints/stats to get the permanent totalFiled count (blob-backed,
+        // survives Vercel worker rotation) instead of relying on list.length which
+        // can show 0 on a cold-start worker before the blob is fully read.
+        const stats = await apiRequest('/api/complaints/stats');
+        document.getElementById('metric-total-val').textContent = stats.totalFiled ?? stats.total;
+        document.getElementById('metric-pending-val').textContent = stats.pending;
+        document.getElementById('metric-progress-val').textContent = stats.inProgress;
+        document.getElementById('metric-resolved-val').textContent = stats.resolved;
     } catch (error) {
         console.error('Failed to calculate citizen metrics:', error);
+        // Fallback: try from the complaints list directly
+        try {
+            const list = await apiRequest('/api/complaints');
+            document.getElementById('metric-total-val').textContent = list.length;
+            document.getElementById('metric-pending-val').textContent = list.filter(c => c.status === 'Pending' || c.status === 'Filed').length;
+            document.getElementById('metric-progress-val').textContent = list.filter(c => c.status === 'In Progress' || c.status === 'Under Review').length;
+            document.getElementById('metric-resolved-val').textContent = list.filter(c => c.status === 'Resolved').length;
+        } catch (_) { /* silently fail */ }
     }
 }
 
@@ -920,14 +926,21 @@ function generateCitizenPaymentCode() {
     const method = methodEl.value;
     const orderCode = 'ORD-' + Math.random().toString(36).substring(2, 8).toUpperCase();
     const ref = 'CMS-' + Date.now().toString(36).toUpperCase();
+
+    // Court fee amounts per payment method (ETB)
+    const feeMap = { 'CBE': 500, 'CBE Birr': 475, 'Telebirr': 490 };
+    const amount = feeMap[method] || 500;
+
     const display = document.getElementById('citizen-payment-code-display');
     const methodName = document.getElementById('citizen-pay-method-name');
     const orderEl = document.getElementById('citizen-pay-order-code');
     const refEl = document.getElementById('citizen-pay-reference');
+    const amountEl = document.getElementById('citizen-pay-amount');
     if (display) display.style.display = 'block';
     if (methodName) methodName.textContent = method;
     if (orderEl) orderEl.textContent = orderCode;
     if (refEl) refEl.textContent = ref;
+    if (amountEl) amountEl.textContent = amount.toLocaleString() + ' ETB';
 }
 
 // Inform complainant which file is selected in styling wrapper

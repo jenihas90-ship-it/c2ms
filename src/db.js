@@ -397,6 +397,10 @@ const LEGACY_COMPLAINTS_BLOB_KEY = 'cms_complaints.json';
 
 async function _readComplaintsBlob() {
   if (!process.env.BLOB_READ_WRITE_TOKEN) return [];
+  // Declare results OUTSIDE try so the catch block can reference it safely.
+  // Previously results was declared inside try with const — causing a ReferenceError
+  // in the catch handler and silently swallowing partial results.
+  const results = [];
   try {
     const { list: blobList } = require('@vercel/blob');
     let hasMore = true;
@@ -428,7 +432,6 @@ async function _readComplaintsBlob() {
     // Download all latest blobs in parallel
     const urlsToFetch = Array.from(latestBlobsMap.values()).map(x => x.url);
     const maxConcurrency = 20;
-    const results = [];
 
     for (let i = 0; i < urlsToFetch.length; i += maxConcurrency) {
       const batch = urlsToFetch.slice(i, i + maxConcurrency);
@@ -799,14 +802,41 @@ async function getAllComplaintsFromBlob(filters = {}) {
 //  Used as fallback in the detail endpoint so a cold-start
 //  Vercel worker with empty SQLite can still serve complaint
 //  details from the authoritative shared blob.
+//
+//  FAST PATH: scans only blobs whose name starts with
+//  cms_complaint_ID_ (just a handful), not the full list.
+//  This avoids fetching every complaint on every detail view.
 // ─────────────────────────────────────────────────────────
 async function getComplaintFromBlob(complaintId) {
-  if (!process.env.BLOB_READ_WRITE_TOKEN) return null;
+  if (!process.env.BLOB_READ_WRITE_TOKEN || !complaintId) return null;
   try {
-    const complaints = await _readComplaintsBlob();
-    if (!Array.isArray(complaints)) return null;
-    const c = complaints.find(x => x && String(x.id) === String(complaintId));
-    return c || null;
+    const { list: blobList } = require('@vercel/blob');
+    const prefix = `cms_complaint_${complaintId}_`;
+    const { blobs } = await blobList({ prefix, limit: 20 });
+
+    if (!blobs || blobs.length === 0) {
+      // No individual blob found — fall back to full scan for legacy data
+      const all = await _readComplaintsBlob().catch(() => []);
+      return (Array.isArray(all) ? all.find(x => x && String(x.id) === String(complaintId)) : null) || null;
+    }
+
+    // Pick the latest timestamped blob for this complaint
+    let latestTs = -1;
+    let latestUrl = null;
+    for (const b of blobs) {
+      const match = b.pathname.match(/^cms_complaint_\d+_(\d+)\.json$/);
+      if (match) {
+        const ts = parseInt(match[1], 10);
+        if (ts > latestTs) { latestTs = ts; latestUrl = b.downloadUrl; }
+      }
+    }
+
+    if (!latestUrl) return null;
+    const res = await fetchWithRetry(latestUrl);
+    const data = await res.json();
+    // Guard: the blob could be the soft-delete marker (only has id+status)
+    if (!data || data.status === 'Deleted' || !data.title) return null;
+    return data;
   } catch (e) {
     console.warn('[Blob] getComplaintFromBlob failed:', e.message);
     return null;
