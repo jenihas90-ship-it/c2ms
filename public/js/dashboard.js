@@ -927,9 +927,8 @@ function generateCitizenPaymentCode() {
     const orderCode = 'ORD-' + Math.random().toString(36).substring(2, 8).toUpperCase();
     const ref = 'CMS-' + Date.now().toString(36).toUpperCase();
 
-    // Court fee amounts per payment method (ETB)
-    const feeMap = { 'CBE': 500, 'CBE Birr': 475, 'Telebirr': 490 };
-    const amount = feeMap[method] || 500;
+    // Fixed court fee — same amount for all payment methods
+    const amount = 500;
 
     const display = document.getElementById('citizen-payment-code-display');
     if (!display) return;
