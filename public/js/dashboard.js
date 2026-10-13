@@ -755,7 +755,7 @@ function nextWizardStep(step, currentStepToValidate = null) {
             }
         }
     }
-    for (let i = 1; i <= 4; i++) {
+    for (let i = 1; i <= 5; i++) {
         const stepEl = document.getElementById(`wizard-step-${i}`);
         if (stepEl) stepEl.classList.add('hidden');
 
@@ -807,11 +807,19 @@ async function handleFileComplaint(event) {
     const fileInput = document.getElementById('comp-attachment');
     const certInput = document.getElementById('comp-low-income-cert');
     const nationalIdInput = document.getElementById('comp-national-id');
+    const feeReceiptInput = document.getElementById('comp-fee-receipt');
+    const paymentMethodEl = document.querySelector('input[name="comp_payment_method"]:checked');
     const submitBtn = event.target.querySelector('button[type="submit"]');
 
     if (!nationalIdInput || !nationalIdInput.files || nationalIdInput.files.length === 0) {
         showToast('National ID attachment is required. Please upload your National ID.', true);
         nextWizardStep(4);
+        return;
+    }
+
+    if (!feeReceiptInput || !feeReceiptInput.files || feeReceiptInput.files.length === 0) {
+        showToast('Court fee payment receipt (or waiver certificate) is required.', true);
+        nextWizardStep(5);
         return;
     }
 
@@ -843,6 +851,14 @@ async function handleFileComplaint(event) {
     formData.append('respondent_language', respondentLanguage);
 
     formData.append('national_id', nationalIdInput.files[0]);
+
+    if (paymentMethodEl) {
+        formData.append('court_fee_method', paymentMethodEl.value);
+    }
+
+    if (feeReceiptInput && feeReceiptInput.files && feeReceiptInput.files.length > 0) {
+        formData.append('court_fee_receipt', feeReceiptInput.files[0]);
+    }
 
     if (fileInput.files.length > 0) {
         formData.append('attachment', fileInput.files[0]);
@@ -879,6 +895,39 @@ async function handleFileComplaint(event) {
         submitBtn.disabled = false;
         submitBtn.classList.remove('loading');
     }
+}
+
+// Toggle citizen payment vs waiver view
+function toggleCitizenFeeView(mode) {
+    const payView = document.getElementById('citizen-fee-payment-view');
+    const waiverView = document.getElementById('citizen-fee-waiver-view');
+    const uploadLabel = document.getElementById('citizen-fee-upload-label');
+    if (mode === 'pay') {
+        if (payView) payView.style.display = 'block';
+        if (waiverView) waiverView.style.display = 'none';
+        if (uploadLabel) uploadLabel.textContent = 'Upload Payment Receipt (Required)';
+    } else {
+        if (payView) payView.style.display = 'none';
+        if (waiverView) waiverView.style.display = 'block';
+        if (uploadLabel) uploadLabel.textContent = 'Upload Poverty/Low-Income Certificate (Required)';
+    }
+}
+
+// Generate a simple payment order/reference code for citizen
+function generateCitizenPaymentCode() {
+    const methodEl = document.querySelector('input[name="comp_payment_method"]:checked');
+    if (!methodEl) return;
+    const method = methodEl.value;
+    const orderCode = 'ORD-' + Math.random().toString(36).substring(2, 8).toUpperCase();
+    const ref = 'CMS-' + Date.now().toString(36).toUpperCase();
+    const display = document.getElementById('citizen-payment-code-display');
+    const methodName = document.getElementById('citizen-pay-method-name');
+    const orderEl = document.getElementById('citizen-pay-order-code');
+    const refEl = document.getElementById('citizen-pay-reference');
+    if (display) display.style.display = 'block';
+    if (methodName) methodName.textContent = method;
+    if (orderEl) orderEl.textContent = orderCode;
+    if (refEl) refEl.textContent = ref;
 }
 
 // Inform complainant which file is selected in styling wrapper
@@ -1194,24 +1243,7 @@ async function serveComplaint() {
     }
 }
 
-// ===== Delete Complaint (Admin only) =====
-async function deleteComplaintAPI() {
-    if (!currentComplaintId) return;
-    if (!confirm('Are you sure you want to completely delete this complaint? This cannot be undone.')) {
-        return;
-    }
 
-    try {
-        await apiRequest(`/api/complaints/${currentComplaintId}`, {
-            method: 'DELETE'
-        });
-        showToast('Complaint deleted successfully', false);
-        closeDetailsInspector();
-        await refreshDashboardData();
-    } catch (err) {
-        showToast(err.message || 'Failed to delete complaint', true);
-    }
-}
 
 
 // State variables for the AI SMS modal judgment flow

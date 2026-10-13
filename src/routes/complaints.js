@@ -28,11 +28,12 @@ const upload = multer({
 });
 
 // File Complaint
-router.post('/', requireLogin, upload.fields([{ name: 'attachment', maxCount: 1 }, { name: 'low_income_cert', maxCount: 1 }, { name: 'national_id', maxCount: 1 }]), async (req, res) => {
+router.post('/', requireLogin, upload.fields([{ name: 'attachment', maxCount: 1 }, { name: 'low_income_cert', maxCount: 1 }, { name: 'national_id', maxCount: 1 }, { name: 'court_fee_receipt', maxCount: 1 }]), async (req, res) => {
     const {
         title, category, court_name, court_address, case_number, hearing_date, complainant_name, respondent_name, complainant_address, description,
         complainant_phone, complainant_country, complainant_region, complainant_woreda, complainant_kebele, complainant_language,
-        respondent_phone, respondent_email, respondent_country, respondent_region, respondent_woreda, respondent_kebele, respondent_language
+        respondent_phone, respondent_email, respondent_country, respondent_region, respondent_woreda, respondent_kebele, respondent_language,
+        court_fee_method
     } = req.body;
 
     if (!title || !category || !court_name || !court_address || !description) {
@@ -53,6 +54,7 @@ router.post('/', requireLogin, upload.fields([{ name: 'attachment', maxCount: 1 
     let certPath = null;
     let nationalIdPath = null;
 
+    let feeReceiptPath = null;
     if (req.files) {
         if (req.files.attachment && req.files.attachment.length > 0) {
             const file = req.files.attachment[0];
@@ -72,6 +74,12 @@ router.post('/', requireLogin, upload.fields([{ name: 'attachment', maxCount: 1 
                 nationalIdPath = `data:${idFile.mimetype};base64,${idFile.buffer.toString('base64')}`;
             }
         }
+        if (req.files.court_fee_receipt && req.files.court_fee_receipt.length > 0) {
+            const feeFile = req.files.court_fee_receipt[0];
+            if (feeFile.buffer) {
+                feeReceiptPath = `data:${feeFile.mimetype};base64,${feeFile.buffer.toString('base64')}`;
+            }
+        }
     }
     const parties = `Complainant: ${complainant_name || 'N/A'}, Respondent: ${respondent_name || 'N/A'}`;
 
@@ -80,13 +88,15 @@ router.post('/', requireLogin, upload.fields([{ name: 'attachment', maxCount: 1 
             `INSERT INTO complaints (
                 user_id, title, category, court_name, court_address, case_number, hearing_date, plaintiff_name, defendant_name, parties, description, priority, status, attachment_path,
                 complainant_phone, complainant_country, complainant_region, complainant_woreda, complainant_kebele, complainant_language, complainant_national_id,
-                respondent_phone, respondent_email, respondent_country, respondent_region, respondent_woreda, respondent_kebele, respondent_language, court_fee_receipt
+                respondent_phone, respondent_email, respondent_country, respondent_region, respondent_woreda, respondent_kebele, respondent_language,
+                court_fee_method, court_fee_receipt
             ) 
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'Filed', ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'Filed', ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
             [
                 userId, title, category, court_name, court_address, case_number || 'Pending Assignment', hearing_date || null, complainant_name || null, respondent_name || null, parties || null, description, priority, attachmentPath || null,
                 complainant_phone || null, complainant_country || null, complainant_region || null, complainant_woreda || null, complainant_kebele || null, complainant_language || null, nationalIdPath || null,
-                respondent_phone || null, respondent_email || null, respondent_country || null, respondent_region || null, respondent_woreda || null, respondent_kebele || null, respondent_language || null, certPath || null
+                respondent_phone || null, respondent_email || null, respondent_country || null, respondent_region || null, respondent_woreda || null, respondent_kebele || null, respondent_language || null,
+                court_fee_method || null, feeReceiptPath || null
             ]
         );
 
@@ -168,7 +178,7 @@ router.get('/:id', requireLogin, async (req, res) => {
             `SELECT c.*, COALESCE(u.username, 'Anonymous') as complainant_name, u.email as complainant_email 
        FROM complaints c
        LEFT JOIN users u ON c.user_id = u.id
-       WHERE c.id = ?`,
+       WHERE c.id = ? AND c.status != 'Deleted'`,
             [complaintId]
         );
 

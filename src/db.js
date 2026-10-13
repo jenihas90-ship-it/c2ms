@@ -158,7 +158,7 @@ const COMPLAINT_COLUMNS = new Set([
   'respondent_phone', 'respondent_email', 'respondent_country', 'respondent_region',
   'respondent_woreda', 'respondent_kebele', 'respondent_language', 'respondent_national_id',
   'clerk_language', 'judge_language',
-  'court_fee_required', 'court_fee_amount', 'court_fee_paid', 'court_fee_receipt', 'respondent_fee_receipt',
+  'court_fee_required', 'court_fee_amount', 'court_fee_paid', 'court_fee_method', 'court_fee_receipt', 'respondent_fee_receipt',
   'is_served', 'created_at', 'updated_at',
   // Respondent formal response — must be listed here so it survives cold-start rehydration
   'formal_response', 'respondent_user_id'
@@ -877,6 +877,7 @@ async function initDatabase() {
       court_fee_amount REAL DEFAULT 0,
       court_fee_paid INTEGER DEFAULT 0,
       court_fee_receipt TEXT,
+      court_fee_method TEXT,
       respondent_fee_receipt TEXT,
       is_served INTEGER DEFAULT 0,
       created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
@@ -891,7 +892,7 @@ async function initDatabase() {
       'respondent_phone TEXT', 'respondent_email TEXT', 'respondent_country TEXT', 'respondent_region TEXT', 'respondent_woreda TEXT',
       'is_served INTEGER DEFAULT 0',
       'court_address TEXT NOT NULL DEFAULT ""',
-      'court_fee_required INTEGER DEFAULT 0', 'court_fee_amount REAL', 'court_fee_paid INTEGER DEFAULT 0', 'court_fee_receipt TEXT', 'respondent_fee_receipt TEXT',
+      'court_fee_required INTEGER DEFAULT 0', 'court_fee_amount REAL', 'court_fee_paid INTEGER DEFAULT 0', 'court_fee_method TEXT', 'court_fee_receipt TEXT', 'respondent_fee_receipt TEXT',
       'complainant_kebele TEXT', 'respondent_kebele TEXT',
       'complainant_language TEXT', 'respondent_language TEXT', 'clerk_language TEXT', 'judge_language TEXT',
       'complainant_national_id TEXT', 'respondent_national_id TEXT', 'formal_response TEXT',
