@@ -122,18 +122,22 @@ router.get('/test-blob', async (req, res) => {
 
         let fetchStatus = null;
         let data = null;
+        let fetchError = null;
         try {
             if (blobResp) {
                 const r = await db.fetchWithRetry(blobResp.url || blobResp.downloadUrl);
                 fetchStatus = r.status;
                 data = await r.json().catch(() => null);
             }
-        } catch (fe) { }
+        } catch (fe) {
+            fetchError = fe.message;
+        }
 
         res.json({
             putResult: putRes,
             headResult: blobResp,
             fetchStatus,
+            fetchError,
             data
         });
     } catch (err) {

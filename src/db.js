@@ -56,6 +56,7 @@ async function putBlobSafe(pathname, data, options = {}) {
         ...options,
         access,
         addRandomSuffix: false,
+        allowOverwrite: true,
         contentType: options.contentType || 'application/json',
         cacheControlMaxAge: 0
       });
