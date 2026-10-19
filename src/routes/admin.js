@@ -200,15 +200,14 @@ router.get('/debug-blob', requireRole(['ADMIN']), async (req, res) => {
             });
         }
 
-        // Fetch and parse the blob using fetchWithRetry with Authorization
-        const fetchRes = await db.fetchWithRetry(blobInfo.url || blobInfo.downloadUrl);
-        const data = fetchRes.ok ? await fetchRes.json() : null;
+        // Fetch and parse the blob using readBlobJson
+        const data = await db.readBlobJson(blobInfo.pathname || blobInfo.url);
 
         return res.json({
             status: 'ok',
             blob_url: (blobInfo.url || blobInfo.downloadUrl)?.substring(0, 60) + '...',
             blob_size_bytes: blobInfo.size,
-            fetch_status: fetchRes.status,
+            fetch_status: data !== null ? 200 : 404,
             complaints_count: Array.isArray(data) ? data.length : 'parse error',
             sample: Array.isArray(data) ? data.slice(0, 2).map(c => ({ id: c.id, title: c.title, status: c.status })) : null
         });

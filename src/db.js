@@ -18,7 +18,15 @@ async function fetchWithRetry(url, retries = 4, delayMs = 1000) {
   let lastErr;
   for (let i = 0; i <= retries; i++) {
     try {
-      const finalUrl = url + (url.includes('?') ? '&' : '?') + 't=' + Date.now();
+      let finalUrl = url;
+      try {
+        const u = new URL(url);
+        u.searchParams.delete('download');
+        u.searchParams.set('cache', '0');
+        finalUrl = u.toString();
+      } catch (_) {
+        finalUrl = url + (url.includes('?') ? '&' : '?') + 'cache=0';
+      }
       const headers = {
         'Cache-Control': 'no-cache, no-store, must-revalidate',
         'Pragma': 'no-cache'
@@ -38,6 +46,52 @@ async function fetchWithRetry(url, retries = 4, delayMs = 1000) {
     if (i < retries) await new Promise(r => setTimeout(r, delayMs));
   }
   throw lastErr;
+}
+
+/**
+ * Universal JSON reader for Vercel Blobs using the official SDK get() method.
+ * Works seamlessly with both private and public storage tiers without 403 errors.
+ */
+async function readBlobJson(urlOrPathname) {
+  if (!process.env.BLOB_READ_WRITE_TOKEN) return null;
+  const { get: blobGet } = require('@vercel/blob');
+  const preferred = detectedBlobAccess || 'private';
+  const modes = [preferred, preferred === 'private' ? 'public' : 'private'];
+
+  let lastErr = null;
+  for (const access of modes) {
+    try {
+      const res = await blobGet(urlOrPathname, {
+        access,
+        useCache: false,
+        token: process.env.BLOB_READ_WRITE_TOKEN
+      });
+      if (res && res.statusCode === 200 && res.stream) {
+        detectedBlobAccess = access;
+        return await new Response(res.stream).json();
+      }
+      if (res && res.statusCode === 404) return null;
+    } catch (e) {
+      lastErr = e;
+      const msg = e.message || '';
+      if (
+        msg.includes('access must be') ||
+        msg.includes('Cannot use public') ||
+        msg.includes('Cannot use private')
+      ) {
+        continue;
+      }
+      break;
+    }
+  }
+
+  // Fallback to fetchWithRetry with Authorization header
+  try {
+    const res = await fetchWithRetry(urlOrPathname);
+    return await res.json();
+  } catch (fetchErr) {
+    throw lastErr || fetchErr;
+  }
 }
 
 /**
@@ -335,20 +389,7 @@ const STATS_BLOB_KEY = 'cms_stats.json';
 async function _readStatsBlob() {
   if (!process.env.BLOB_READ_WRITE_TOKEN) return null;
   try {
-    const { list: blobList } = require('@vercel/blob');
-    let blobInfo;
-    try {
-      const { blobs } = await blobList({ prefix: STATS_BLOB_KEY, limit: 10 });
-      // Exact name match to prevent picking random-suffix duplicates
-      blobInfo = blobs.find(b => b.pathname === STATS_BLOB_KEY) || null;
-    } catch (e) {
-      const msg = (e.message || '').toLowerCase();
-      if (msg.includes('not found') || msg.includes('does not exist') || msg.includes('blob does not exist') || e.status === 404) return null;
-      throw e;
-    }
-    if (!blobInfo) return null;
-    const fetchRes = await fetchWithRetry(blobInfo.url || blobInfo.downloadUrl);
-    return await fetchRes.json();
+    return await readBlobJson(STATS_BLOB_KEY);
   } catch (e) {
     console.warn('[Stats] Could not read cms_stats.json:', e.message);
     return null;
@@ -462,25 +503,23 @@ async function _readComplaintsBlob() {
         const id = match[1];
         const ts = parseInt(match[2], 10);
         if (!latestBlobsMap.has(id) || latestBlobsMap.get(id).ts < ts) {
-          latestBlobsMap.set(id, { ts, url: b.url || b.downloadUrl });
+          latestBlobsMap.set(id, { ts, pathname: b.pathname, url: b.url || b.downloadUrl });
         }
       }
     }
 
-    // Download all latest blobs in parallel
-    const urlsToFetch = Array.from(latestBlobsMap.values()).map(x => x.url);
+    // Download all latest blobs in parallel using readBlobJson
+    const itemsToFetch = Array.from(latestBlobsMap.values());
     const maxConcurrency = 20;
 
-    for (let i = 0; i < urlsToFetch.length; i += maxConcurrency) {
-      const batch = urlsToFetch.slice(i, i + maxConcurrency);
-      const batchResults = await Promise.all(batch.map(async url => {
+    for (let i = 0; i < itemsToFetch.length; i += maxConcurrency) {
+      const batch = itemsToFetch.slice(i, i + maxConcurrency);
+      const batchResults = await Promise.all(batch.map(async item => {
         try {
-          const res = await fetchWithRetry(url);
-          return await res.json();
+          return await readBlobJson(item.pathname || item.url);
         } catch (e) {
-          // Non-fatal: a single blob URL failing should not wipe out the entire list.
-          // Log the error and return null so the complaint is skipped, not lost.
-          console.error('[Blob] Non-fatal: Failed to read individual complaint blob:', url, e.message);
+          // Non-fatal: a single blob failing should not wipe out the entire list.
+          console.error('[Blob] Non-fatal: Failed to read individual complaint blob:', item.pathname, e.message);
           return null;
         }
       }));
@@ -492,8 +531,7 @@ async function _readComplaintsBlob() {
       const { blobs } = await blobList({ prefix: LEGACY_COMPLAINTS_BLOB_KEY, limit: 10 });
       const legacyInfo = blobs.find(b => b.pathname === LEGACY_COMPLAINTS_BLOB_KEY) || null;
       if (legacyInfo) {
-        const fetchRes = await fetchWithRetry(legacyInfo.url || legacyInfo.downloadUrl);
-        const legacyData = await fetchRes.json();
+        const legacyData = await readBlobJson(legacyInfo.pathname || legacyInfo.url).catch(() => null);
         if (Array.isArray(legacyData)) {
           const existingIds = new Set(results.map(c => String(c.id)));
           for (const lc of legacyData) {
@@ -608,20 +646,7 @@ const TELEGRAM_LINKS_BLOB_KEY = 'cms_telegram_links.json';
 async function _readTelegramLinksBlob() {
   if (!process.env.BLOB_READ_WRITE_TOKEN) return {};
   try {
-    const { list: blobList } = require('@vercel/blob');
-    let blobInfo;
-    try {
-      const { blobs } = await blobList({ prefix: TELEGRAM_LINKS_BLOB_KEY, limit: 10 });
-      // Exact name match to prevent picking random-suffix duplicates
-      blobInfo = blobs.find(b => b.pathname === TELEGRAM_LINKS_BLOB_KEY) || null;
-    } catch (e) {
-      const msg = (e.message || '').toLowerCase();
-      if (msg.includes('not found') || msg.includes('does not exist') || msg.includes('blob does not exist') || e.status === 404) return {};
-      throw e;
-    }
-    if (!blobInfo) return {};
-    const fetchRes = await fetchWithRetry(blobInfo.url || blobInfo.downloadUrl);
-    const data = await fetchRes.json();
+    const data = await readBlobJson(TELEGRAM_LINKS_BLOB_KEY);
     return (data && typeof data === 'object' && !Array.isArray(data)) ? data : {};
   } catch (e) {
     console.warn('[TelegramBlob] Could not read cms_telegram_links.json:', e.message);
@@ -878,19 +903,18 @@ async function getComplaintFromBlob(complaintId) {
 
     // Pick the latest timestamped blob for this complaint
     let latestTs = -1;
-    let latestUrl = null;
+    let latestTarget = null;
     const regex = new RegExp(`^cms_complaint_${complaintId}_(\\d+)\\.json$`);
     for (const b of blobs) {
       const match = b.pathname.match(regex);
       if (match) {
         const ts = parseInt(match[1], 10);
-        if (ts > latestTs) { latestTs = ts; latestUrl = b.url || b.downloadUrl; }
+        if (ts > latestTs) { latestTs = ts; latestTarget = b.pathname || b.url || b.downloadUrl; }
       }
     }
 
-    if (!latestUrl) return null;
-    const res = await fetchWithRetry(latestUrl);
-    const data = await res.json();
+    if (!latestTarget) return null;
+    const data = await readBlobJson(latestTarget);
     // Guard: the blob could be the soft-delete marker (only has id+status)
     if (!data || data.status === 'Deleted' || !data.title) return null;
     return data;
@@ -1174,6 +1198,7 @@ module.exports = {
   syncTelegramLinkToBlob,
   getTelegramChatIdByPhone,
   putBlobSafe,
-  fetchWithRetry
+  fetchWithRetry,
+  readBlobJson
 };
 

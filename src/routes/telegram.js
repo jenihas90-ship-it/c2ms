@@ -124,11 +124,8 @@ router.get('/test-blob', async (req, res) => {
         let data = null;
         let fetchError = null;
         try {
-            if (blobResp) {
-                const r = await db.fetchWithRetry(blobResp.url || blobResp.downloadUrl);
-                fetchStatus = r.status;
-                data = await r.json().catch(() => null);
-            }
+            data = await db.readBlobJson('cms_telegram_links.json');
+            fetchStatus = data !== null ? 200 : 404;
         } catch (fe) {
             fetchError = fe.message;
         }
