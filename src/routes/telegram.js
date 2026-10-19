@@ -120,22 +120,23 @@ router.get('/test-blob', async (req, res) => {
 
         const blobResp = await head('cms_telegram_links.json').catch(() => null);
 
-        let fetchStatus = null;
-        let data = null;
-        let fetchError = null;
-        try {
-            data = await db.readBlobJson('cms_telegram_links.json');
-            fetchStatus = data !== null ? 200 : 404;
-        } catch (fe) {
-            fetchError = fe.message;
+        let directFetchStatus = null;
+        let directFetchBody = null;
+        if (blobResp) {
+            const rawRes = await fetch(blobResp.url, {
+                headers: {
+                    'authorization': `Bearer ${process.env.BLOB_READ_WRITE_TOKEN}`
+                }
+            });
+            directFetchStatus = rawRes.status;
+            directFetchBody = await rawRes.text();
         }
 
         res.json({
             putResult: putRes,
             headResult: blobResp,
-            fetchStatus,
-            fetchError,
-            data
+            directFetchStatus,
+            directFetchBody
         });
     } catch (err) {
         res.json({ error: err.message, stack: err.stack });
