@@ -132,11 +132,8 @@ router.get('/test-blob', async (req, res) => {
 
         res.json({
             putResult: putRes,
-            privatePutResult: privateRes,
             headResult: blobResp,
-            privateHeadResult: privateBlobResp,
             fetchStatus,
-            pFetchStatus,
             data
         });
     } catch (err) {
