@@ -8,33 +8,70 @@ let db = null;
 let SQL = null;
 let DB_FILE = null;
 let pauseBackup = false; // Guards against blob uploads during DB initialisation
+let detectedBlobAccess = 'private'; // Live store is confirmed private; auto-adapts if public
 
 /**
- * Fetches a URL with up to `retries` attempts (default 2), waiting `delayMs` between each.
- * Needed because Vercel private blob downloadUrls are pre-signed and can transiently 403.
+ * Fetches a URL with up to `retries` attempts (default 4), waiting `delayMs` between each.
+ * Supports both private and public Vercel Blobs by injecting Authorization header.
  */
 async function fetchWithRetry(url, retries = 4, delayMs = 1000) {
   let lastErr;
   for (let i = 0; i <= retries; i++) {
     try {
-      // Public blob URLs are served by Vercel's CDN and don't require Authorization.
-      // Appending a cache-busting timestamp prevents stale CDN responses.
-      // We also pass explicit no-cache headers so that Vercel's fetch layer (and
-      // any intermediate proxy) never serves a cached copy of the blob JSON.
       const finalUrl = url + (url.includes('?') ? '&' : '?') + 't=' + Date.now();
+      const headers = {
+        'Cache-Control': 'no-cache, no-store, must-revalidate',
+        'Pragma': 'no-cache'
+      };
+      if (process.env.BLOB_READ_WRITE_TOKEN) {
+        headers['Authorization'] = `Bearer ${process.env.BLOB_READ_WRITE_TOKEN}`;
+      }
       const res = await fetch(finalUrl, {
         cache: 'no-store',
-        headers: {
-          'Cache-Control': 'no-cache, no-store, must-revalidate',
-          'Pragma': 'no-cache'
-        }
+        headers
       });
       if (res.ok) return res;
-      lastErr = new Error(`HTTP ${res.status} from blob URL`);
+      lastErr = new Error(`HTTP ${res.status} from blob URL (${url})`);
     } catch (e) {
       lastErr = e;
     }
     if (i < retries) await new Promise(r => setTimeout(r, delayMs));
+  }
+  throw lastErr;
+}
+
+/**
+ * Safe put wrapper that automatically handles private and public store configurations.
+ * Prevents "Cannot use public access on a private store" and vice versa.
+ */
+async function putBlobSafe(pathname, data, options = {}) {
+  const json = typeof data === 'string' ? data : JSON.stringify(data);
+  const preferred = detectedBlobAccess || 'private';
+  const modes = [preferred, preferred === 'private' ? 'public' : 'private'];
+
+  let lastErr;
+  for (const access of modes) {
+    try {
+      const res = await put(pathname, json, {
+        ...options,
+        access,
+        addRandomSuffix: false,
+        contentType: options.contentType || 'application/json',
+        cacheControlMaxAge: 0
+      });
+      detectedBlobAccess = access;
+      return res;
+    } catch (err) {
+      lastErr = err;
+      const msg = err.message || '';
+      if (
+        msg.includes('Cannot use public access on a private store') ||
+        msg.includes('Cannot use private access on a public store')
+      ) {
+        continue;
+      }
+      throw err;
+    }
   }
   throw lastErr;
 }
@@ -182,6 +219,7 @@ async function ensureComplaintsRehydrated(database, force = false) {
 
     for (const c of blobComplaints) {
       if (!c || !c.id) continue;
+      if (!c.created_at && c.createdAt) c.created_at = c.createdAt;
       try {
         const res = database.exec(`SELECT id FROM complaints WHERE id = ${Number(c.id)}`);
         const exists = res.length > 0 && res[0].values.length > 0;
@@ -308,7 +346,7 @@ async function _readStatsBlob() {
       throw e;
     }
     if (!blobInfo) return null;
-    const fetchRes = await fetchWithRetry(blobInfo.downloadUrl);
+    const fetchRes = await fetchWithRetry(blobInfo.url || blobInfo.downloadUrl);
     return await fetchRes.json();
   } catch (e) {
     console.warn('[Stats] Could not read cms_stats.json:', e.message);
@@ -319,8 +357,7 @@ async function _readStatsBlob() {
 async function _writeStatsBlob(data) {
   if (!process.env.BLOB_READ_WRITE_TOKEN) return;
   try {
-    const json = JSON.stringify(data);
-    await put(STATS_BLOB_KEY, json, { access: 'public', addRandomSuffix: false, contentType: 'application/json', cacheControlMaxAge: 0 });
+    await putBlobSafe(STATS_BLOB_KEY, data);
   } catch (e) {
     console.warn('[Stats] Could not write cms_stats.json:', e.message);
   }
@@ -424,7 +461,7 @@ async function _readComplaintsBlob() {
         const id = match[1];
         const ts = parseInt(match[2], 10);
         if (!latestBlobsMap.has(id) || latestBlobsMap.get(id).ts < ts) {
-          latestBlobsMap.set(id, { ts, url: b.downloadUrl });
+          latestBlobsMap.set(id, { ts, url: b.url || b.downloadUrl });
         }
       }
     }
@@ -454,7 +491,7 @@ async function _readComplaintsBlob() {
       const { blobs } = await blobList({ prefix: LEGACY_COMPLAINTS_BLOB_KEY, limit: 10 });
       const legacyInfo = blobs.find(b => b.pathname === LEGACY_COMPLAINTS_BLOB_KEY) || null;
       if (legacyInfo) {
-        const fetchRes = await fetchWithRetry(legacyInfo.downloadUrl);
+        const fetchRes = await fetchWithRetry(legacyInfo.url || legacyInfo.downloadUrl);
         const legacyData = await fetchRes.json();
         if (Array.isArray(legacyData)) {
           const existingIds = new Set(results.map(c => String(c.id)));
@@ -492,21 +529,26 @@ async function syncComplaintToBlob(complaintObj) {
   const { attachment_path, court_fee_receipt, complainant_national_id, respondent_national_id, ...safeComplaint } = complaintObj;
 
   const timestamp = Date.now();
-  const complaintToSave = { ...safeComplaint, createdAt: safeComplaint.created_at || new Date().toISOString() };
-  const json = JSON.stringify(complaintToSave);
+  const created_at = safeComplaint.created_at || safeComplaint.createdAt || new Date().toISOString();
+  const complaintToSave = {
+    ...safeComplaint,
+    created_at,
+    createdAt: created_at
+  };
 
   try {
-    const { put, list, del } = require('@vercel/blob');
+    const { list, del } = require('@vercel/blob');
 
-    // 1. Write the new unique file to prevent CDN cache and Read-Modify-Write issues
-    await put(`cms_complaint_${safeComplaint.id}_${timestamp}.json`, json, { access: 'public', addRandomSuffix: false, contentType: 'application/json', cacheControlMaxAge: 0 });
+    // 1. Write the new unique file using putBlobSafe (handles private/public automatically)
+    await putBlobSafe(`cms_complaint_${safeComplaint.id}_${timestamp}.json`, complaintToSave);
     console.log(`[Blob] Synced complaint #${safeComplaint.id} to individual json blob.`);
 
-    // 2. Clean up strictly OLDER versions of this specific complaint
-    // This prevents a critical race condition where concurrent syncs would mutually delete each other.
+    // 2. Clean up strictly OLDER versions of THIS EXACT complaint ID
+    // Using exact complaint ID regex prevents deleting complaints with prefix overlap (e.g. 1 matching 10)
     const { blobs } = await list({ prefix: `cms_complaint_${safeComplaint.id}_` });
+    const regex = new RegExp(`^cms_complaint_${safeComplaint.id}_(\\d+)\\.json$`);
     const oldBlobs = blobs.filter(b => {
-      const match = b.pathname.match(/^cms_complaint_\d+_(\d+)\.json$/);
+      const match = b.pathname.match(regex);
       if (match) {
         return parseInt(match[1], 10) < timestamp;
       }
@@ -523,19 +565,19 @@ async function syncComplaintToBlob(complaintObj) {
 async function deleteComplaintFromBlob(complaintId) {
   if (!process.env.BLOB_READ_WRITE_TOKEN || !complaintId) return;
   try {
-    const { put, list, del } = require('@vercel/blob');
+    const { list, del } = require('@vercel/blob');
     const timestamp = Date.now();
 
     // We soft-delete by writing a new blob for this ID with status: 'Deleted'
     const deletedState = { id: complaintId, status: 'Deleted', updatedAt: new Date().toISOString() };
-    const json = JSON.stringify(deletedState);
 
-    await put(`cms_complaint_${complaintId}_${timestamp}.json`, json, { access: 'public', addRandomSuffix: false, contentType: 'application/json', cacheControlMaxAge: 0 });
+    await putBlobSafe(`cms_complaint_${complaintId}_${timestamp}.json`, deletedState);
 
     const { blobs } = await list({ prefix: `cms_complaint_${complaintId}_` });
-    // Clean up strictly OLDER versions to prevent concurrent deletion race conditions
+    // Clean up strictly OLDER versions of THIS EXACT complaint ID
+    const regex = new RegExp(`^cms_complaint_${complaintId}_(\\d+)\\.json$`);
     const oldBlobs = blobs.filter(b => {
-      const match = b.pathname.match(/^cms_complaint_\d+_(\d+)\.json$/);
+      const match = b.pathname.match(regex);
       if (match) {
         return parseInt(match[1], 10) < timestamp;
       }
@@ -577,7 +619,7 @@ async function _readTelegramLinksBlob() {
       throw e;
     }
     if (!blobInfo) return {};
-    const fetchRes = await fetchWithRetry(blobInfo.downloadUrl);
+    const fetchRes = await fetchWithRetry(blobInfo.url || blobInfo.downloadUrl);
     const data = await fetchRes.json();
     return (data && typeof data === 'object' && !Array.isArray(data)) ? data : {};
   } catch (e) {
@@ -589,8 +631,7 @@ async function _readTelegramLinksBlob() {
 async function _writeTelegramLinksBlob(linksMap) {
   if (!process.env.BLOB_READ_WRITE_TOKEN) return;
   try {
-    const json = JSON.stringify(linksMap);
-    await put(TELEGRAM_LINKS_BLOB_KEY, json, { access: 'private', addRandomSuffix: false, contentType: 'application/json', cacheControlMaxAge: 0 });
+    await putBlobSafe(TELEGRAM_LINKS_BLOB_KEY, linksMap);
     console.log('[TelegramBlob] cms_telegram_links.json updated with', Object.keys(linksMap).length, 'entries.');
   } catch (e) {
     console.warn('[TelegramBlob] Could not write cms_telegram_links.json:', e.message);
@@ -674,7 +715,11 @@ async function getTelegramChatIdByPhone(rawPhone) {
 function _applyComplaintListFilters(complaints, filters, resolveUsername = () => 'Anonymous') {
   let result = complaints
     .filter(c => c && c.status !== 'Deleted')
-    .map(c => ({ ...c, complainant_name: c.complainant_name || resolveUsername(c.user_id) }));
+    .map(c => ({
+      ...c,
+      created_at: c.created_at || c.createdAt || new Date().toISOString(),
+      complainant_name: c.complainant_name || resolveUsername(c.user_id)
+    }));
 
   const { userId, role, status, category, region, search } = filters;
   const isStaff = ['ADMIN', 'CLERK', 'JUDGE'].includes(role?.toUpperCase());
@@ -694,7 +739,12 @@ function _applyComplaintListFilters(complaints, filters, resolveUsername = () =>
     );
   }
 
-  result.sort((a, b) => new Date(b.created_at || 0) - new Date(a.created_at || 0));
+  result.sort((a, b) => {
+    const timeA = new Date(a.created_at || a.createdAt || 0).getTime();
+    const timeB = new Date(b.created_at || b.createdAt || 0).getTime();
+    if (timeB !== timeA) return timeB - timeA;
+    return Number(b.id || 0) - Number(a.id || 0);
+  });
   return result;
 }
 
@@ -716,7 +766,7 @@ async function _querySqliteComplaints(filters = {}) {
     query += ' AND (c.title LIKE ? OR c.description LIKE ?)';
     params.push(`%${search}%`, `%${search}%`);
   }
-  query += ' ORDER BY c.created_at DESC';
+  query += ' ORDER BY c.created_at DESC, c.id DESC';
   return all(query, params);
 }
 
@@ -775,7 +825,12 @@ async function getAllComplaintsFromBlob(filters = {}) {
             );
           }
         }
-        result.sort((a, b) => new Date(b.created_at || 0) - new Date(a.created_at || 0));
+        result.sort((a, b) => {
+          const timeA = new Date(a.created_at || a.createdAt || 0).getTime();
+          const timeB = new Date(b.created_at || b.createdAt || 0).getTime();
+          if (timeB !== timeA) return timeB - timeA;
+          return Number(b.id || 0) - Number(a.id || 0);
+        });
       } catch (suppErr) {
         console.warn('[Blob] SQLite supplement skipped:', suppErr.message);
       }
@@ -823,11 +878,12 @@ async function getComplaintFromBlob(complaintId) {
     // Pick the latest timestamped blob for this complaint
     let latestTs = -1;
     let latestUrl = null;
+    const regex = new RegExp(`^cms_complaint_${complaintId}_(\\d+)\\.json$`);
     for (const b of blobs) {
-      const match = b.pathname.match(/^cms_complaint_\d+_(\d+)\.json$/);
+      const match = b.pathname.match(regex);
       if (match) {
         const ts = parseInt(match[1], 10);
-        if (ts > latestTs) { latestTs = ts; latestUrl = b.downloadUrl; }
+        if (ts > latestTs) { latestTs = ts; latestUrl = b.url || b.downloadUrl; }
       }
     }
 
@@ -1115,6 +1171,8 @@ module.exports = {
   getAllComplaintsFromBlob,
   getComplaintFromBlob,
   syncTelegramLinkToBlob,
-  getTelegramChatIdByPhone
+  getTelegramChatIdByPhone,
+  putBlobSafe,
+  fetchWithRetry
 };
 

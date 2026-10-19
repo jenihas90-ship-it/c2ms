@@ -113,31 +113,20 @@ router.post('/webhook', async (req, res) => {
 
 router.get('/test-blob', async (req, res) => {
     try {
-        const { put, head } = require('@vercel/blob');
+        const db = require('../db');
+        const { head } = require('@vercel/blob');
         const writeObj = { [Date.now().toString()]: "test" };
-        const json = JSON.stringify(writeObj);
-        const putRes = await put('cms_telegram_links.json', json, { access: 'public', addRandomSuffix: false, contentType: 'application/json', cacheControlMaxAge: 0 }).catch(e => ({ error: e.message }));
-
-        let privateRes = null;
-        if (putRes.error) {
-            privateRes = await put('cms_telegram_links_private.json', json, { addRandomSuffix: false, contentType: 'application/json', cacheControlMaxAge: 0 }).catch(e => ({ error: e.message }));
-        }
+        const putRes = await db.putBlobSafe('cms_telegram_links.json', writeObj).catch(e => ({ error: e.message }));
 
         const blobResp = await head('cms_telegram_links.json').catch(() => null);
-        const privateBlobResp = await head('cms_telegram_links_private.json').catch(() => null);
 
         let fetchStatus = null;
-        let pFetchStatus = null;
         let data = null;
         try {
             if (blobResp) {
-                const r = await fetch(`${blobResp.url}?t=${Date.now()}`);
+                const r = await db.fetchWithRetry(blobResp.url || blobResp.downloadUrl);
                 fetchStatus = r.status;
                 data = await r.json().catch(() => null);
-            }
-            if (privateBlobResp && privateBlobResp.downloadUrl) {
-                const rp = await fetch(privateBlobResp.downloadUrl);
-                pFetchStatus = rp.status;
             }
         } catch (fe) { }
 

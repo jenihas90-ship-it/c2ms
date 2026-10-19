@@ -295,12 +295,13 @@ async function loadComplaintsList() {
           <div class="complaint-item-descr">${escapeHTML(item.description)}</div>
           <div class="complaint-item-meta">
             <span>Ref: #${item.id}</span>
+            ${item.case_number && item.case_number !== 'Pending Assignment' ? `<span>•</span><span>Case: <b>${escapeHTML(item.case_number)}</b></span>` : ''}
             <span>•</span>
-            <span class="badge-category">${item.category}</span>
+            <span class="badge-category">${escapeHTML(item.category)}</span>
             <span>•</span>
             <span>By: <b>${escapeHTML(item.complainant_name || 'Anonymous')}</b></span>
             <span>•</span>
-            <span>${formatDate(item.created_at)}</span>
+            <span>${formatDate(item.created_at || item.createdAt)}</span>
           </div>
         </div>
         <div class="complaint-item-badges">

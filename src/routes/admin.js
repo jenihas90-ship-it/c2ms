@@ -191,28 +191,22 @@ router.get('/debug-blob', requireRole(['ADMIN']), async (req, res) => {
         const blobInfo = blobs.find(b => b.pathname === 'cms_complaints.json') || null;
 
         if (!blobInfo) {
-            // Blob doesn't exist yet — create it
-            const { put } = require('@vercel/blob');
-            await put('cms_complaints.json', JSON.stringify([]), {
-                access: 'public',
-                addRandomSuffix: false,
-                contentType: 'application/json',
-                cacheControlMaxAge: 0
-            });
+            // Blob doesn't exist yet — create it safely
+            await db.putBlobSafe('cms_complaints.json', []);
             return res.json({
                 status: 'initialized',
-                message: 'cms_complaints.json did not exist. Created an empty one with public access.',
+                message: 'cms_complaints.json did not exist. Created an empty one with safe access.',
                 complaints_count: 0
             });
         }
 
-        // Fetch and parse the blob
-        const fetchRes = await fetch(blobInfo.downloadUrl + '?t=' + Date.now());
+        // Fetch and parse the blob using fetchWithRetry with Authorization
+        const fetchRes = await db.fetchWithRetry(blobInfo.url || blobInfo.downloadUrl);
         const data = fetchRes.ok ? await fetchRes.json() : null;
 
         return res.json({
             status: 'ok',
-            blob_url: blobInfo.downloadUrl?.substring(0, 60) + '...',
+            blob_url: (blobInfo.url || blobInfo.downloadUrl)?.substring(0, 60) + '...',
             blob_size_bytes: blobInfo.size,
             fetch_status: fetchRes.status,
             complaints_count: Array.isArray(data) ? data.length : 'parse error',
