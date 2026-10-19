@@ -50,38 +50,48 @@ async function fetchWithRetry(url, retries = 4, delayMs = 1000) {
 
 /**
  * Universal JSON reader for Vercel Blobs using the official SDK get() method.
- * Works seamlessly with both private and public storage tiers without 403 errors.
+ * Works seamlessly with both private and public storage tiers without 403 or 400 errors.
  */
 async function readBlobJson(urlOrPathname) {
-  if (!process.env.BLOB_READ_WRITE_TOKEN) return null;
+  if (!process.env.BLOB_READ_WRITE_TOKEN || !urlOrPathname) return null;
   const { get: blobGet } = require('@vercel/blob');
+
+  // If a full URL is passed, extract the pathname to ensure clean query-free retrieval
+  let target = urlOrPathname;
+  if (typeof target === 'string' && (target.startsWith('http://') || target.startsWith('https://'))) {
+    try {
+      const parsed = new URL(target);
+      target = parsed.pathname.replace(/^\//, '');
+    } catch (_) { }
+  }
+
   const preferred = detectedBlobAccess || 'private';
   const modes = [preferred, preferred === 'private' ? 'public' : 'private'];
 
   let lastErr = null;
   for (const access of modes) {
     try {
-      const res = await blobGet(urlOrPathname, {
+      // NOTE: Do NOT pass useCache: false here! Passing useCache: false causes @vercel/blob
+      // to append ?cache=0 to the private blob URL, which Vercel's private storage API
+      // rejects with HTTP 400 Bad Request.
+      const res = await blobGet(target, {
         access,
-        useCache: false,
         token: process.env.BLOB_READ_WRITE_TOKEN
       });
       if (res && res.statusCode === 200 && res.stream) {
         detectedBlobAccess = access;
-        return await new Response(res.stream).json();
+        const text = await new Response(res.stream).text();
+        try {
+          return JSON.parse(text);
+        } catch (jsonErr) {
+          console.error('[readBlobJson] JSON parse failed for:', target, 'content:', text.substring(0, 100));
+          return null;
+        }
       }
       if (res && res.statusCode === 404) return null;
     } catch (e) {
       lastErr = e;
-      const msg = e.message || '';
-      if (
-        msg.includes('access must be') ||
-        msg.includes('Cannot use public') ||
-        msg.includes('Cannot use private')
-      ) {
-        continue;
-      }
-      break;
+      continue;
     }
   }
 

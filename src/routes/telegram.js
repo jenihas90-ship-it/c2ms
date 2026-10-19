@@ -120,26 +120,12 @@ router.get('/test-blob', async (req, res) => {
 
         const blobResp = await head('cms_telegram_links.json').catch(() => null);
 
-        let getResultKeys = null;
-        let readText = null;
-        let getErr = null;
-        try {
-            const { get } = require('@vercel/blob');
-            const getResult = await get('cms_telegram_links.json', { access: 'private' });
-            getResultKeys = getResult ? Object.keys(getResult) : null;
-            if (getResult && getResult.stream) {
-                readText = await new Response(getResult.stream).text();
-            }
-        } catch (e) {
-            getErr = e.message;
-        }
+        const readViaDb = await db.readBlobJson('cms_telegram_links.json').catch(e => ({ error: e.message }));
 
         res.json({
             putResult: putRes,
             headResult: blobResp,
-            getResultKeys,
-            readText,
-            getErr
+            readViaDb
         });
     } catch (err) {
         res.json({ error: err.message, stack: err.stack });
