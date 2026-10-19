@@ -82,10 +82,23 @@ router.post('/login', async (req, res) => {
     try {
         // Look up user (case-insensitive for email or username)
         const cleanIdentifier = loginIdentifier.trim();
-        const user = await db.get(
+        let user = await db.get(
             'SELECT * FROM users WHERE LOWER(username) = LOWER(?) OR LOWER(email) = LOWER(?)',
             [cleanIdentifier, cleanIdentifier]
         );
+
+        // If user was not found locally, force rehydrate from cms_users.json
+        // to catch users registered seconds ago on another serverless worker instance
+        if (!user) {
+            try {
+                const database = await db.getDb();
+                await db.ensureUsersRehydrated(database, true);
+                user = await db.get(
+                    'SELECT * FROM users WHERE LOWER(username) = LOWER(?) OR LOWER(email) = LOWER(?)',
+                    [cleanIdentifier, cleanIdentifier]
+                );
+            } catch (_) { }
+        }
 
         if (!user) {
             return res.status(401).json({ error: 'Invalid username/email or password.' });
