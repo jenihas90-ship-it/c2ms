@@ -120,12 +120,45 @@ router.get('/test-blob', async (req, res) => {
 
         const blobResp = await head('cms_telegram_links.json').catch(() => null);
 
-        const readViaDb = await db.readBlobJson('cms_telegram_links.json').catch(e => ({ error: e.message }));
+        const { get } = require('@vercel/blob');
+        const diag = {};
+
+        // Case 1: get pathname without token
+        try {
+            const r1 = await get('cms_telegram_links.json', { access: 'private' });
+            diag.case1 = { ok: true, text: r1 && r1.stream ? await new Response(r1.stream).text() : null };
+        } catch (e) {
+            diag.case1 = { error: e.message };
+        }
+
+        // Case 2: get pathname with token
+        try {
+            const r2 = await get('cms_telegram_links.json', { access: 'private', token: process.env.BLOB_READ_WRITE_TOKEN });
+            diag.case2 = { ok: true, text: r2 && r2.stream ? await new Response(r2.stream).text() : null };
+        } catch (e) {
+            diag.case2 = { error: e.message };
+        }
+
+        // Case 3: get full URL without token
+        try {
+            const r3 = await get(blobResp ? blobResp.url : '', { access: 'private' });
+            diag.case3 = { ok: true, text: r3 && r3.stream ? await new Response(r3.stream).text() : null };
+        } catch (e) {
+            diag.case3 = { error: e.message };
+        }
+
+        // Case 4: readBlobJson from db.js
+        try {
+            const r4 = await db.readBlobJson('cms_telegram_links.json');
+            diag.case4 = { ok: true, data: r4 };
+        } catch (e) {
+            diag.case4 = { error: e.message };
+        }
 
         res.json({
             putResult: putRes,
             headResult: blobResp,
-            readViaDb
+            diag
         });
     } catch (err) {
         res.json({ error: err.message, stack: err.stack });
