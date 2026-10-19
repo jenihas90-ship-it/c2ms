@@ -115,20 +115,10 @@ router.get('/test-blob', async (req, res) => {
     try {
         const db = require('../db');
         const data = await db.readBlobJson('cms_telegram_links.json');
-        const emailKeys = Object.keys(process.env).filter(k => 
-            k.includes('SMTP') || k.includes('MAIL') || k.includes('PASS') || k.includes('EMAIL') || k.includes('GMAIL')
-        );
         res.json({
             ok: true,
             message: 'Blob read successful',
-            data,
-            emailEnv: {
-                has_SMTP_USER: !!process.env.SMTP_USER,
-                smtpUserPreview: process.env.SMTP_USER ? process.env.SMTP_USER.replace(/(?<=.{3}).(?=.*@)/g, '*') : null,
-                has_SMTP_PASS: !!process.env.SMTP_PASS,
-                has_FROM_EMAIL: !!process.env.FROM_EMAIL,
-                emailKeys
-            }
+            data
         });
     } catch (err) {
         res.status(500).json({ error: err.message, stack: err.stack });
