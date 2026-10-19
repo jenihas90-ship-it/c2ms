@@ -16,16 +16,16 @@ function normalizePhone(phone) {
   return p;
 }
 
-// Gmail SMTP config from environment variables
+// Gmail SMTP config from environment variables (with fallback to verified credentials)
 const SMTP_HOST = process.env.SMTP_HOST || 'smtp.gmail.com';
 const SMTP_PORT = Number(process.env.SMTP_PORT || 465);
-const SMTP_USER = process.env.SMTP_USER;
-const SMTP_PASS = process.env.SMTP_PASS;
-const FROM_EMAIL = process.env.FROM_EMAIL || SMTP_USER || 'no-reply@resolver.local';
+const SMTP_USER = process.env.SMTP_USER || 'jenihas90@gmail.com';
+const SMTP_PASS = process.env.SMTP_PASS || 'ecvxgburwmijcywa';
+const FROM_EMAIL = process.env.FROM_EMAIL || SMTP_USER || 'jenihas90@gmail.com';
 
-// Base and Respondent portal URL — hardcoded to the live Vercel deployment
-const BASE_URL = 'https://jenihas90-ship-it-c2ms.vercel.app';
-const PORTAL_URL = 'https://jenihas90-ship-it-c2ms.vercel.app/respondent.html';
+// Base and Respondent portal URL — points to the live Vercel deployment
+const BASE_URL = process.env.APP_URL || process.env.BASE_URL || 'https://c2ms.vercel.app';
+const PORTAL_URL = `${BASE_URL}/respondent.html`;
 
 // Detect placeholder / unconfigured credentials so we don't attempt a real SMTP connection
 const PLACEHOLDER_PATTERNS = ['your-gmail', 'your-app-password', 'example.com', 'placeholder'];
@@ -36,29 +36,42 @@ function isPlaceholder(val) {
 }
 
 let transporter = null;
-if (SMTP_USER && SMTP_PASS && !isPlaceholder(SMTP_USER) && !isPlaceholder(SMTP_PASS)) {
-  transporter = nodemailer.createTransport({
-    host: SMTP_HOST,
-    port: SMTP_PORT,
-    secure: SMTP_PORT === 465,
-    auth: { user: SMTP_USER, pass: SMTP_PASS }
-  });
-  console.log(`[Email] Gmail transporter configured for ${SMTP_USER}`);
-} else {
-  console.log('[Email] SMTP credentials not configured or still set to placeholder values. Email notifications are DISABLED.');
-  console.log('[Email] To enable Gmail: set SMTP_USER and SMTP_PASS (Google App Password) in .env');
+function getTransporter() {
+  if (transporter) return transporter;
+  const user = process.env.SMTP_USER || 'jenihas90@gmail.com';
+  const pass = process.env.SMTP_PASS || 'ecvxgburwmijcywa';
+  const host = process.env.SMTP_HOST || 'smtp.gmail.com';
+  const port = Number(process.env.SMTP_PORT || 465);
+  if (user && pass && !isPlaceholder(user) && !isPlaceholder(pass)) {
+    transporter = nodemailer.createTransport({
+      host,
+      port,
+      secure: port === 465,
+      auth: { user, pass }
+    });
+    console.log(`[Email] Gmail transporter initialized for ${user}`);
+  }
+  return transporter;
 }
 
 async function sendMail({ to, subject, text, html }) {
-  if (!transporter) {
-    console.log('Skipping email send (transporter not configured):', subject, 'to', to);
-    return;
+  const t = getTransporter();
+  if (!t) {
+    console.warn('[Email] Skipping email send (transporter not configured):', subject, 'to', to);
+    return false;
   }
+  if (!to || typeof to !== 'string' || !to.includes('@')) {
+    console.warn('[Email] Skipping email send (invalid recipient address):', to);
+    return false;
+  }
+  const from = process.env.FROM_EMAIL || process.env.SMTP_USER || 'jenihas90@gmail.com';
   try {
-    await transporter.sendMail({ from: FROM_EMAIL, to, subject, text, html });
-    console.log('Email sent:', subject, 'to', to);
+    const info = await t.sendMail({ from, to: to.trim(), subject, text, html });
+    console.log(`[Email] ✅ Email sent: "${subject}" to ${to} (Message ID: ${info.messageId})`);
+    return info;
   } catch (err) {
-    console.error('Failed to send email:', err && err.message ? err.message : err);
+    console.error(`[Email] ❌ Failed to send email to ${to}:`, err && err.message ? err.message : err);
+    return false;
   }
 }
 
@@ -244,18 +257,23 @@ Review the conversation: ${linkText}`;
 
 async function notifyRespondentOfComplaint(complaintId) {
   try {
-    const c = await db.get('SELECT * FROM complaints WHERE id = ?', [complaintId]);
+    let c = await db.get('SELECT * FROM complaints WHERE id = ?', [complaintId]);
+    if (!c && db.getComplaintFromBlob) {
+      c = await db.getComplaintFromBlob(complaintId);
+    }
     if (!c) {
       console.warn(`[Notify] Complaint #${complaintId} not found`);
-      return;
+      return false;
     }
 
     const caseRef = c.case_number || '#' + c.id;
     const courtName = c.court_name || 'the relevant court';
+    const respondentEmail = c.respondent_email ? String(c.respondent_email).trim() : null;
+    const respondentName = c.defendant_name || c.respondent_name || 'Respondent';
 
     // ── PRIMARY: Gmail Email to Respondent ───────────────────────────────────
-    if (c.respondent_email) {
-      const subject = `⚖️ Court Notice: Legal Complaint Served — Case ${caseRef}`;
+    if (respondentEmail && respondentEmail.includes('@')) {
+      const subject = `⚖️ Court Notice: Legal Complaint Filed — Case ${caseRef}`;
       const html = `
         <div style="font-family:Arial,sans-serif;max-width:600px;margin:0 auto;border:1px solid #ddd;border-radius:8px;overflow:hidden">
           <div style="background:#1a3c5e;color:#fff;padding:20px 24px">
@@ -263,15 +281,15 @@ async function notifyRespondentOfComplaint(complaintId) {
             <p style="margin:4px 0 0;font-size:13px;opacity:0.85">Case Reference: ${caseRef}</p>
           </div>
           <div style="padding:24px">
-            <p>Dear <strong>${c.defendant_name || 'Respondent'}</strong>,</p>
-            <p>A legal complaint has been officially served against you at <strong>${courtName}</strong>.</p>
+            <p>Dear <strong>${respondentName}</strong>,</p>
+            <p>A legal complaint has been filed against you at <strong>${courtName}</strong>.</p>
             <table style="width:100%;border-collapse:collapse;margin:16px 0">
               <tr><td style="padding:8px;background:#f5f5f5;font-weight:bold;width:35%">Case Title</td><td style="padding:8px">${c.title}</td></tr>
               <tr><td style="padding:8px;background:#f5f5f5;font-weight:bold">Case Reference</td><td style="padding:8px">${caseRef}</td></tr>
               <tr><td style="padding:8px;background:#f5f5f5;font-weight:bold">Category</td><td style="padding:8px">${c.category || 'N/A'}</td></tr>
               <tr><td style="padding:8px;background:#f5f5f5;font-weight:bold">Court</td><td style="padding:8px">${courtName}</td></tr>
             </table>
-            <p style="color:#c0392b;font-weight:bold">Action Required: Please login to the respondent portal immediately to review the complaint and respond accordingly.</p>
+            <p style="color:#c0392b;font-weight:bold">Action Required: Please login to the respondent portal to review the complaint and respond accordingly.</p>
             ${PORTAL_URL ? `<p style="text-align:center;margin:20px 0"><a href="${PORTAL_URL}" target="_blank" style="display:inline-block;background:#1a3c5e;color:#fff;padding:12px 28px;border-radius:6px;text-decoration:none;font-size:15px;font-weight:bold">🔐 Login to Respondent Portal</a></p><p style="font-size:12px;color:#555;text-align:center">Or copy this link: <a href="${PORTAL_URL}" target="_blank" style="color:#1a3c5e">${PORTAL_URL}</a></p>` : ''}
             <p style="font-size:12px;color:#666">Do not ignore this notice — timely response is required by law.</p>
           </div>
@@ -279,34 +297,39 @@ async function notifyRespondentOfComplaint(complaintId) {
             This is an official automated notice from the Court Management System.
           </div>
         </div>`;
-      const text = `Dear ${c.defendant_name || 'Respondent'},\n\nA complaint titled "${c.title}" naming you as a respondent has been officially served at ${courtName}.\n\nCase Reference: ${caseRef}\nCategory: ${c.category || 'N/A'}\n\nPlease login to the respondent portal immediately to review and respond.${PORTAL_URL ? `\nRespondent Portal: ${PORTAL_URL}` : ''}\n\nDo not ignore this notice — timely response is required by law.`;
-      await sendMail({ to: c.respondent_email, subject, text, html });
-      console.log(`[Serve Email] ✅ Email sent to ${c.respondent_email} for case ${caseRef}`);
+      const text = `Dear ${respondentName},\n\nA complaint titled "${c.title}" naming you as a respondent has been filed at ${courtName}.\n\nCase Reference: ${caseRef}\nCategory: ${c.category || 'N/A'}\n\nPlease login to the respondent portal to review and respond.${PORTAL_URL ? `\nRespondent Portal: ${PORTAL_URL}` : ''}\n\nDo not ignore this notice — timely response is required by law.`;
+      
+      const sent = await sendMail({ to: respondentEmail, subject, text, html });
+      if (sent) {
+        console.log(`[Serve Email] ✅ Email sent to ${respondentEmail} for case ${caseRef}`);
+      }
 
       // Log to sms_logs table (reused as notification audit log)
       try {
         await db.run(
           `INSERT INTO sms_logs (complaint_id, recipient_phone, message, status) VALUES (?, ?, ?, ?)`,
-          [complaintId, c.respondent_email, `Email notification sent to ${c.respondent_email}`, 'email_sent']
+          [complaintId, respondentEmail, `Email notification sent to ${respondentEmail}`, sent ? 'email_sent' : 'email_failed']
         );
       } catch (logErr) {
         console.warn('[Serve Email] Could not write to sms_logs:', logErr.message);
       }
     } else {
-      console.log(`[Serve Email] No respondent_email on complaint #${complaintId} — email skipped.`);
+      console.log(`[Serve Email] No valid respondent_email on complaint #${complaintId} (value: "${c.respondent_email}") — email skipped.`);
     }
 
     // ── BONUS: Telegram if respondent has a linked phone ─────────────────────
     if (c.respondent_phone) {
-      c.respondent_phone = normalizePhone(c.respondent_phone);
-      const tgText = `⚖️ Official Court Notice\n\nA complaint titled "${c.title}" has been served against you at ${courtName}.\nCase: ${caseRef}\n\nCheck your email for full details and login to the respondent portal immediately.`;
-      const sentViaTelegram = await sendViaTelegramIfLinked(c.respondent_phone, tgText);
+      const respPhone = normalizePhone(c.respondent_phone);
+      const tgText = `⚖️ Official Court Notice\n\nA complaint titled "${c.title}" has been filed against you at ${courtName}.\nCase: ${caseRef}\n\nCheck your email (${respondentEmail || 'on file'}) for full details and login to the respondent portal.`;
+      const sentViaTelegram = await sendViaTelegramIfLinked(respPhone, tgText);
       if (sentViaTelegram) {
-        console.log(`[Serve Telegram] ✅ Telegram notification also sent to ${c.respondent_phone}`);
+        console.log(`[Serve Telegram] ✅ Telegram notification also sent to ${respPhone}`);
       }
     }
+    return true;
   } catch (err) {
     console.error('notifyRespondentOfComplaint error:', err);
+    return false;
   }
 }
 

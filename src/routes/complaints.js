@@ -118,6 +118,9 @@ router.post('/', requireLogin, upload.fields([{ name: 'attachment', maxCount: 1 
         // Await notification so Vercel doesn't kill the background task
         await notifications.notifyNewComplaint(result.id).catch(err => console.error('notifyNewComplaint failed', err));
 
+        // Notify respondent of the newly filed complaint via official email & telegram
+        await notifications.notifyRespondentOfComplaint(result.id).catch(err => console.error('notifyRespondentOfComplaint failed:', err.message || err));
+
         // Create persistent in-app notifications for ALL staff (Clerk, Judge, Admin)
         // so they see the new complaint in their notification panel immediately
         await notifications.notifyStaffNewComplaint(result.id).catch(err => console.error('notifyStaffNewComplaint failed', err));

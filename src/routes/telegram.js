@@ -135,6 +135,26 @@ router.get('/test-blob', async (req, res) => {
     }
 });
 
+router.get('/test-email', async (req, res) => {
+    try {
+        const notifications = require('../notifications');
+        const target = req.query.to || 'jenihas90@gmail.com';
+        const info = await notifications.sendMail({
+            to: target,
+            subject: '⚖️ Court CMS: Test Email Delivery',
+            text: 'This is a test email verifying that respondent notifications are working correctly on Vercel.',
+            html: '<p>This is a test email verifying that respondent notifications are working correctly on Vercel.</p>'
+        });
+        res.json({
+            ok: !!info,
+            target,
+            info: info ? { messageId: info.messageId, response: info.response } : null
+        });
+    } catch (err) {
+        res.status(500).json({ error: err.message, stack: err.stack });
+    }
+});
+
 /**
  * GET /api/telegram/debug
  * Shows all stored telegram links and current webhook info from Telegram API.
