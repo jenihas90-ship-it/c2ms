@@ -71,13 +71,10 @@ async function readBlobJson(urlOrPathname) {
   let lastErr = null;
   for (const access of modes) {
     try {
-      // NOTE: Do NOT pass useCache: false here! Passing useCache: false causes @vercel/blob
-      // to append ?cache=0 to the private blob URL, which Vercel's private storage API
-      // rejects with HTTP 400 Bad Request.
-      const res = await blobGet(target, {
-        access,
-        token: process.env.BLOB_READ_WRITE_TOKEN
-      });
+      // NOTE: Do NOT pass token or useCache: false here!
+      // When token is omitted, @vercel/blob handles authentication via its native mechanism.
+      // Passing token explicitly triggers a 400 Bad Request on private store endpoints.
+      const res = await blobGet(target, { access });
       if (res && res.statusCode === 200 && res.stream) {
         detectedBlobAccess = access;
         const text = await new Response(res.stream).text();
