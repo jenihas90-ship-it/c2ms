@@ -138,9 +138,243 @@ async function putBlobSafe(pathname, data, options = {}) {
   throw lastErr;
 }
 
+// Pre-computed bcrypt hashes (cost=10) for standard default users to ensure instantaneous, synchronous seeding
+const DEFAULT_USER_HASHES = {
+  admin: '$2a$10$gUfnusHJqn82lkFrU8on0uGumhGUkQ4SWSqaxKXQVBB6SHkH/B8pK',
+  user: '$2a$10$.fEm.Tkf0Z2XVPMs/4hmiuvNzrylaU9Un5L4JMqg9Tv.BDGkowzr.',
+  clerk: '$2a$10$ca9SCDu43PRALJB9lvP1a.fDoIs9wePhoIPhNAu1WUYi8O4ePt8i.',
+  judge: '$2a$10$MqDottWwjj4KO.LFJxLUMu5hdvScfGhpW0EAQ930Z0hK2KIxq6OPG',
+  respondent: '$2a$10$gir3hT1jVV.HDG930mzimuNRoIpFpd8NKdHTi13xvDMdAmW0Qk8.S'
+};
+
+function _ensureColumnMigrations(database) {
+  const newCols = [
+    'complainant_phone TEXT', 'complainant_country TEXT', 'complainant_region TEXT', 'complainant_woreda TEXT',
+    'respondent_phone TEXT', 'respondent_email TEXT', 'respondent_country TEXT', 'respondent_region TEXT', 'respondent_woreda TEXT',
+    'is_served INTEGER DEFAULT 0',
+    'court_address TEXT NOT NULL DEFAULT ""',
+    'court_fee_required INTEGER DEFAULT 0', 'court_fee_amount REAL', 'court_fee_paid INTEGER DEFAULT 0', 'court_fee_method TEXT', 'court_fee_receipt TEXT', 'respondent_fee_receipt TEXT',
+    'complainant_kebele TEXT', 'respondent_kebele TEXT',
+    'complainant_language TEXT', 'respondent_language TEXT', 'clerk_language TEXT', 'judge_language TEXT',
+    'complainant_national_id TEXT', 'respondent_national_id TEXT', 'formal_response TEXT',
+    'respondent_user_id INTEGER'
+  ];
+  for (const colDef of newCols) {
+    try {
+      database.run(`ALTER TABLE complaints ADD COLUMN ${colDef}`);
+    } catch (_) { }
+  }
+}
+
+function ensureSchema(database) {
+  if (!database) return;
+  try {
+    const check = database.exec("SELECT name FROM sqlite_master WHERE type='table' AND name='users'");
+    const usersExist = check.length > 0 && check[0].values.length > 0;
+    if (usersExist) {
+      _ensureColumnMigrations(database);
+      return;
+    }
+  } catch (_) { }
+
+  try {
+    database.run(`
+      CREATE TABLE IF NOT EXISTS users (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        username TEXT UNIQUE NOT NULL,
+        email TEXT UNIQUE NOT NULL,
+        password TEXT NOT NULL,
+        role TEXT CHECK(role IN ('CITIZEN', 'CLERK', 'JUDGE', 'ADMIN', 'RESPONDENT', 'complainant', 'admin')) NOT NULL,
+        created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+      )
+    `);
+
+    database.run(`
+      CREATE TABLE IF NOT EXISTS complaints (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        user_id INTEGER NOT NULL,
+        title TEXT NOT NULL,
+        category TEXT CHECK(category IN ('Civil', 'Criminal', 'Family', 'Property', 'Labor', 'Administrative', 'Other')) NOT NULL,
+        court_name TEXT NOT NULL DEFAULT '',
+        court_address TEXT NOT NULL DEFAULT '',
+        court_jurisdiction TEXT NOT NULL DEFAULT '',
+        case_number TEXT NOT NULL DEFAULT '',
+        plaintiff_name TEXT,
+        defendant_name TEXT,
+        parties TEXT,
+        hearing_date TEXT,
+        description TEXT NOT NULL,
+        priority TEXT CHECK(priority IN ('Low', 'Medium', 'High', 'Urgent')) NOT NULL,
+        status TEXT CHECK(status IN ('Pending', 'In Progress', 'Resolved', 'Rejected', 'Filed', 'Under Review', 'Scheduled', 'Judgment Awaited', 'Closed', 'Appeal Filed', 'Deleted')) DEFAULT 'Filed',
+        assignment_status TEXT CHECK(assignment_status IN ('Unassigned', 'Assigned to Judge', 'Assigned to Court')) DEFAULT 'Unassigned',
+        assigned_judge TEXT,
+        attachment_path TEXT,
+        legal_representation TEXT,
+        complainant_phone TEXT,
+        complainant_country TEXT,
+        complainant_region TEXT,
+        complainant_woreda TEXT,
+        complainant_kebele TEXT,
+        respondent_phone TEXT,
+        respondent_email TEXT,
+        respondent_country TEXT,
+        respondent_region TEXT,
+        respondent_woreda TEXT,
+        respondent_kebele TEXT,
+        complainant_language TEXT,
+        respondent_language TEXT,
+        complainant_national_id TEXT,
+        respondent_national_id TEXT,
+        clerk_language TEXT,
+        judge_language TEXT,
+        court_fee_required INTEGER DEFAULT 0,
+        court_fee_amount REAL DEFAULT 0,
+        court_fee_paid INTEGER DEFAULT 0,
+        court_fee_receipt TEXT,
+        court_fee_method TEXT,
+        respondent_fee_receipt TEXT,
+        is_served INTEGER DEFAULT 0,
+        formal_response TEXT,
+        respondent_user_id INTEGER,
+        created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+        updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+        FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+      )
+    `);
+
+    database.run(`
+      CREATE TABLE IF NOT EXISTS remarks (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        complaint_id INTEGER NOT NULL,
+        user_id INTEGER NOT NULL,
+        remark TEXT NOT NULL,
+        created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+        FOREIGN KEY (complaint_id) REFERENCES complaints(id) ON DELETE CASCADE,
+        FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+      )
+    `);
+
+    database.run(`
+      CREATE TABLE IF NOT EXISTS court_sessions (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        complaint_id INTEGER NOT NULL,
+        session_number INTEGER NOT NULL,
+        judge_name TEXT NOT NULL,
+        session_date TEXT NOT NULL,
+        session_time TEXT,
+        courtroom TEXT,
+        hearing_type TEXT CHECK(hearing_type IN ('Preliminary', 'Substantive', 'Interim', 'Final', 'Judgment')) NOT NULL,
+        outcome TEXT,
+        next_hearing_date TEXT,
+        notes TEXT,
+        created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+        updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+        FOREIGN KEY (complaint_id) REFERENCES complaints(id) ON DELETE CASCADE
+      )
+    `);
+
+    database.run(`
+      CREATE TABLE IF NOT EXISTS case_notes (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        complaint_id INTEGER NOT NULL,
+        author_id INTEGER NOT NULL,
+        note_text TEXT NOT NULL,
+        created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+        FOREIGN KEY (complaint_id) REFERENCES complaints(id) ON DELETE CASCADE,
+        FOREIGN KEY (author_id) REFERENCES users(id) ON DELETE CASCADE
+      )
+    `);
+
+    database.run(`
+      CREATE TABLE IF NOT EXISTS case_orders (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        complaint_id INTEGER NOT NULL,
+        order_date TEXT NOT NULL,
+        order_type TEXT CHECK(order_type IN ('Interim', 'Final Judgment', 'Dismissal', 'Settlement', 'Appeal')) NOT NULL,
+        judge_name TEXT NOT NULL,
+        order_details TEXT NOT NULL,
+        compensation_amount REAL,
+        document_path TEXT,
+        created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+        FOREIGN KEY (complaint_id) REFERENCES complaints(id) ON DELETE CASCADE
+      )
+    `);
+
+    database.run(`
+      CREATE TABLE IF NOT EXISTS filed_complaints_log (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        complaint_id INTEGER NOT NULL,
+        user_id INTEGER NOT NULL,
+        title TEXT NOT NULL,
+        filed_at DATETIME DEFAULT CURRENT_TIMESTAMP
+      )
+    `);
+
+    database.run(`
+      CREATE TABLE IF NOT EXISTS sms_logs (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        complaint_id INTEGER NOT NULL,
+        recipient_phone TEXT NOT NULL,
+        message TEXT NOT NULL,
+        status TEXT DEFAULT 'sent',
+        created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+        FOREIGN KEY (complaint_id) REFERENCES complaints(id) ON DELETE CASCADE
+      )
+    `);
+
+    database.run(`
+      CREATE TABLE IF NOT EXISTS telegram_links (
+        phone_number TEXT PRIMARY KEY,
+        chat_id TEXT NOT NULL,
+        linked_at DATETIME DEFAULT CURRENT_TIMESTAMP
+      )
+    `);
+
+    database.run(`
+      CREATE TABLE IF NOT EXISTS in_app_notifications (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        user_id INTEGER NOT NULL,
+        message TEXT NOT NULL,
+        complaint_id INTEGER,
+        is_read INTEGER DEFAULT 0,
+        created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+        FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
+        FOREIGN KEY (complaint_id) REFERENCES complaints(id) ON DELETE CASCADE
+      )
+    `);
+
+    // Seed default users if users table has no admin
+    const adminCheck = database.exec("SELECT id FROM users WHERE username = 'admin' LIMIT 1");
+    if (adminCheck.length === 0 || adminCheck[0].values.length === 0) {
+      const defaultUsers = [
+        ['admin', 'admin@cms.com', DEFAULT_USER_HASHES.admin, 'ADMIN'],
+        ['user', 'user@cms.com', DEFAULT_USER_HASHES.user, 'CITIZEN'],
+        ['clerk', 'clerk@cms.com', DEFAULT_USER_HASHES.clerk, 'CLERK'],
+        ['judge', 'judge@cms.com', DEFAULT_USER_HASHES.judge, 'JUDGE'],
+        ['respondent', 'respondent@cms.com', DEFAULT_USER_HASHES.respondent, 'RESPONDENT'],
+        ['landlord_john', 'jenihas90@gmail.com', DEFAULT_USER_HASHES.respondent, 'RESPONDENT']
+      ];
+      for (const [uname, uemail, upass, urole] of defaultUsers) {
+        database.run(
+          "INSERT OR IGNORE INTO users (username, email, password, role) VALUES (?, ?, ?, ?)",
+          [uname, uemail, upass, urole]
+        );
+      }
+      console.log('[ensureSchema] Core tables created and default accounts seeded.');
+    }
+
+    _ensureColumnMigrations(database);
+  } catch (err) {
+    console.error('[ensureSchema] Error ensuring schema:', err.message);
+  }
+}
+
 // Initialize sql.js and create in-memory/tmp database
 async function getDb() {
-  if (db) return db;
+  if (db) {
+    ensureSchema(db);
+    return db;
+  }
 
   if (!DB_FILE) {
     if (process.env.VERCEL || process.env.NOW_REGION) {
@@ -183,6 +417,7 @@ async function getDb() {
           const fileBuffer = fs.readFileSync(DB_FILE);
           db = new SQL.Database(fileBuffer);
           console.log('Loaded database from ' + DB_FILE + ' (' + Math.round(stat.size / 1024) + ' KB)');
+          ensureSchema(db);
           return db;
         } catch (e) {
           console.error('Failed to load existing tmp DB, starting fresh.', e.message);
@@ -195,6 +430,7 @@ async function getDb() {
   }
 
   db = new SQL.Database();
+  ensureSchema(db);
   return db;
 }
 
@@ -217,6 +453,16 @@ async function run(sql, params = []) {
       await ensureComplaintsRehydrated(database, true);
     } catch (rehydrateErr) {
       console.warn('[run] Pre-INSERT rehydration failed (non-fatal):', rehydrateErr.message);
+    }
+  }
+
+  // CRITICAL: If we are about to INSERT into the users table, rehydrate first
+  // so SQLite has the latest user IDs from cms_users.json before AUTOINCREMENT picks next value.
+  if (sqlUpper.startsWith('INSERT') && sql.toLowerCase().includes('into users')) {
+    try {
+      await ensureUsersRehydrated(database, true);
+    } catch (rehydrateErr) {
+      console.warn('[run] Pre-INSERT user rehydration failed (non-fatal):', rehydrateErr.message);
     }
   }
 
@@ -329,6 +575,9 @@ async function get(sql, params = []) {
   if (sql.includes('complaints')) {
     await ensureComplaintsRehydrated(database);
   }
+  if (sql.toLowerCase().includes('users')) {
+    await ensureUsersRehydrated(database);
+  }
   const stmt = database.prepare(sql);
   stmt.bind(params);
   let row = null;
@@ -349,6 +598,9 @@ async function all(sql, params = []) {
   const database = await getDb();
   if (sql.includes('complaints')) {
     await ensureComplaintsRehydrated(database);
+  }
+  if (sql.toLowerCase().includes('users')) {
+    await ensureUsersRehydrated(database);
   }
   const stmt = database.prepare(sql);
   stmt.bind(params);
@@ -644,6 +896,120 @@ async function deleteComplaintFromBlob(complaintId) {
 }
 
 // ─────────────────────────────────────────────────────────
+//  PERMANENT USERS BACKUP BLOB (cms_users.json)
+//  Persists registered users (Citizens, Respondents, etc.)
+//  across Vercel serverless cold starts and multi-worker routing.
+// ─────────────────────────────────────────────────────────
+const USERS_BLOB_KEY = 'cms_users.json';
+
+async function _readUsersBlob() {
+  if (!process.env.BLOB_READ_WRITE_TOKEN) return [];
+  try {
+    const data = await readBlobJson(USERS_BLOB_KEY);
+    return Array.isArray(data) ? data : [];
+  } catch (e) {
+    console.warn('[UsersBlob] Could not read cms_users.json:', e.message);
+    return [];
+  }
+}
+
+async function _writeUsersBlob(usersList) {
+  if (!process.env.BLOB_READ_WRITE_TOKEN) return;
+  try {
+    await putBlobSafe(USERS_BLOB_KEY, usersList);
+    console.log('[UsersBlob] cms_users.json updated with', usersList.length, 'users.');
+  } catch (e) {
+    console.warn('[UsersBlob] Could not write cms_users.json:', e.message);
+  }
+}
+
+async function syncUserToBlob(userObj) {
+  if (!process.env.BLOB_READ_WRITE_TOKEN || !userObj) return;
+  try {
+    const users = await _readUsersBlob();
+    const existingIndex = users.findIndex(u =>
+      (userObj.id && String(u.id) === String(userObj.id)) ||
+      (userObj.username && u.username && u.username.toLowerCase() === String(userObj.username).toLowerCase()) ||
+      (userObj.email && u.email && u.email.toLowerCase() === String(userObj.email).toLowerCase())
+    );
+
+    const userRecord = {
+      id: userObj.id,
+      username: userObj.username,
+      email: userObj.email,
+      password: userObj.password,
+      role: userObj.role,
+      created_at: userObj.created_at || new Date().toISOString()
+    };
+
+    if (existingIndex >= 0) {
+      users[existingIndex] = { ...users[existingIndex], ...userRecord };
+    } else {
+      users.push(userRecord);
+    }
+
+    await _writeUsersBlob(users);
+    console.log(`[UsersBlob] Synced user ${userRecord.username} (id=${userRecord.id}, role=${userRecord.role}) to blob.`);
+  } catch (e) {
+    console.error(`[UsersBlob] Error syncing user to blob:`, e.message);
+  }
+}
+
+let lastUsersRehydrateTime = -Infinity;
+async function ensureUsersRehydrated(database, force = false) {
+  if (!process.env.BLOB_READ_WRITE_TOKEN) return;
+  const now = Date.now();
+  if (!force && (now - lastUsersRehydrateTime < 15000)) return;
+  lastUsersRehydrateTime = now;
+
+  try {
+    const blobUsers = await _readUsersBlob();
+    if (!blobUsers || !Array.isArray(blobUsers) || blobUsers.length === 0) return;
+
+    for (const u of blobUsers) {
+      if (!u || !u.username || !u.password) continue;
+      try {
+        const checkSql = `SELECT id FROM users WHERE id = ${Number(u.id)} OR LOWER(username) = ? OR LOWER(email) = ?`;
+        const stmt = database.prepare(checkSql);
+        stmt.bind([(u.username || '').toLowerCase(), (u.email || '').toLowerCase()]);
+        let exists = false;
+        let existingId = null;
+        if (stmt.step()) {
+          exists = true;
+          const vals = stmt.get();
+          existingId = vals[0];
+        }
+        stmt.free();
+
+        if (!exists) {
+          if (u.id) {
+            database.run(
+              `INSERT INTO users (id, username, email, password, role, created_at) VALUES (?, ?, ?, ?, ?, ?)`,
+              [Number(u.id), u.username, u.email, u.password, u.role, u.created_at || new Date().toISOString()]
+            );
+          } else {
+            database.run(
+              `INSERT INTO users (username, email, password, role, created_at) VALUES (?, ?, ?, ?, ?)`,
+              [u.username, u.email, u.password, u.role, u.created_at || new Date().toISOString()]
+            );
+          }
+          console.log(`[UsersRehydrate] Loaded user ${u.username} (#${u.id}, ${u.role}) from blob into SQLite`);
+        } else if (existingId) {
+          database.run(
+            `UPDATE users SET password = ?, role = ? WHERE id = ?`,
+            [u.password, u.role, existingId]
+          );
+        }
+      } catch (innerErr) {
+        console.warn(`[UsersRehydrate] Error rehydrating user ${u.username}:`, innerErr.message);
+      }
+    }
+  } catch (e) {
+    console.warn('[UsersRehydrate] Warning:', e.message);
+  }
+}
+
+// ─────────────────────────────────────────────────────────
 //  TELEGRAM LINKS BLOB (cms_telegram_links.json)
 //  Keeps phone→chat_id mappings alive across cold starts
 //  and worker isolation — independent of the SQLite blob.
@@ -932,259 +1298,25 @@ async function getComplaintFromBlob(complaintId) {
 }
 
 
-// Initialize tables
+// Initialize tables and rehydrate state
 async function initDatabase() {
-  // Pause blob uploads during schema creation / user seeding to prevent
-  // uploading an incomplete snapshot that overwrites a complete blob.
   pauseBackup = true;
-
-  // Detect whether this is a truly new, empty database (no users table populated yet).
-  // We use this at the end to decide whether to call forceBackup().
-  // On cold-start restores the admin user already exists, so isNewDatabase stays false.
-  let isNewDatabase = false;
   try {
-    await run(`
-    CREATE TABLE IF NOT EXISTS users (
-      id INTEGER PRIMARY KEY AUTOINCREMENT,
-      username TEXT UNIQUE NOT NULL,
-      email TEXT UNIQUE NOT NULL,
-      password TEXT NOT NULL,
-      role TEXT CHECK(role IN ('CITIZEN', 'CLERK', 'JUDGE', 'ADMIN', 'RESPONDENT', 'complainant', 'admin')) NOT NULL,
-      created_at DATETIME DEFAULT CURRENT_TIMESTAMP
-    )
-  `);
-
-    // Create Complaints Table
-    await run(`
-    CREATE TABLE IF NOT EXISTS complaints (
-      id INTEGER PRIMARY KEY AUTOINCREMENT,
-      user_id INTEGER NOT NULL,
-      title TEXT NOT NULL,
-      category TEXT CHECK(category IN ('Civil', 'Criminal', 'Family', 'Property', 'Labor', 'Administrative', 'Other')) NOT NULL,
-      court_name TEXT NOT NULL DEFAULT '',
-      court_address TEXT NOT NULL DEFAULT '',
-      court_jurisdiction TEXT NOT NULL DEFAULT '',
-      case_number TEXT NOT NULL DEFAULT '',
-      plaintiff_name TEXT,
-      defendant_name TEXT,
-      parties TEXT,
-      hearing_date TEXT,
-      description TEXT NOT NULL,
-      priority TEXT CHECK(priority IN ('Low', 'Medium', 'High', 'Urgent')) NOT NULL,
-      status TEXT CHECK(status IN ('Pending', 'In Progress', 'Resolved', 'Rejected', 'Filed', 'Under Review', 'Scheduled', 'Judgment Awaited', 'Closed', 'Appeal Filed', 'Deleted')) DEFAULT 'Filed',
-      assignment_status TEXT CHECK(assignment_status IN ('Unassigned', 'Assigned to Judge', 'Assigned to Court')) DEFAULT 'Unassigned',
-      assigned_judge TEXT,
-      attachment_path TEXT,
-      legal_representation TEXT,
-      complainant_phone TEXT,
-      complainant_country TEXT,
-      complainant_region TEXT,
-      complainant_woreda TEXT,
-      respondent_phone TEXT,
-      respondent_email TEXT,
-      respondent_country TEXT,
-      respondent_region TEXT,
-      respondent_woreda TEXT,
-      complainant_language TEXT,
-      respondent_language TEXT,
-      complainant_national_id TEXT,
-      respondent_national_id TEXT,
-      clerk_language TEXT,
-      judge_language TEXT,
-      court_fee_required INTEGER DEFAULT 0,
-      court_fee_amount REAL DEFAULT 0,
-      court_fee_paid INTEGER DEFAULT 0,
-      court_fee_receipt TEXT,
-      court_fee_method TEXT,
-      respondent_fee_receipt TEXT,
-      is_served INTEGER DEFAULT 0,
-      created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-      updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-      FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
-    )
-  `);
-
-    // Migration step: gracefully add new columns if upgrading existing local SQLite DB
-    const newCols = [
-      'complainant_phone TEXT', 'complainant_country TEXT', 'complainant_region TEXT', 'complainant_woreda TEXT',
-      'respondent_phone TEXT', 'respondent_email TEXT', 'respondent_country TEXT', 'respondent_region TEXT', 'respondent_woreda TEXT',
-      'is_served INTEGER DEFAULT 0',
-      'court_address TEXT NOT NULL DEFAULT ""',
-      'court_fee_required INTEGER DEFAULT 0', 'court_fee_amount REAL', 'court_fee_paid INTEGER DEFAULT 0', 'court_fee_method TEXT', 'court_fee_receipt TEXT', 'respondent_fee_receipt TEXT',
-      'complainant_kebele TEXT', 'respondent_kebele TEXT',
-      'complainant_language TEXT', 'respondent_language TEXT', 'clerk_language TEXT', 'judge_language TEXT',
-      'complainant_national_id TEXT', 'respondent_national_id TEXT', 'formal_response TEXT',
-      // Added later — must be here so cold-start workers get the schema migration on every restart
-      'respondent_user_id INTEGER'
-    ];
-    for (const colDef of newCols) {
+    const database = await getDb();
+    ensureSchema(database);
+    await ensureUsersRehydrated(database);
+    await ensureComplaintsRehydrated(database);
+    if (DB_FILE) {
       try {
-        // Will throw if column already exists
-        await run(`ALTER TABLE complaints ADD COLUMN ${colDef}`);
-      } catch (err) {
-        // Ignore "duplicate column name" error naturally.
-      }
+        const buffer = Buffer.from(database.export());
+        fs.writeFileSync(DB_FILE, buffer);
+      } catch (_) { }
     }
-
-    // Create Remarks Table
-    await run(`
-    CREATE TABLE IF NOT EXISTS remarks (
-      id INTEGER PRIMARY KEY AUTOINCREMENT,
-      complaint_id INTEGER NOT NULL,
-      user_id INTEGER NOT NULL,
-      remark TEXT NOT NULL,
-      created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-      FOREIGN KEY (complaint_id) REFERENCES complaints(id) ON DELETE CASCADE,
-      FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
-    )
-  `);
-
-    // Create Court Sessions Table
-    await run(`
-    CREATE TABLE IF NOT EXISTS court_sessions (
-      id INTEGER PRIMARY KEY AUTOINCREMENT,
-      complaint_id INTEGER NOT NULL,
-      session_number INTEGER NOT NULL,
-      judge_name TEXT NOT NULL,
-      session_date TEXT NOT NULL,
-      session_time TEXT,
-      courtroom TEXT,
-      hearing_type TEXT CHECK(hearing_type IN ('Preliminary', 'Substantive', 'Interim', 'Final', 'Judgment')) NOT NULL,
-      outcome TEXT,
-      next_hearing_date TEXT,
-      notes TEXT,
-      created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-      updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-      FOREIGN KEY (complaint_id) REFERENCES complaints(id) ON DELETE CASCADE
-    )
-  `);
-
-    // Create Case Notes Table (Confidential)
-    await run(`
-    CREATE TABLE IF NOT EXISTS case_notes (
-      id INTEGER PRIMARY KEY AUTOINCREMENT,
-      complaint_id INTEGER NOT NULL,
-      author_id INTEGER NOT NULL,
-      note_text TEXT NOT NULL,
-      created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-      FOREIGN KEY (complaint_id) REFERENCES complaints(id) ON DELETE CASCADE,
-      FOREIGN KEY (author_id) REFERENCES users(id) ON DELETE CASCADE
-    )
-  `);
-
-    // Create Case Orders/Judgments Table
-    await run(`
-    CREATE TABLE IF NOT EXISTS case_orders (
-      id INTEGER PRIMARY KEY AUTOINCREMENT,
-      complaint_id INTEGER NOT NULL,
-      order_date TEXT NOT NULL,
-      order_type TEXT CHECK(order_type IN ('Interim', 'Final Judgment', 'Dismissal', 'Settlement', 'Appeal')) NOT NULL,
-      judge_name TEXT NOT NULL,
-      order_details TEXT NOT NULL,
-      compensation_amount REAL,
-      document_path TEXT,
-      created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-      FOREIGN KEY (complaint_id) REFERENCES complaints(id) ON DELETE CASCADE
-    )
-  `);
-
-    // Create Filed Complaints Ledger Table (append-only — NEVER deleted, survives admin deletion)
-    await run(`
-    CREATE TABLE IF NOT EXISTS filed_complaints_log (
-      id INTEGER PRIMARY KEY AUTOINCREMENT,
-      complaint_id INTEGER NOT NULL,
-      user_id INTEGER NOT NULL,
-      title TEXT NOT NULL,
-      filed_at DATETIME DEFAULT CURRENT_TIMESTAMP
-    )
-  `);
-
-    // Create SMS Logs Table (audit trail for AI-generated SMS notifications)
-    await run(`
-    CREATE TABLE IF NOT EXISTS sms_logs (
-      id INTEGER PRIMARY KEY AUTOINCREMENT,
-      complaint_id INTEGER NOT NULL,
-      recipient_phone TEXT NOT NULL,
-      message TEXT NOT NULL,
-      status TEXT DEFAULT 'sent',
-      created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-      FOREIGN KEY (complaint_id) REFERENCES complaints(id) ON DELETE CASCADE
-    )
-  `);
-
-    // Create Telegram Links Table (links phone numbers to Telegram Chat IDs)
-    await run(`
-    CREATE TABLE IF NOT EXISTS telegram_links (
-      phone_number TEXT PRIMARY KEY,
-      chat_id TEXT NOT NULL,
-      linked_at DATETIME DEFAULT CURRENT_TIMESTAMP
-    )
-  `);
-
-    // Create In-App Notifications Table 
-    await run(`
-    CREATE TABLE IF NOT EXISTS in_app_notifications (
-      id INTEGER PRIMARY KEY AUTOINCREMENT,
-      user_id INTEGER NOT NULL,
-      message TEXT NOT NULL,
-      complaint_id INTEGER,
-      is_read INTEGER DEFAULT 0,
-      created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-      FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
-      FOREIGN KEY (complaint_id) REFERENCES complaints(id) ON DELETE CASCADE
-    )
-  `);
-
-    // Insert default administrators
-    const adminExists = await get("SELECT * FROM users WHERE username = 'admin' LIMIT 1");
-    if (!adminExists) {
-      // No admin means this is a brand-new, empty database — mark it so we backup at the end.
-      isNewDatabase = true;
-      const hashedPassword = bcrypt.hashSync('admin123', 10);
-      await run(
-        "INSERT INTO users (username, email, password, role) VALUES (?, ?, ?, ?)",
-        ['admin', 'admin@cms.com', hashedPassword, 'ADMIN']
-      );
-      console.log('Default Admin user seeded.');
-    }
-
-    // Insert default users
-    const userExists = await get("SELECT * FROM users WHERE username = 'user' LIMIT 1");
-    if (!userExists) {
-      const hashedPassword = bcrypt.hashSync('user123', 10);
-      await run("INSERT INTO users (username, email, password, role) VALUES (?, ?, ?, ?)", ['user', 'user@cms.com', hashedPassword, 'CITIZEN']);
-    }
-    const clerkExists = await get("SELECT * FROM users WHERE username = 'clerk' LIMIT 1");
-    if (!clerkExists) {
-      const hashedPassword = bcrypt.hashSync('clerk123', 10);
-      await run("INSERT INTO users (username, email, password, role) VALUES (?, ?, ?, ?)", ['clerk', 'clerk@cms.com', hashedPassword, 'CLERK']);
-    }
-    const judgeExists = await get("SELECT * FROM users WHERE username = 'judge' LIMIT 1");
-    if (!judgeExists) {
-      const hashedPassword = bcrypt.hashSync('judge123', 10);
-      await run("INSERT INTO users (username, email, password, role) VALUES (?, ?, ?, ?)", ['judge', 'judge@cms.com', hashedPassword, 'JUDGE']);
-    }
-
-    const respondentExists = await get("SELECT * FROM users WHERE username = 'respondent' LIMIT 1");
-    if (!respondentExists) {
-      const hashedPassword = bcrypt.hashSync('resp123', 10);
-      await run("INSERT INTO users (username, email, password, role) VALUES (?, ?, ?, ?)", ['respondent', 'respondent@cms.com', hashedPassword, 'RESPONDENT']);
-      console.log('Default Respondent user seeded.');
-    }
-
+  } catch (err) {
+    console.error('[initDatabase] Error during initialization:', err);
+    throw err;
   } finally {
     pauseBackup = false;
-  }
-
-  // CRITICAL: Only call forceBackup() on a brand-new empty database.
-  // On cold starts the blob was already restored into /tmp before getDb() returned,
-  // so calling forceBackup() here would OVERWRITE the blob with just default users
-  // and zero complaints — wiping all filed data!
-  if (isNewDatabase) {
-    console.log('[Persistence] Fresh database detected — uploading initial snapshot to Vercel Blob.');
-    await forceBackup();
-  } else {
-    console.log('[Persistence] Restored database — skipping forceBackup() to preserve existing blob data.');
   }
   console.log('Database initialized successfully.');
 }
@@ -1195,6 +1327,7 @@ module.exports = {
   get,
   all,
   initDatabase,
+  ensureSchema,
   forceBackup,
   getFiledCount,
   incrementFiledCount,
@@ -1204,6 +1337,8 @@ module.exports = {
   getComplaintFromBlob,
   syncTelegramLinkToBlob,
   getTelegramChatIdByPhone,
+  syncUserToBlob,
+  ensureUsersRehydrated,
   putBlobSafe,
   fetchWithRetry,
   readBlobJson

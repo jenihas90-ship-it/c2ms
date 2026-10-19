@@ -166,6 +166,12 @@ router.patch('/users/:id/role', requireRole(['ADMIN']), async (req, res) => {
     try {
         // Simple update role
         await db.run('UPDATE users SET role = ? WHERE id = ?', [role.toUpperCase(), userId]);
+        try {
+            const updatedUser = await db.get('SELECT * FROM users WHERE id = ?', [userId]);
+            if (updatedUser) {
+                await db.syncUserToBlob(updatedUser);
+            }
+        } catch (_) { }
         res.json({ message: 'User role updated successfully.' });
     } catch (err) {
         res.status(500).json({ error: 'Failed to update user role.' });

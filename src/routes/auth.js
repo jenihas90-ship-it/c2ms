@@ -11,34 +11,51 @@ router.post('/register', async (req, res) => {
         return res.status(400).json({ error: 'Username, email, and password are required.' });
     }
 
+    const cleanUsername = String(username).trim();
+    const cleanEmail = String(email).trim().toLowerCase();
+
     // Validate role
     const validRoles = ['CITIZEN', 'CLERK', 'JUDGE', 'ADMIN', 'RESPONDENT'];
     const userRole = validRoles.includes(role?.toUpperCase()) ? role.toUpperCase() : 'CITIZEN';
 
     try {
-        // Check if user exists
+        // Check if user exists (case-insensitive for both username and email)
         const existingUser = await db.get(
-            'SELECT id FROM users WHERE username = ? OR email = ?',
-            [username, email]
+            'SELECT id FROM users WHERE LOWER(username) = LOWER(?) OR LOWER(email) = LOWER(?)',
+            [cleanUsername, cleanEmail]
         );
 
         if (existingUser) {
             return res.status(400).json({ error: 'Username or email already exists.' });
         }
 
-        // Hashpassword
+        // Hash password
         const saltRounds = 10;
         const hashedPassword = await bcrypt.hash(password, saltRounds);
 
         // Insert user
         const result = await db.run(
             'INSERT INTO users (username, email, password, role) VALUES (?, ?, ?, ?)',
-            [username, email, hashedPassword, userRole]
+            [cleanUsername, cleanEmail, hashedPassword, userRole]
         );
+
+        // Sync newly registered user to Vercel Blob store for cross-worker persistence
+        try {
+            await db.syncUserToBlob({
+                id: result.id,
+                username: cleanUsername,
+                email: cleanEmail,
+                password: hashedPassword,
+                role: userRole,
+                created_at: new Date().toISOString()
+            });
+        } catch (blobErr) {
+            console.warn('[auth] syncUserToBlob failed (non-fatal):', blobErr.message);
+        }
 
         // Auto-login: create session immediately after registration
         req.session.userId = result.id;
-        req.session.username = username;
+        req.session.username = cleanUsername;
         req.session.role = userRole;
 
         const redirectUrl = userRole === 'RESPONDENT' ? '/respondent.html' : '/dashboard.html';
@@ -50,7 +67,7 @@ router.post('/register', async (req, res) => {
         });
     } catch (err) {
         console.error('Registration error:', err);
-        res.status(500).json({ error: 'Internal Server Error during registration: ' + err.message, stack: err.stack });
+        res.status(500).json({ error: 'Registration failed: ' + err.message });
     }
 });
 
@@ -100,7 +117,7 @@ router.post('/login', async (req, res) => {
         });
     } catch (err) {
         console.error('Login error:', err);
-        res.status(500).json({ error: 'Internal Server Error during login: ' + err.message, stack: err.stack });
+        res.status(500).json({ error: 'Login failed: ' + err.message });
     }
 });
 
