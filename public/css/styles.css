@@ -8,9 +8,9 @@
   --font-display: 'Outfit', sans-serif;
 
   /* HSL Color Palette */
-  --bg-space-dark: hsl(0, 0%, 100%);
-  --bg-space-light: hsl(0, 0%, 98%);
-  --card-bg: rgba(255, 255, 255, 0.95);
+  --bg-space-dark: #ffffff;
+  --bg-space-light: #ffffff;
+  --card-bg: #ffffff;
   --card-border: rgba(0, 0, 0, 0.08);
   --card-border-glow: rgba(0, 245, 212, 0.15);
 
@@ -72,7 +72,7 @@ vercel-live-feedback,
 
 body {
   font-family: var(--font-sans);
-  background-color: var(--bg-space-dark);
+  background-color: #ffffff;
   color: var(--text-main);
   min-height: 100vh;
   overflow-x: hidden;
@@ -132,19 +132,12 @@ button {
   height: 100vh;
   z-index: -10;
   overflow: hidden;
-  background: radial-gradient(circle at 10% 20%, hsl(0, 0%, 100%) 0%, hsl(0, 0%, 98%) 90%);
+  background: #ffffff;
 }
 
 .blob-1,
 .blob-2 {
-  position: absolute;
-  width: 400px;
-  height: 400px;
-  border-radius: 50%;
-  filter: blur(150px);
-  opacity: 0.15;
-  pointer-events: none;
-  animation: floatBlobs 20s infinite alternate;
+  display: none !important;
 }
 
 .blob-1 {
@@ -553,6 +546,7 @@ select:focus {
    2. MAIN DASHBOARD PANELS (dashboard.html)
    ========================================================================== */
 .dashboard-layout {
+  background: #ffffff;
   display: grid;
   grid-template-columns: 260px 1fr;
   height: 100vh;
@@ -567,7 +561,7 @@ select:focus {
 
 /* Dashboard left Sidebar */
 .dashboard-sidebar {
-  background: hsl(0, 0%, 99%);
+  background: #ffffff;
   border-right: 1px solid var(--card-border);
   display: flex;
   flex-direction: column;
@@ -698,6 +692,7 @@ select:focus {
 
 /* Dashboard main core workspace */
 .dashboard-main {
+  background: #ffffff;
   display: flex;
   flex-direction: column;
   height: 100vh;
@@ -711,7 +706,7 @@ select:focus {
   justify-content: space-between;
   padding: 1.5rem 2.5rem;
   border-bottom: 1px solid var(--card-border);
-  background: rgba(255, 255, 255, 0.5);
+  background: #ffffff;
   backdrop-filter: blur(10px);
 }
 
@@ -1602,7 +1597,7 @@ select:focus {
 }
 
 .chat-sidebar {
-  background: rgba(248, 250, 252, 0.88);
+  background: #ffffff;
   border: 1px solid rgba(0, 0, 0, 0.08);
   padding: 1.25rem;
   border-radius: 28px;
@@ -1666,7 +1661,7 @@ select:focus {
 }
 
 .chat-panel {
-  background: linear-gradient(180deg, rgba(245, 248, 251, 0.96), rgba(248, 250, 253, 0.96));
+  background: #ffffff;
   padding: 1.5rem;
   border-radius: 32px;
   min-height: calc(100vh - 4rem);
