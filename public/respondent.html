@@ -735,7 +735,7 @@
                     <div class="user-role">Respondent</div>
                 </div>
             </div>
-            <button class="logout-btn" onclick="handleLogout()">🚪 Sign Out</button>
+            <button class="logout-btn" id="sidebar-logout-btn" onclick="handleLogout(event)" data-i18n="btn_logout">🚪 Sign Out</button>
         </div>
     </aside>
 
@@ -1318,10 +1318,152 @@
     <!-- Scripts -->
     <script src="/js/utils.js"></script>
     <script>
+        // ── Global Portal State ──
+        let isLoading = false;
         let currentUser = null;
         let allCases = [];
         let currentCaseId = null;
         let panelPollTimer = null;
+
+        // ── 1. Independent & Decoupled Sign Out ──
+        // Immediately clickable upon page load, resilient against server or network failure.
+        async function handleLogout(event) {
+            if (event) {
+                if (typeof event.preventDefault === 'function') event.preventDefault();
+                if (typeof event.stopPropagation === 'function') event.stopPropagation();
+            }
+
+            // Immediately clear local session state
+            try {
+                localStorage.removeItem('cms_user');
+                localStorage.removeItem('user_role');
+                sessionStorage.clear();
+            } catch (e) {
+                console.warn('Failed to clear storage:', e);
+            }
+
+            // Provide immediate UI feedback
+            if (typeof showToast === 'function') {
+                const msg = (window.i18n && typeof window.i18n.t === 'function')
+                    ? window.i18n.t('toast_logging_out', 'Signing out…')
+                    : 'Signing out…';
+                showToast(msg);
+            }
+
+            const btn = document.getElementById('sidebar-logout-btn');
+            if (btn) {
+                btn.disabled = true;
+                btn.style.opacity = '0.6';
+                btn.textContent = '⏳ ...';
+            }
+
+            // Call logout endpoint with 2s timeout so network failure never blocks redirect
+            try {
+                const controller = new AbortController();
+                const timeoutId = setTimeout(() => controller.abort(), 2000);
+                await fetch('/api/auth/logout', {
+                    method: 'POST',
+                    credentials: 'include',
+                    headers: { 'Content-Type': 'application/json' },
+                    signal: controller.signal
+                });
+                clearTimeout(timeoutId);
+            } catch (err) {
+                console.warn('Backend logout request failed or timed out:', err);
+            } finally {
+                // Guaranteed redirect to login/home page
+                window.location.replace('/?login=true&signedout=true');
+            }
+        }
+        window.handleLogout = handleLogout;
+
+        // ── 2. Authentication Check & Session Expiry Handler ──
+        function handleAuthExpired() {
+            console.warn('Session missing, expired, or unauthorized. Clearing local session and redirecting...');
+            try {
+                localStorage.removeItem('cms_user');
+                localStorage.removeItem('user_role');
+                sessionStorage.clear();
+            } catch (e) {}
+
+            if (panelPollTimer) {
+                clearInterval(panelPollTimer);
+                panelPollTimer = null;
+            }
+
+            window.location.replace('/?login=true&expired=true');
+        }
+
+        // ── Loading state helper ──
+        function updateLoadingState(loading) {
+            isLoading = loading;
+        }
+
+        // ── Profile UI Updater ──
+        function updateProfileUI(user) {
+            const nameEl = document.getElementById('sidebar-name');
+            if (nameEl) nameEl.textContent = user ? user.username : 'Respondent';
+
+            const avatarEl = document.getElementById('sidebar-avatar');
+            if (avatarEl) avatarEl.textContent = (user && user.username) ? user.username[0].toUpperCase() : 'R';
+
+            const welcomeEl = document.getElementById('welcome-name');
+            if (welcomeEl) welcomeEl.textContent = user ? user.username : '—';
+        }
+
+        // ── 4. Localized Error Content & Error UI ──
+        function getLocalizedErrorContent() {
+            const lang = window.i18n ? window.i18n.getActorLanguage('RESPONDENT') : 'en';
+
+            if (lang === 'am') {
+                return {
+                    title: 'መረጃውን መጫን አልተቻለም',
+                    msg: 'የፍርድ ቤት መዝገቦችን ከመረጃ ቋቱ መጫን አልተቻለም። እባክዎ የበይነመረብ ግንኙነትዎን ያረጋግጡ ወይም እንደገና ይሞክሩ።',
+                    retryBtn: '🔄 እንደገና ሞክር'
+                };
+            } else if (lang === 'om') {
+                return {
+                    title: 'Odeeffannoo Fe\'uu Hin Dandeenye',
+                    msg: 'Dhimmoota kuusaa odeeffannoo mana murtii irraa fe\'uu hin dandeenye. Maaloo intarneetii keessan mirkaneeffadhaa ykn irra deebi\'aa yaalaa.',
+                    retryBtn: '🔄 Irra Deebi\'i Yaali'
+                };
+            } else {
+                return {
+                    title: 'Unable to Load Court Cases',
+                    msg: 'Could not retrieve case records from the court database. Please check your network connection or try again.',
+                    retryBtn: '🔄 Retry Connection'
+                };
+            }
+        }
+
+        function renderDataFetchError(err) {
+            const info = getLocalizedErrorContent();
+            const errorCardHtml = [
+                '<div class="empty-state" style="padding: 2.5rem 1.5rem; text-align: center; background: #fff5f5; border: 1px solid #fed7d7; border-radius: 12px; margin: 0.5rem 0;">',
+                '    <div class="big-icon" style="font-size: 2.2rem; margin-bottom: 0.75rem;">⚠️</div>',
+                '    <div style="font-weight: 700; font-size: 1.05rem; color: #9b2c2c; margin-bottom: 0.4rem;">',
+                '        ' + escapeHTML(info.title),
+                '    </div>',
+                '    <p style="font-size: 0.88rem; color: #742a2a; max-width: 480px; margin: 0 auto 1.25rem; line-height: 1.5;">',
+                '        ' + escapeHTML(info.msg),
+                '    </p>',
+                '    <button onclick="bootstrapRespondentPortal()" class="send-btn" style="background: #e53e3e; color: #fff; padding: 0.55rem 1.25rem; border-radius: 8px; font-weight: 600; cursor: pointer; border: none; box-shadow: 0 4px 12px rgba(229,62,62,0.25);">',
+                '        ' + escapeHTML(info.retryBtn),
+                '    </button>',
+                '</div>'
+            ].join('\n');
+
+            const recentEl = document.getElementById('recent-cases-list');
+            if (recentEl) recentEl.innerHTML = errorCardHtml;
+
+            const allEl = document.getElementById('all-cases-list');
+            if (allEl) allEl.innerHTML = errorCardHtml;
+
+            ['stat-total', 'stat-pending', 'stat-progress', 'stat-resolved'].forEach(id => {
+                const el = document.getElementById(id);
+                if (el) el.textContent = '—';
+            });
+        }
 
         // ── Auth & Tab Switchers ──
         function switchRespAuthTab(tab) {
@@ -1407,31 +1549,66 @@
 
         function initPortal() {
             if (!currentUser) return;
-            document.getElementById('sidebar-name').textContent = currentUser.username;
-            document.getElementById('sidebar-avatar').textContent = currentUser.username[0].toUpperCase();
-            document.getElementById('welcome-name').textContent = currentUser.username;
+            updateProfileUI(currentUser);
             loadCases();
         }
 
-        // ── Bootstrap Check ──
-        (async () => {
+        // ── 1. Strict Try/Catch/Finally Initial Data Fetching ──
+        async function bootstrapRespondentPortal() {
+            updateLoadingState(true);
+
             try {
-                const data = await apiRequest('/api/auth/me');
-                if (data.loggedIn && data.user) {
-                    if (data.user.role !== 'RESPONDENT') {
-                        window.location.href = '/dashboard.html';
+                // 1. Verify Authentication & User Profile
+                let authData;
+                try {
+                    authData = await apiRequest('/api/auth/me');
+                } catch (authErr) {
+                    console.error('Auth verification call failed:', authErr);
+                    if (authErr.status === 401 || (authErr.message && (authErr.message.includes('401') || authErr.message.toLowerCase().includes('unauthorized')))) {
+                        handleAuthExpired();
                         return;
                     }
-                    currentUser = data.user;
-                    initPortal();
-                } else {
-                    // Show Respondent Sign In Modal if unauthenticated
-                    document.getElementById('resp-auth-overlay').style.display = 'flex';
+                    throw authErr;
                 }
+
+                if (!authData || !authData.loggedIn || !authData.user) {
+                    handleAuthExpired();
+                    return;
+                }
+
+                if (authData.user.role !== 'RESPONDENT') {
+                    window.location.replace('/dashboard.html');
+                    return;
+                }
+
+                currentUser = authData.user;
+                updateProfileUI(currentUser);
+
+                // 2. Fetch Cases Data
+                await loadCases(false);
+
             } catch (err) {
-                document.getElementById('resp-auth-overlay').style.display = 'flex';
+                console.error('Initial portal load failed:', err);
+
+                // If unauthorized or session expired, redirect
+                if (err.status === 401 || (err.message && (err.message.includes('401') || err.message.toLowerCase().includes('unauthorized')))) {
+                    handleAuthExpired();
+                    return;
+                }
+
+                // Make sure sidebar doesn't say "Loading..." forever
+                updateProfileUI(currentUser || { username: 'Respondent' });
+
+                // Render Graceful Localized Error UI in case lists
+                renderDataFetchError(err);
+            } finally {
+                // Ensure isLoading state is explicitly false in finally block!
+                updateLoadingState(false);
             }
-        })();
+        }
+
+        // Execute Bootstrap Check
+        bootstrapRespondentPortal();
 
         // ── Navigation ──
         function showPage(name) {
@@ -1455,6 +1632,7 @@
 
         // ── Load all cases ──
         async function loadCases(silent = false) {
+            updateLoadingState(true);
             try {
                 const data = await apiRequest('/api/respondent/cases');
                 allCases = data.cases || [];
@@ -1463,9 +1641,17 @@
                 renderCaseList('all-cases-list', allCases);
                 renderStats(allCases);
             } catch (err) {
-                if (!silent) {
-                    document.getElementById('recent-cases-list').innerHTML = '<div class="empty-state"><div class="big-icon">⚠️</div>Failed to load cases.</div>';
+                console.error('loadCases failed:', err);
+                if (err.status === 401 || (err.message && (err.message.includes('401') || err.message.toLowerCase().includes('unauthorized')))) {
+                    handleAuthExpired();
+                    return;
                 }
+                if (!silent) {
+                    renderDataFetchError(err);
+                }
+            } finally {
+                // Explicitly set isLoading to false in finally block
+                updateLoadingState(false);
             }
         }
 
@@ -1803,16 +1989,7 @@
         }
 
 
-        // ── Logout ──
-        async function handleLogout() {
-            try {
-                await apiRequest('/api/auth/logout', { method: 'POST' });
-                showToast('Logging out…');
-                setTimeout(() => { window.location.href = '/'; }, 800);
-            } catch {
-                showToast('Logout failed', true);
-            }
-        }
+        // (handleLogout moved to top-level for immediate decoupling)
 
         // ── Virtual Hearing (Jitsi Meet) ──
         let jitsiApi = null;
@@ -1882,7 +2059,7 @@
                 banner.innerHTML = '⚠️ <strong>የግዕዝ ፊደላት ግዴታ ናቸው፡</strong> አማርኛ ቋንቋ መርጠዋል። በዚህ ቅጽ ውስጥ ያሉት መግለጫዎች እና የመከላከያ ነጥቦች በሙሉ በግዕዝ ፊደላት (ሀ-ፐ) መፃፍ አለባቸው።';
             } else if (lang === 'om') {
                 banner.style.cssText = 'background:#ecfdf5; border:1px solid #10b981; color:#065f46; padding:0.65rem 0.9rem; border-radius:8px; font-size:0.8rem; font-weight:600; margin-bottom:0.75rem; display:flex; align-items:center; gap:0.4rem;';
-                banner.innerHTML = '⚠️ <strong>Qubee Laatiin Dirqamaadha:</strong> Afaan Oromoo filattaniittu. Barreeffamoonni hundi qubee Laatiiniin (A-Z, ') barreeffamuu qabu.';
+                banner.innerHTML = '⚠️ <strong>Qubee Laatiin Dirqamaadha:</strong> Afaan Oromoo filattaniittu. Barreeffamoonni hundi qubee Laatiiniin (A-Z, &#39;) barreeffamuu qabu.';
             } else {
                 banner.style.cssText = 'background:#eff6ff; border:1px solid #3b82f6; color:#1e40af; padding:0.65rem 0.9rem; border-radius:8px; font-size:0.8rem; font-weight:600; margin-bottom:0.75rem; display:flex; align-items:center; gap:0.4rem;';
                 banner.innerHTML = '⚠️ <strong>Latin Script Enforced:</strong> You selected English. All statements and legal pleadings must be written in English (Latin A-Z letters).';
@@ -2101,6 +2278,11 @@ ${closing ? '\nClosing: ' + closing : ''}`;
 
         // ── Enter key in chat & Language Init ──
         document.addEventListener('DOMContentLoaded', () => {
+            // Guarantee Sign Out button click is bound immediately
+            const logoutBtn = document.getElementById('sidebar-logout-btn');
+            if (logoutBtn) {
+                logoutBtn.addEventListener('click', handleLogout);
+            }
             const ci = document.getElementById('panel-chat-input');
             if (ci) {
                 ci.addEventListener('keydown', e => {

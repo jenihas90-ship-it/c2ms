@@ -85,7 +85,9 @@ async function apiRequest(url, options = {}) {
 
         if (!response.ok) {
             const errMsg = typeof data === 'string' ? data : (data.error || JSON.stringify(data));
-            throw new Error(errMsg || 'Server request failed');
+            const err = new Error(errMsg || 'Server request failed');
+            err.status = response.status;
+            throw err;
         }
 
         return data;
