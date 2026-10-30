@@ -1416,10 +1416,20 @@
     </a>
     <!-- Desktop inline nav links (hidden on mobile) -->
     <div class="landing-nav-links desktop-nav-links">
-      <a href="/">Home</a>
-      <a href="/#why">Why Choose Us</a>
-      <a href="/about.html">About Us</a>
-      <button onclick="openAuthModal()" class="nav-cta">Sign In / Register →</button>
+      <a href="/" data-i18n="nav_home">Home</a>
+      <a href="/#why" data-i18n="nav_why">Why Choose Us</a>
+      <a href="/about.html" data-i18n="nav_about">About Us</a>
+
+      <!-- Language Selector in Nav -->
+      <div class="nav-lang-picker">
+        <select class="app-lang-select" id="index-nav-lang" onchange="if(window.i18n) window.i18n.setLanguage(this.value)" aria-label="Change Language">
+          <option value="en">🌐 English</option>
+          <option value="am">🇪🇹 አማርኛ</option>
+          <option value="om">🌳 Afaan Oromo</option>
+        </select>
+      </div>
+
+      <button onclick="openAuthModal()" class="nav-cta" data-i18n="btn_signin">Sign In / Register →</button>
     </div>
     <!-- Hamburger button (hidden on desktop, shown on mobile) -->
     <button class="hamburger-menu-btn" onclick="toggleHamburgerMenu()"
@@ -1435,15 +1445,23 @@
     style="position:fixed; top:0; right:-320px; width:300px; height:100vh; background:#fff; z-index:9999; box-shadow:-4px 0 20px rgba(0,0,0,0.1); padding:2rem; transition:right 0.35s ease; display:flex; flex-direction:column; gap:1.5rem;">
     <button onclick="toggleHamburgerMenu()"
       style="align-self:flex-end; background:none; border:none; font-size:2.2rem; line-height:1; cursor:pointer; color:rgba(30,30,60,0.6);">&times;</button>
-    <a href="/"
+    <a href="/" data-i18n="nav_home"
       style="text-decoration:none; color:#1a1a2e; font-weight:600; font-size:1.2rem; border-bottom:1px solid rgba(0,0,0,0.05); padding-bottom:0.75rem;">HOME</a>
-    <a href="/#why" onclick="toggleHamburgerMenu()"
-      style="text-decoration:none; color:#1a1a2e; font-weight:600; font-size:1.2rem; border-bottom:1px solid rgba(0,0,0,0.05); padding-bottom:0.75rem;">WHY
-      CHOOSE US</a>
-    <a href="/about.html"
-      style="text-decoration:none; color:#1a1a2e; font-weight:600; font-size:1.2rem; border-bottom:1px solid rgba(0,0,0,0.05); padding-bottom:0.75rem;">ABOUT
-      US</a>
-    <button onclick="toggleHamburgerMenu(); openAuthModal()" class="nav-cta"
+    <a href="/#why" onclick="toggleHamburgerMenu()" data-i18n="nav_why"
+      style="text-decoration:none; color:#1a1a2e; font-weight:600; font-size:1.2rem; border-bottom:1px solid rgba(0,0,0,0.05); padding-bottom:0.75rem;">WHY CHOOSE US</a>
+    <a href="/about.html" data-i18n="nav_about"
+      style="text-decoration:none; color:#1a1a2e; font-weight:600; font-size:1.2rem; border-bottom:1px solid rgba(0,0,0,0.05); padding-bottom:0.75rem;">ABOUT US</a>
+
+    <div style="border-bottom:1px solid rgba(0,0,0,0.05); padding-bottom:1rem;">
+      <label style="display:block; font-size:0.8rem; font-weight:700; color:#64748b; margin-bottom:0.4rem; text-transform:uppercase;">Language / ቋንቋ</label>
+      <select class="app-lang-select" id="mobile-nav-lang" onchange="if(window.i18n) { window.i18n.setLanguage(this.value); toggleHamburgerMenu(); }" style="width:100%;">
+        <option value="en">🌐 English</option>
+        <option value="am">🇪🇹 አማርኛ</option>
+        <option value="om">🌳 Afaan Oromo</option>
+      </select>
+    </div>
+
+    <button onclick="toggleHamburgerMenu(); openAuthModal()" class="nav-cta" data-i18n="btn_signin"
       style="margin-top:auto; width:100%; padding:0.85rem; font-size:1.05rem; border:none; cursor:pointer; display:block;">Sign
       In / Register →</button>
   </div>
@@ -1470,30 +1488,62 @@
     <canvas id="particle-canvas"></canvas>
 
     <div class="hero-content-premium">
-      <div class="hero-trust-badge">⚖️ &nbsp;Ethiopia's #1 E-Justice Platform</div>
-      <h1 class="hero-title-premium">
+      <div class="hero-trust-badge" data-i18n="hero_badge">⚖️ &nbsp;Ethiopia's #1 E-Justice Platform</div>
+      <h1 class="hero-title-premium" data-i18n="hero_title">
         Court Complaints,<br><span class="gold-text">Resolved Online</span>
       </h1>
-      <p class="hero-subtitle-premium">
+      <p class="hero-subtitle-premium" data-i18n="hero_subtitle">
         File, track, and manage legal complaints from anywhere — 100% digital,
         secure, and built for every citizen.
       </p>
+
+      <!-- Localized Entry Point -->
+      <div class="hero-entry-container">
+        <div class="hero-entry-lead" data-i18n="entry_choose_lang">Select Your Filing &amp; Portal Language:</div>
+        <div class="hero-lang-grid">
+          <div class="hero-lang-card selected" data-lang="en" onclick="selectHomeLang('en')">
+            <span class="lang-flag">🌐</span>
+            <div class="lang-name">English</div>
+            <div class="lang-sub">Federal &amp; Commercial Courts</div>
+          </div>
+          <div class="hero-lang-card" data-lang="am" onclick="selectHomeLang('am')">
+            <span class="lang-flag">🇪🇹</span>
+            <div class="lang-name">አማርኛ</div>
+            <div class="lang-sub">የፌዴራል እና የክልል ፍርድ ቤቶች</div>
+          </div>
+          <div class="hero-lang-card" data-lang="om" onclick="selectHomeLang('om')">
+            <span class="lang-flag">🌳</span>
+            <div class="lang-name">Afaan Oromoo</div>
+            <div class="lang-sub">Mana Murtii Federaalaa fi Naannoo</div>
+          </div>
+        </div>
+
+        <div class="hero-entry-cta-row">
+          <button onclick="startFilingFromHome()" class="btn-primary-glow" id="home-file-complaint-btn" data-i18n="btn_file_now">
+            ⚖️ File a Complaint Now →
+          </button>
+          <button onclick="openAuthModal()" class="btn-secondary-white" data-i18n="btn_login_portal">
+            🔑 Access Portal
+          </button>
+        </div>
+      </div>
+
       <div class="hero-stats-premium">
         <div class="hstat">
           <span class="hstat-num" data-count="5">5</span>
-          <span class="hstat-label">User Roles</span>
+          <span class="hstat-label" data-i18n="hstat_roles">User Roles</span>
         </div>
         <div class="hstat">
           <span class="hstat-num" data-count="24">24</span>
-          <span class="hstat-label">hrs Online</span>
+          <span class="hstat-label" data-i18n="hstat_online">hrs Online</span>
         </div>
         <div class="hstat">
           <span class="hstat-num" data-suffix="%" data-count="100">100%</span>
-          <span class="hstat-label">Paperless</span>
+          <span class="hstat-label" data-i18n="hstat_paperless">Paperless</span>
         </div>
       </div>
       <div class="hero-cta-row">
-        <a href="/about.html" class="btn-ghost-white">Learn More →</a>
+        <a href="/about.html" class="btn-ghost-white" data-i18n="btn_learn_more">Learn More →</a>
       </div>
     </div>
 
@@ -1812,7 +1862,66 @@
     })();
 
     /* ── Login trigger ── */
+    function selectHomeLang(lang) {
+      if (window.i18n) {
+        window.i18n.setLanguage(lang);
+        document.querySelectorAll('.hero-lang-card').forEach(c => {
+          c.classList.toggle('selected', c.getAttribute('data-lang') === lang);
+        });
+      }
+    }
+
+    function startFilingFromHome() {
+      const lang = window.i18n ? window.i18n.currentLang : 'en';
+      fetch('/api/auth/me')
+        .then(res => res.json())
+        .then(data => {
+          if (data && data.authenticated && data.user) {
+            window.location.href = '/dashboard.html?action=new&lang=' + encodeURIComponent(lang);
+          } else {
+            openAuthModal();
+            const cardToast = document.getElementById('card-toast');
+            if (cardToast) {
+              const msg = lang === 'am'
+                ? 'ክስ ለመመስረት እባክዎ መጀመሪያ ይግቡ ወይም ይመዝገቡ'
+                : (lang === 'om' ? 'Himannaa banachuuf mee dura seenaa ykn galmaa\'aa' : 'Please sign in or register to file your complaint');
+              cardToast.textContent = msg;
+              cardToast.className = 'toast-card show';
+            }
+          }
+        })
+        .catch(() => {
+          window.location.href = '/dashboard.html?action=new&lang=' + encodeURIComponent(lang);
+        });
+    }
+
+    // Keep home page language pickers synchronized with global state
+    if (window.i18n) {
+      window.i18n.subscribe((lang) => {
+        document.querySelectorAll('.hero-lang-card').forEach(c => {
+          c.classList.toggle('selected', c.getAttribute('data-lang') === lang);
+        });
+        const navSelect = document.getElementById('index-nav-lang');
+        if (navSelect) navSelect.value = lang;
+        const mobSelect = document.getElementById('mobile-nav-lang');
+        if (mobSelect) mobSelect.value = lang;
+      });
+    }
+
+    /* ── Login trigger ── */
     window.addEventListener('DOMContentLoaded', () => {
+      // Sync initial active card with current language
+      if (window.i18n) {
+        const cur = window.i18n.currentLang || 'en';
+        document.querySelectorAll('.hero-lang-card').forEach(c => {
+          c.classList.toggle('selected', c.getAttribute('data-lang') === cur);
+        });
+        const navSelect = document.getElementById('index-nav-lang');
+        if (navSelect) navSelect.value = cur;
+        const mobSelect = document.getElementById('mobile-nav-lang');
+        if (mobSelect) mobSelect.value = cur;
+      }
+
       if (window.location.search.includes('login=true')) {
         openAuthModal();
         history.replaceState(null, '', '/');
