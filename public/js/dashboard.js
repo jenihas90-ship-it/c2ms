@@ -48,6 +48,18 @@ function setupDashboardView() {
     const avatar = document.getElementById('sidebar-avatar');
     avatar.textContent = icon;
 
+    // Connect actor persistent language state
+    if (window.i18n) {
+        window.i18n.setActor(activeRole || 'CITIZEN');
+        const actorLang = window.i18n.getActorLanguage(activeRole || 'CITIZEN');
+        const sel = document.getElementById('global-lang-selector');
+        if (sel) sel.value = actorLang;
+
+        // Wrap complaint and remark forms with global validation wrapper
+        window.i18n.validator.wrapForm('#complaint-form', { actor: 'CITIZEN' });
+        window.i18n.validator.wrapForm('#remark-form', { actor: activeRole || 'CITIZEN' });
+    }
+
     // Hide all role-specific classes by default
     document.querySelectorAll('.role-citizen, .role-staff, .role-admin, .role-clerk, .role-judge').forEach(el => el.classList.add('hidden'));
 

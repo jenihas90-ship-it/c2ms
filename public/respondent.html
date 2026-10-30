@@ -6,6 +6,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Respondent Portal — CCMS</title>
     <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <script src="/js/i18n.js?v=multi-actor-v2"></script>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap"
         rel="stylesheet" />
     <style>
@@ -705,7 +706,17 @@
             </div>
         </div>
 
-        <div class="nav-section">Navigation</div>
+        <!-- Respondent Language Selector -->
+        <div style="padding: 0.75rem 0.5rem; margin-bottom: 0.75rem; border-bottom: 1px solid var(--border);">
+            <label style="font-size:0.72rem; text-transform:uppercase; color:var(--text-muted); font-weight:700; display:block; margin-bottom:0.35rem;" data-i18n="select_language">Language / ቋንቋ</label>
+            <select class="app-lang-select" id="respondent-lang-selector" onchange="i18n.setActorLanguage('RESPONDENT', this.value)" style="width:100%; padding:0.45rem 0.6rem; border-radius:8px; border:1px solid var(--border); font-size:0.85rem; font-weight:600; background:var(--surface); color:var(--text); cursor:pointer;">
+                <option value="en">🌐 English</option>
+                <option value="am">🇪🇹 አማርኛ</option>
+                <option value="om">🌳 Afaan Oromo</option>
+            </select>
+        </div>
+
+        <div class="nav-section" data-i18n="resp_nav_overview">Navigation</div>
         <button class="nav-item active" id="nav-overview" onclick="showPage('overview')">
             <span class="nav-icon">🏠</span> Overview
         </button>
@@ -953,28 +964,38 @@
                 </div>
 
                 <!-- Formal response mode — court rules wizard -->
-                <div id="resp-tab-formal" style="display:none;">
+                <div id="resp-tab-formal" style="display:none;" data-form-lang="en">
                     <div
-                        style="background:rgba(229,201,66,0.08); border:1px solid rgba(229,201,66,0.3); border-radius:8px; padding:0.75rem 1rem; margin-bottom:1rem; font-size:0.82rem; color:#e5c942;">
+                        style="background:rgba(229,201,66,0.08); border:1px solid rgba(229,201,66,0.3); border-radius:8px; padding:0.75rem 1rem; margin-bottom:1rem; font-size:0.82rem; color:#b45309;"
+                        data-i18n="resp_court_rule">
                         ⚖️ <strong>Court Rule:</strong> Your formal response will be recorded as an official legal
                         document. Be factual, concise and respectful. Responses are not allowed on Resolved, Closed or
                         Rejected cases.
                     </div>
 
-                    <!-- Progress steps -->
+                    <!-- Progress steps (6 Steps) -->
                     <div
-                        style="display:flex; justify-content:space-between; margin-bottom:1.25rem; font-size:0.78rem; font-weight:600;">
-                        <span id="fr-prog-1" style="color:var(--accent);">1. Position</span>
-                        <span id="fr-prog-2" style="color:var(--text-muted);">2. Defense</span>
-                        <span id="fr-prog-3" style="color:var(--text-muted);">3. Relief</span>
-                        <span id="fr-prog-4" style="color:var(--text-muted);">4. Court Fee</span>
-                        <span id="fr-prog-5" style="color:var(--text-muted);">5. Review</span>
+                        style="display:flex; justify-content:space-between; margin-bottom:1.25rem; font-size:0.78rem; font-weight:600; flex-wrap:wrap; gap:0.25rem;">
+                        <span id="fr-prog-1" style="color:var(--accent);" data-i18n="resp_step1_prog">1. Language</span>
+                        <span id="fr-prog-2" style="color:var(--text-muted);" data-i18n="resp_step2_prog">2. Position</span>
+                        <span id="fr-prog-3" style="color:var(--text-muted);" data-i18n="resp_step3_prog">3. Defense</span>
+                        <span id="fr-prog-4" style="color:var(--text-muted);" data-i18n="resp_step4_prog">4. Relief</span>
+                        <span id="fr-prog-5" style="color:var(--text-muted);" data-i18n="resp_step5_prog">5. Court Fee</span>
+                        <span id="fr-prog-6" style="color:var(--text-muted);" data-i18n="resp_step6_prog">6. Review</span>
                     </div>
 
-                    <!-- Step 1: Position Statement -->
+                    <!-- Step 1: Reusable Language Selection Step Component -->
                     <div id="fr-step-1">
+                        <div id="reusable-resp-lang-step"></div>
+                    </div>
+
+                    <!-- Step 2: Position Statement -->
+                    <div id="fr-step-2" style="display:none;">
+                        <!-- Dynamic Script Enforcement Banner -->
+                        <div id="fr-script-banner" style="margin-bottom:1rem;"></div>
+
                         <div class="field-label">Your Position on the Complaint</div>
-                        <div style="display:flex; gap:0.5rem; margin-bottom:0.75rem;">
+                        <div style="display:flex; gap:0.5rem; margin-bottom:0.75rem; flex-wrap:wrap;">
                             <label style="display:flex;align-items:center;gap:.3rem;cursor:pointer;font-size:0.85rem;">
                                 <input type="radio" name="fr-position" value="I deny all allegations in this complaint">
                                 Deny All
@@ -988,49 +1009,57 @@
                                     value="I admit to the allegations but provide context"> Admit with Context
                             </label>
                         </div>
-                        <div class="field-label">Opening Statement</div>
-                        <textarea id="fr-opening" class="chat-input" rows="3" style="width:100%; margin-bottom:0.75rem;"
+                        <div class="field-label" data-i18n="resp_opening_label">Opening Statement</div>
+                        <textarea id="fr-opening" class="chat-input lang-validate" data-lang-validate="true" rows="3" style="width:100%; margin-bottom:0.75rem;"
+                            data-i18n-placeholder="resp_opening_placeholder"
                             placeholder="Briefly state your position on this complaint (e.g. nature of relationship, dispute background)…"></textarea>
-                        <div style="text-align:right;">
-                            <button class="send-btn" onclick="frNextStep(2, 1)">Next →</button>
+                        <div style="display:flex; gap:0.5rem; justify-content:flex-end;">
+                            <button class="send-btn"
+                                style="background:transparent;border:1px solid var(--border);color:var(--text-muted);"
+                                onclick="frNextStep(1)">← Back to Language</button>
+                            <button class="send-btn" onclick="frNextStep(3, 2)">Next: Defense →</button>
                         </div>
                     </div>
 
-                    <!-- Step 2: Defense Arguments -->
-                    <div id="fr-step-2" style="display:none;">
-                        <div class="field-label">Defense / Rebuttal Arguments</div>
-                        <textarea id="fr-defense" class="chat-input" rows="5" style="width:100%; margin-bottom:0.75rem;"
+                    <!-- Step 3: Defense Arguments -->
+                    <div id="fr-step-3" style="display:none;">
+                        <div class="field-label" data-i18n="resp_defense_label">Defense / Rebuttal Arguments</div>
+                        <textarea id="fr-defense" class="chat-input lang-validate" data-lang-validate="true" rows="5" style="width:100%; margin-bottom:0.75rem;"
+                            data-i18n-placeholder="resp_defense_placeholder"
                             placeholder="State your specific defense. Address each allegation point by point. Include dates, facts, and supporting reasons…"></textarea>
-                        <div class="field-label">Witnesses or Evidence You Intend to Present (optional)</div>
-                        <textarea id="fr-evidence" class="chat-input" rows="2"
+                        <div class="field-label" data-i18n="resp_evidence_label">Witnesses or Evidence You Intend to Present (optional)</div>
+                        <textarea id="fr-evidence" class="chat-input lang-validate" data-lang-validate="true" rows="2"
                             style="width:100%; margin-bottom:0.75rem;"
+                            data-i18n-placeholder="resp_evidence_placeholder"
                             placeholder="e.g. Bank receipts dated Jan 10 2026, Witness: John Doe (neighbour)…"></textarea>
                         <div style="display:flex; gap:0.5rem; justify-content:flex-end;">
                             <button class="send-btn"
                                 style="background:transparent;border:1px solid var(--border);color:var(--text-muted);"
-                                onclick="frNextStep(1)">← Back</button>
-                            <button class="send-btn" onclick="frNextStep(3, 2)">Next →</button>
+                                onclick="frNextStep(2)">← Back</button>
+                            <button class="send-btn" onclick="frNextStep(4, 3)">Next: Relief Requested →</button>
                         </div>
                     </div>
 
-                    <!-- Step 3: Relief Requested -->
-                    <div id="fr-step-3" style="display:none;">
-                        <div class="field-label">Relief You Are Requesting from the Court</div>
-                        <textarea id="fr-relief" class="chat-input" rows="3" style="width:100%; margin-bottom:0.75rem;"
+                    <!-- Step 4: Relief Requested -->
+                    <div id="fr-step-4" style="display:none;">
+                        <div class="field-label" data-i18n="resp_relief_label">Relief You Are Requesting from the Court</div>
+                        <textarea id="fr-relief" class="chat-input lang-validate" data-lang-validate="true" rows="3" style="width:100%; margin-bottom:0.75rem;"
+                            data-i18n-placeholder="resp_relief_placeholder"
                             placeholder="e.g. Dismiss the complaint, award costs, issue injunction against complainant…"></textarea>
-                        <div class="field-label">Closing Statement (optional)</div>
-                        <textarea id="fr-closing" class="chat-input" rows="2" style="width:100%; margin-bottom:0.75rem;"
+                        <div class="field-label" data-i18n="resp_closing_label">Closing Statement (optional)</div>
+                        <textarea id="fr-closing" class="chat-input lang-validate" data-lang-validate="true" rows="2" style="width:100%; margin-bottom:0.75rem;"
+                            data-i18n-placeholder="resp_closing_placeholder"
                             placeholder="Any final statement for the court's consideration…"></textarea>
                         <div style="display:flex; gap:0.5rem; justify-content:flex-end;">
                             <button class="send-btn"
                                 style="background:transparent;border:1px solid var(--border);color:var(--text-muted);"
-                                onclick="frNextStep(2)">← Back</button>
-                            <button class="send-btn" onclick="frNextStep(4, 3)">Next →</button>
+                                onclick="frNextStep(3)">← Back</button>
+                            <button class="send-btn" onclick="frNextStep(5, 4)">Next: Court Fee →</button>
                         </div>
                     </div>
 
-                    <!-- Step 4: Court Fees & Payment -->
-                    <div id="fr-step-4" style="display:none;">
+                    <!-- Step 5: Court Fees & Payment -->
+                    <div id="fr-step-5" style="display:none;">
                         <div
                             style="margin-bottom:1.25rem; padding:1.2rem; background:rgba(212,168,67,0.08); border:1px solid rgba(212,168,67,0.3); border-radius:10px;">
                             <h5 style="margin-bottom:0.75rem; color:var(--text); font-weight:700; font-size:1rem;">⚖️
@@ -1121,13 +1150,13 @@
                         <div style="display:flex; gap:0.5rem; justify-content:flex-end;">
                             <button class="send-btn"
                                 style="background:transparent;border:1px solid var(--border);color:var(--text-muted);"
-                                onclick="frNextStep(3)">← Back</button>
-                            <button class="send-btn" onclick="frNextStep(5, 4)">Review →</button>
+                                onclick="frNextStep(4)">← Back</button>
+                            <button class="send-btn" onclick="frNextStep(6, 5)">Review →</button>
                         </div>
                     </div>
 
-                    <!-- Step 5: Review & Submit -->
-                    <div id="fr-step-5" style="display:none;">
+                    <!-- Step 6: Review & Submit -->
+                    <div id="fr-step-6" style="display:none;">
                         <div class="field-label" style="margin-bottom:0.5rem;">Review Your Formal Response</div>
                         <div id="fr-preview"
                             style="background:var(--surface2);border:1px solid var(--border);border-radius:8px;padding:1rem;font-size:0.83rem;line-height:1.7;white-space:pre-wrap;color:var(--text-main);max-height:220px;overflow-y:auto;margin-bottom:1rem;">
@@ -1139,7 +1168,7 @@
                         <div style="display:flex; gap:0.5rem; justify-content:flex-end;">
                             <button class="send-btn"
                                 style="background:transparent;border:1px solid var(--border);color:var(--text-muted);"
-                                onclick="frNextStep(4)">← Edit</button>
+                                onclick="frNextStep(5)">← Edit</button>
                             <button class="send-btn" id="fr-submit-btn" style="background:#2ea043;"
                                 onclick="submitFormalResponse()">⚖️ Submit Formal Response</button>
                         </div>
@@ -1835,33 +1864,97 @@
             document.getElementById('tab-formal').style.color = isQuick ? 'var(--text-muted)' : '#fff';
         }
 
-        // ── Formal response step navigation ──
-        const frSteps = 5;
+        // ── Formal response step navigation (6 Steps) ──
+        const frSteps = 6;
+
+        function getRespondentFilingLang() {
+            const respTab = document.getElementById('resp-tab-formal');
+            return (respTab && respTab.getAttribute('data-form-lang')) || 
+                   (window.i18n ? window.i18n.getActorLanguage('RESPONDENT') : 'en');
+        }
+
+        function updateRespondentScriptBanner() {
+            const lang = getRespondentFilingLang();
+            const banner = document.getElementById('fr-script-banner');
+            if (!banner) return;
+            if (lang === 'am') {
+                banner.style.cssText = 'background:#fef3c7; border:1px solid #f59e0b; color:#92400e; padding:0.65rem 0.9rem; border-radius:8px; font-size:0.8rem; font-weight:600; margin-bottom:0.75rem; display:flex; align-items:center; gap:0.4rem;';
+                banner.innerHTML = '⚠️ <strong>የግዕዝ ፊደላት ግዴታ ናቸው፡</strong> አማርኛ ቋንቋ መርጠዋል። በዚህ ቅጽ ውስጥ ያሉት መግለጫዎች እና የመከላከያ ነጥቦች በሙሉ በግዕዝ ፊደላት (ሀ-ፐ) መፃፍ አለባቸው።';
+            } else if (lang === 'om') {
+                banner.style.cssText = 'background:#ecfdf5; border:1px solid #10b981; color:#065f46; padding:0.65rem 0.9rem; border-radius:8px; font-size:0.8rem; font-weight:600; margin-bottom:0.75rem; display:flex; align-items:center; gap:0.4rem;';
+                banner.innerHTML = '⚠️ <strong>Qubee Laatiin Dirqamaadha:</strong> Afaan Oromoo filattaniittu. Barreeffamoonni hundi qubee Laatiiniin (A-Z, ') barreeffamuu qabu.';
+            } else {
+                banner.style.cssText = 'background:#eff6ff; border:1px solid #3b82f6; color:#1e40af; padding:0.65rem 0.9rem; border-radius:8px; font-size:0.8rem; font-weight:600; margin-bottom:0.75rem; display:flex; align-items:center; gap:0.4rem;';
+                banner.innerHTML = '⚠️ <strong>Latin Script Enforced:</strong> You selected English. All statements and legal pleadings must be written in English (Latin A-Z letters).';
+            }
+        }
+
         function frNextStep(goTo, validateFrom = null) {
-            // Validation
+            const currentLang = getRespondentFilingLang();
+
+            // Step 1: Language selection validation
             if (validateFrom === 1) {
+                const radio = document.querySelector('input[name="wizard_filing_lang_resp-formal"]:checked');
+                const chosen = radio ? radio.value : currentLang;
+                document.getElementById('resp-tab-formal').setAttribute('data-form-lang', chosen);
+                updateRespondentScriptBanner();
+            }
+
+            // Step 2: Position & Opening statement validation
+            if (validateFrom === 2) {
                 const pos = document.querySelector('input[name="fr-position"]:checked');
                 const opening = document.getElementById('fr-opening').value.trim();
                 if (!pos) { showToast('Please select your position on the complaint.', true); return; }
                 if (!opening) { showToast('Opening statement is required.', true); return; }
+
+                if (window.i18n && window.i18n.validator) {
+                    const check = window.i18n.validator.validateContainer('#fr-step-2', currentLang);
+                    if (!check.isValid) {
+                        if (check.firstInvalid) check.firstInvalid.focus();
+                        showToast(check.error || 'Opening statement violates script requirements.', true);
+                        return;
+                    }
+                }
             }
-            if (validateFrom === 2) {
+
+            // Step 3: Defense arguments validation
+            if (validateFrom === 3) {
                 if (!document.getElementById('fr-defense').value.trim()) {
                     showToast('Defense arguments are required.', true); return;
                 }
+                if (window.i18n && window.i18n.validator) {
+                    const check = window.i18n.validator.validateContainer('#fr-step-3', currentLang);
+                    if (!check.isValid) {
+                        if (check.firstInvalid) check.firstInvalid.focus();
+                        showToast(check.error || 'Defense arguments violate script requirements.', true);
+                        return;
+                    }
+                }
             }
-            if (validateFrom === 3) {
+
+            // Step 4: Relief requested validation
+            if (validateFrom === 4) {
                 if (!document.getElementById('fr-relief').value.trim()) {
                     showToast('Please state what relief you are requesting.', true); return;
                 }
+                if (window.i18n && window.i18n.validator) {
+                    const check = window.i18n.validator.validateContainer('#fr-step-4', currentLang);
+                    if (!check.isValid) {
+                        if (check.firstInvalid) check.firstInvalid.focus();
+                        showToast(check.error || 'Relief statement violates script requirements.', true);
+                        return;
+                    }
+                }
             }
-            if (validateFrom === 4) {
-                // Validate fee receipt uploaded
+
+            // Step 5: Fee receipt uploaded
+            if (validateFrom === 5) {
                 const feeFile = document.getElementById('resp-fee-receipt-file');
                 if (!feeFile || !feeFile.files || feeFile.files.length === 0) {
                     showToast('Please upload your court fee payment receipt or poverty certificate.', true); return;
                 }
-                // Build preview for step 5
+
+                // Build preview for Step 6
                 const pos = document.querySelector('input[name="fr-position"]:checked')?.value || '';
                 const opening = document.getElementById('fr-opening').value.trim();
                 const defense = document.getElementById('fr-defense').value.trim();
@@ -1872,6 +1965,7 @@
                     `═══════════════════════════════════════
          FORMAL RESPONSE TO COMPLAINT
 ═══════════════════════════════════════
+FILING LANGUAGE: ${currentLang.toUpperCase()}
 
 POSITION: ${pos}
 
@@ -1918,39 +2012,30 @@ ${closing ? '\nCLOSING STATEMENT:\n' + closing : ''}
         function generateRespPaymentCode() {
             const methods = document.querySelectorAll('input[name="resp_payment_method"]');
             let selectedMethod = '';
-            methods.forEach(m => {
-                const card = m.nextElementSibling;
-                if (m.checked) {
-                    selectedMethod = m.value;
-                    card.style.borderColor = 'var(--primary)';
-                    card.style.boxShadow = '0 0 0 2px rgba(99,102,241,0.2)';
-                    card.style.background = 'rgba(99,102,241,0.05)';
-                } else {
-                    card.style.borderColor = 'rgba(0,0,0,0.1)';
-                    card.style.boxShadow = 'none';
-                    card.style.background = '#fff';
-                }
-            });
-            if (selectedMethod) {
-                document.getElementById('resp-payment-code-display').style.display = '';
-                document.getElementById('resp-pay-method-name').textContent = selectedMethod;
-                if (!window._respPayData) window._respPayData = {};
-                if (!window._respPayData[selectedMethod]) {
-                    window._respPayData[selectedMethod] = {
-                        orderCode: Math.floor(100000 + Math.random() * 900000),
-                        ref: Math.random().toString(36).substring(2, 10).toUpperCase() + Math.floor(10 + Math.random() * 90)
-                    };
-                }
-                document.getElementById('resp-pay-order-code').textContent = window._respPayData[selectedMethod].orderCode;
-                document.getElementById('resp-pay-reference').textContent = window._respPayData[selectedMethod].ref;
-                // Flat respondent fee (500 ETB for all case types)
-                document.getElementById('resp-pay-amount').textContent = '500 ETB';
-            }
+            methods.forEach(m => { if (m.checked) selectedMethod = m.value; });
+            if (!selectedMethod) return;
+
+            document.getElementById('resp-pay-method-name').textContent = selectedMethod;
+            document.getElementById('resp-pay-order-code').textContent = 'RESP-' + Math.floor(100000 + Math.random() * 900000);
+            document.getElementById('resp-pay-reference').textContent = 'REF-' + Date.now().toString().slice(-8);
+            document.getElementById('resp-pay-amount').textContent = '150.00 ETB';
+            document.getElementById('resp-payment-code-display').style.display = 'block';
         }
 
         // ── Submit formal response ──
         async function submitFormalResponse() {
             if (!currentCaseId) return;
+
+            const lang = getRespondentFilingLang();
+            if (window.i18n && window.i18n.validator) {
+                const check = window.i18n.validator.validateContainer('#resp-tab-formal', lang);
+                if (!check.isValid) {
+                    if (check.firstInvalid) check.firstInvalid.focus();
+                    showToast(check.error || 'Please correct script errors before submitting.', true);
+                    return;
+                }
+            }
+
             const pos = document.querySelector('input[name="fr-position"]:checked')?.value || '';
             const opening = document.getElementById('fr-opening').value.trim();
             const defense = document.getElementById('fr-defense').value.trim();
@@ -1959,7 +2044,7 @@ ${closing ? '\nCLOSING STATEMENT:\n' + closing : ''}
             const closing = document.getElementById('fr-closing').value.trim();
 
             const formalDoc =
-                `[FORMAL RESPONSE]
+                `[FORMAL RESPONSE - LANGUAGE: ${lang.toUpperCase()}]
 Position: ${pos}
 
 Opening Statement:
@@ -1995,9 +2080,10 @@ ${closing ? '\nClosing: ' + closing : ''}`;
                     body: formData
                 });
                 showToast('✅ Formal response submitted to the court.');
-                // Clear fields and go back to step 1
+                // Clear fields and return to Step 1
                 ['fr-opening', 'fr-defense', 'fr-evidence', 'fr-relief', 'fr-closing'].forEach(id => {
-                    document.getElementById(id).value = '';
+                    const el = document.getElementById(id);
+                    if (el) el.value = '';
                 });
                 document.querySelectorAll('input[name="fr-position"]').forEach(r => r.checked = false);
                 if (feeReceiptInput) feeReceiptInput.value = '';
@@ -2013,13 +2099,40 @@ ${closing ? '\nClosing: ' + closing : ''}`;
             }
         }
 
-        // ── Enter key in chat ──
+        // ── Enter key in chat & Language Init ──
         document.addEventListener('DOMContentLoaded', () => {
             const ci = document.getElementById('panel-chat-input');
             if (ci) {
                 ci.addEventListener('keydown', e => {
                     if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); submitResponse(); }
                 });
+            }
+
+            // Initialize Respondent Actor State & Reusable First Step Component
+            if (window.i18n) {
+                window.i18n.setActor('RESPONDENT');
+                const curLang = window.i18n.getActorLanguage('RESPONDENT');
+                const sel = document.getElementById('respondent-lang-selector');
+                if (sel) sel.value = curLang;
+
+                // Mount Reusable Language First-Step into Formal Response Wizard
+                window.i18n.renderLanguageStep('#reusable-resp-lang-step', {
+                    wizardKey: 'resp-formal',
+                    actor: 'RESPONDENT',
+                    stepNumber: 1,
+                    onSelect: (lang) => {
+                        const tab = document.getElementById('resp-tab-formal');
+                        if (tab) tab.setAttribute('data-form-lang', lang);
+                        updateRespondentScriptBanner();
+                    },
+                    onNext: (lang) => {
+                        frNextStep(2, 1);
+                    }
+                });
+
+                // Wrap Respondent forms with Global Validation Wrapper
+                window.i18n.validator.wrapForm('#resp-tab-formal', { actor: 'RESPONDENT' });
+                window.i18n.validator.wrapForm('#panel-counter-claim-form', { actor: 'RESPONDENT' });
             }
         });
     </script>

@@ -76,6 +76,14 @@
                     <h2 id="workspace-title">Overview</h2>
                 </div>
                 <div style="display:flex; gap:1rem; align-items:center;">
+                    <!-- Global Actor Language Selector -->
+                    <div class="nav-lang-picker" style="margin-right: 4px;">
+                        <select class="app-lang-select" id="global-lang-selector" onchange="if(window.i18n) window.i18n.setActorLanguage(currentUser ? currentUser.role : 'CITIZEN', this.value)" style="padding: 0.45rem 0.75rem; border-radius: 8px; border: 1px solid #cbd5e1; font-size: 0.85rem; font-weight: 600; background: #ffffff; color: #1e293b; cursor: pointer;" aria-label="Change Actor Language">
+                            <option value="en">🌐 English</option>
+                            <option value="am">🇪🇹 አማርኛ</option>
+                            <option value="om">🌳 Afaan Oromo</option>
+                        </select>
+                    </div>
                     <!-- Notification Bell for Staff -->
                     <div id="notification-bell-container" class="role-staff hidden"
                         style="position:relative; cursor:pointer; margin-right: 15px;"

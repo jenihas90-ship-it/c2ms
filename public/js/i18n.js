@@ -21,6 +21,65 @@
     // 2. Comprehensive Localization Dictionary
     const translations = {
         en: {
+        // --- Reusable Language Step & Actor Flow Keys ---
+        lang_step_title: "Step 1: Select Language & Legal Jurisdiction",
+        lang_step_desc: "Choose the primary language for this legal submission. Subsequent statements, arguments, and pleadings must strictly adhere to the chosen script.",
+        lang_step_btn_next: "Proceed with Selected Language →",
+        lang_rule_amharic: "Ge'ez script (ሀ–ፐ) required for Amharic inputs",
+        lang_rule_latin: "Latin script (A–Z) required for English & Afaan Oromo inputs",
+        lang_badge_actor: "Mandatory Step",
+        val_script_error_title: "Language Script Mismatch",
+        val_step_has_errors: "Please correct language script errors before proceeding.",
+
+        // --- Respondent Portal Keys ---
+        resp_portal_title: "Respondent Portal — CCMS",
+        resp_nav_overview: "Overview",
+        resp_nav_cases: "My Cases",
+        resp_nav_notifications: "Notifications",
+        resp_welcome: "Welcome back",
+        resp_summary: "Here is a summary of your active legal proceedings",
+        resp_stat_total: "Total Cases",
+        resp_stat_pending: "Pending Response",
+        resp_stat_progress: "In Progress",
+        resp_stat_resolved: "Resolved",
+        resp_recent_cases: "Recent Cases",
+        resp_case_details: "Case Details",
+        resp_quick_msg: "💬 Quick Message",
+        resp_formal_tab: "⚖️ Formal Response Wizard",
+        resp_court_rule: "⚖️ Court Rule: Your formal response will be recorded as an official legal document. Be factual, concise, and respectful.",
+        resp_step1_prog: "1. Language",
+        resp_step2_prog: "2. Position",
+        resp_step3_prog: "3. Defense",
+        resp_step4_prog: "4. Relief",
+        resp_step5_prog: "5. Court Fee",
+        resp_step6_prog: "6. Review",
+        resp_btn_next: "Next →",
+        resp_btn_back: "← Back",
+        resp_btn_submit: "⚖️ Submit Formal Response",
+        resp_counter_claim_btn: "Submit Counter-Claim",
+        resp_opening_label: "Opening Statement",
+        resp_opening_placeholder: "Briefly state your position on this complaint (e.g. nature of relationship, dispute background)…",
+        resp_defense_label: "Defense / Rebuttal Arguments",
+        resp_defense_placeholder: "State your specific defense. Address each allegation point by point. Include dates, facts, and supporting reasons…",
+        resp_evidence_label: "Witnesses or Evidence You Intend to Present (optional)",
+        resp_evidence_placeholder: "e.g. Bank receipts dated Jan 10 2026, Witness: John Doe…",
+        resp_relief_label: "Relief You Are Requesting from the Court",
+        resp_relief_placeholder: "e.g. Dismiss the complaint, award costs, issue injunction against complainant…",
+        resp_closing_label: "Closing Statement (optional)",
+        resp_closing_placeholder: "Any final statement for the court's consideration…",
+        resp_banner_geez: "⚠️ Ge'ez Script Enforced: You are filing in Amharic. All response arguments and relief statements must be written in Ge'ez letters (ሀ-ፐ).",
+        resp_banner_latin: "⚠️ Latin Script Enforced: You are filing in English / Afaan Oromo. All response arguments must be written in Latin letters (A-Z).",
+        resp_pos_deny: "Deny All Allegations",
+        resp_pos_partial: "Partial Admission",
+        resp_pos_context: "Admit with Context",
+
+        // --- Judge & Clerk Keys ---
+        judge_portal_title: "Judge Judicial Chambers",
+        judge_order_title: "Court Order / Judgment Details",
+        judge_order_desc: "Enter the judicial order or judgment in the court's designated language.",
+        clerk_portal_title: "Clerk Registry Office",
+        clerk_status_title: "Registry Case Verification",
+
             // General / Brand
             app_title: "Justice Connect | Court Complaint Management",
             brand_name: "Justice Connect",
@@ -233,6 +292,65 @@
         },
 
         am: {
+        // --- Reusable Language Step & Actor Flow Keys ---
+        lang_step_title: "ደረጃ 1፡ የቋንቋ እና የህግ ስልጣን ምርጫ",
+        lang_step_desc: "ለዚህ የህግ ማመልከቻ ወይም ምላሽ ዋና ቋንቋ ይምረጡ። በቀጣይ ደረጃዎች የሚቀርቡ የጽሑፍ ማብራሪያዎች፣ ክርክሮች እና ዳኝነቶች በዚህ ፊደል መፃፍ አለባቸው።",
+        lang_step_btn_next: "በተመረጠው ቋንቋ ይቀጥሉ →",
+        lang_rule_amharic: "ለአማርኛ ጽሑፎች የግዕዝ ፊደላት (ሀ–ፐ) ግዴታ ናቸው",
+        lang_rule_latin: "ለእንግሊዝኛ እና አፋን ኦሮሞ የላቲን ፊደላት (A–Z) ግዴታ ናቸው",
+        lang_badge_actor: "የግዴታ የመጀመሪያ ደረጃ",
+        val_script_error_title: "የፊደል አጠቃቀም ስህተት",
+        val_step_has_errors: "እባክዎ ከመቀጠልዎ በፊት የፊደል አጠቃቀም ስህተቶችን ያስተካክሉ።",
+
+        // --- Respondent Portal Keys ---
+        resp_portal_title: "የተከሳሽ (መልስ ሰጪ) ፖርታል — CCMS",
+        resp_nav_overview: "አጠቃላይ እይታ",
+        resp_nav_cases: "የእኔ መዝገቦች",
+        resp_nav_notifications: "ማሳወቂያዎች",
+        resp_welcome: "እንኳን ደህና መጡ",
+        resp_summary: "የእርስዎ ንቁ የህግ መዝገቦች ማጠቃለያ",
+        resp_stat_total: "ጠቅላላ መዝገቦች",
+        resp_stat_pending: "ምላሽ የሚጠብቁ",
+        resp_stat_progress: "በሂደት ላይ ያሉ",
+        resp_stat_resolved: "የተጠናቀቁ",
+        resp_recent_cases: "የቅርብ ጊዜ መዝገቦች",
+        resp_case_details: "የመዝገብ ዝርዝር",
+        resp_quick_msg: "💬 ፈጣን መልዕክት",
+        resp_formal_tab: "⚖️ መደበኛ የፍርድ ቤት መልስ መስጫ",
+        resp_court_rule: "⚖️ የፍርድ ቤት ደንብ፡ መደበኛ ምላሽዎ እንደ ህጋዊ ሰነድ ይመዘገባል። እባክዎ እውነተኛ፣ አጭር እና የተሟላ መረጃ ያቅርቡ።",
+        resp_step1_prog: "1. ቋንቋ",
+        resp_step2_prog: "2. አቋም",
+        resp_step3_prog: "3. የመከላከያ ነጥብ",
+        resp_step4_prog: "4. ዳኝነት",
+        resp_step5_prog: "5. የፍርድ ቤት ክፍያ",
+        resp_step6_prog: "6. ማጠቃለያ",
+        resp_btn_next: "ቀጣይ →",
+        resp_btn_back: "← ተመለስ",
+        resp_btn_submit: "⚖️ መደበኛ መልስ አስገባ",
+        resp_counter_claim_btn: "የማስተባበያ / የተቃውሞ ክስ አስገባ",
+        resp_opening_label: "የመክፈቻ አቋም መግለጫ",
+        resp_opening_placeholder: "በዚህ ክስ ላይ ያለዎትን አቋም በአጭሩ ይግለጹ (የግንኙነት አይነት፣ አለመግባባት መንስኤ)…",
+        resp_defense_label: "የመከላከያ / የመቃወሚያ ነጥቦች",
+        resp_defense_placeholder: "እያንዳንዱን የክስ ነጥብ በዝርዝር ያስተባብሉ። ቀናትን፣ እውነታዎችን እና አስረጅ ምክንያቶችን ያካትቱ…",
+        resp_evidence_label: "የሚያቀርቡት ማስረጃ ወይም ምስክሮች (አማራጭ)",
+        resp_evidence_placeholder: "ምሳሌ፡ የባንክ ደረሰኝ፣ ምስክሮች ሙሉ ስም እና አድራሻ…",
+        resp_relief_label: "ከፍርድ ቤቱ የሚጠይቁት ዳኝነት ወይም ውሳኔ",
+        resp_relief_placeholder: "ምሳሌ፡ ክሱ ውድቅ እንዲደረግ፣ ኪሳራ እንዲሸፈን፣ የእግድ ትዕዛዝ እንዲሰጥ…",
+        resp_closing_label: "የማጠቃለያ ቃል (አማራጭ)",
+        resp_closing_placeholder: "ለፍርድ ቤቱ ሊያቀርቡት የሚፈልጉት የመጨረሻ አስተያየት…",
+        resp_banner_geez: "⚠️ የግዕዝ ፊደላት ግዴታ ናቸው፡ አማርኛ ቋንቋ መርጠዋል። የመከላከያ መልስ እና ዳኝነት ማብራሪያዎች በሙሉ በግዕዝ ፊደላት (ሀ-ፐ) መፃፍ አለባቸው።",
+        resp_banner_latin: "⚠️ የላቲን ፊደላት ግዴታ ናቸው፡ እንግሊዝኛ / አፋን ኦሮሞ መርጠዋል። ጽሑፎች በላቲን ፊደላት (A-Z) መፃፍ አለባቸው።",
+        resp_pos_deny: "ክሱን ሙሉ በሙሉ እክዳለሁ",
+        resp_pos_partial: "በከፊል አምናለሁ",
+        resp_pos_context: "አምናለሁ ግን ምክንያቴን አቀርባለሁ",
+
+        // --- Judge & Clerk Keys ---
+        judge_portal_title: "የዳኞች ችሎት ጽ/ቤት",
+        judge_order_title: "የፍርድ ቤት ትዕዛዝ / ፍርድ ዝርዝር",
+        judge_order_desc: "የዳኝነት ትዕዛዝ ወይም ፍርድ በፍርድ ቤቱ ቋንቋ ያስገቡ።",
+        clerk_portal_title: "የሬጅስትራር መዝገብ ቤት",
+        clerk_status_title: "የመዝገብ ምርመራ እና ውሳኔ",
+
             // General / Brand
             app_title: "ጀስቲስ ኮኔክት | የፍርድ ቤት አቤቱታ አስተዳደር ሥርዓት",
             brand_name: "ጀስቲስ ኮኔክት",
@@ -445,6 +563,65 @@
         },
 
         om: {
+        // --- Reusable Language Step & Actor Flow Keys ---
+        lang_step_title: "Tarkaanfii 1: Afaan fi Daangaa Seeraa Filadhu",
+        lang_step_desc: "Galmee seeraa ykn deebii keessaniif afaan filadhaa. Barreeffamoonni, falmiileen fi gaaffileen seeraa itti aanan hundi qubee kanaan barreeffamuu qabu.",
+        lang_step_btn_next: "Afaan Filatameen Itti Fufi →",
+        lang_rule_amharic: "Afaan Amaaraaf qubeen Gi'iizii (ሀ–ፐ) barbaachisaadha",
+        lang_rule_latin: "Afaan Ingilizii fi Oromoof qubeen Laatiin (A–Z) barbaachisaadha",
+        lang_badge_actor: "Tarkaanfii Dirqamaa",
+        val_script_error_title: "Dogoggora Qubee Afaanii",
+        val_step_has_errors: "Mee osoo hin darbin dura dogoggora qubee sirreessaa.",
+
+        // --- Respondent Portal Keys ---
+        resp_portal_title: "Poortaalii Deebii Kennaa — CCMS",
+        resp_nav_overview: "Ibsa Waliigalaa",
+        resp_nav_cases: "Dhimmoota Koo",
+        resp_nav_notifications: "Beeksisa",
+        resp_welcome: "Baga nagaan dhuftan",
+        resp_summary: "Cuunfaa adeemsa murtii seeraa keessanii kan yeroo ammaa",
+        resp_stat_total: "Dhimmoota Waliigalaa",
+        resp_stat_pending: "Deebii Eegaa Jiran",
+        resp_stat_progress: "Adeemsa Irra Jiran",
+        resp_stat_resolved: "Kan Xumuraman",
+        resp_recent_cases: "Dhimmoota Dhiyoo",
+        resp_case_details: "Bal'ina Dhimmaa",
+        resp_quick_msg: "💬 Ergaa Saffisaa",
+        resp_formal_tab: "⚖️ Deebii Seeraa Mana Murtii",
+        resp_court_rule: "⚖️ Seera Mana Murtii: Deebiin seeraa keessan akka galmee mootummaatti qabama. Dhugaa, gabaabaa fi kabajaan dhiyeessaa.",
+        resp_step1_prog: "1. Afaan",
+        resp_step2_prog: "2. Ejjennoo",
+        resp_step3_prog: "3. Falmii",
+        resp_step4_prog: "4. Ajaja",
+        resp_step5_prog: "5. Kaffaltii",
+        resp_step6_prog: "6. Sakatta'iinsa",
+        resp_btn_next: "Itti Aani →",
+        resp_btn_back: "← Duubatti",
+        resp_btn_submit: "⚖️ Deebii Seeraa Galchi",
+        resp_counter_claim_btn: "Himannaa Falmii Dhiyeessi",
+        resp_opening_label: "Ibsa Ejjennoo Jalqabaa",
+        resp_opening_placeholder: "Ejjennoo keessan himannaa kana irratti gabaabsanii ibsaa…",
+        resp_defense_label: "Qabxii Falmii fi Madaallii",
+        resp_defense_placeholder: "Qabxii falmii keessanii tokko tokkoon dhiyeessaa. Guyyoota, ragaalee fi sababoota dabaladhaa…",
+        resp_evidence_label: "Ragaalee ykn Ragaa Baatoota (filannoo)",
+        resp_evidence_placeholder: "fkn. Nagahee baankii, maqaa ragaa baatootaa…",
+        resp_relief_label: "Murtii Mana Murtii Irraa Barbaadan",
+        resp_relief_placeholder: "fkn. Himannaan akka kuffifamu, baasiin akka kafalamu…",
+        resp_closing_label: "Ibsa Xumuraa (filannoo)",
+        resp_closing_placeholder: "Yaada xumuraa mana murtiif dhiyeessuu barbaaddan…",
+        resp_banner_geez: "⚠️ Qubeen Gi'iizii Dirqamaadha: Afaan Amaaraa filattaniittu. Barreeffamoonni deebii hundi qubee Gi'iiziin (ሀ-ፐ) barreeffamuu qabu.",
+        resp_banner_latin: "⚠️ Qubeen Laatiin Dirqamaadha: Afaan Ingilizii / Oromoo filattaniittu. Barreeffamoonni hundi qubee Laatiiniin (A-Z) barreeffamuu qabu.",
+        resp_pos_deny: "Himannaa guutummaatti nan waakkadha",
+        resp_pos_partial: "Gartokkee nan amana",
+        resp_pos_context: "Nan amana garuu sababa qaba",
+
+        // --- Judge & Clerk Keys ---
+        judge_portal_title: "Waajjira Abbootii Seeraa",
+        judge_order_title: "Bal'ina Ajaja / Murtii Abbaa Seeraa",
+        judge_order_desc: "Ajaja murtii afaan mana murtii filatameen galchaa.",
+        clerk_portal_title: "Waajjira Galmee Reejistiraaraa",
+        clerk_status_title: "Sakatta'iinsa Galmee Reejistiraaraa",
+
             // General / Brand
             app_title: "Justice Connect | Sirna Bulchiinsa Kominikeeshinii Mana Murtii",
             brand_name: "Justice Connect",
@@ -840,6 +1017,215 @@
         },
 
         // 4. Script & Form Validation Engine
+        
+        // ── Actor Persistent State ──
+        currentActor: 'CITIZEN',
+
+        /**
+         * Get the persisted language for a specific actor (or current actor)
+         * @param {string} [actor] 'RESPONDENT' | 'CITIZEN' | 'JUDGE' | 'CLERK' | 'ADMIN'
+         * @returns {string} 'en', 'am', or 'om'
+         */
+        getActorLanguage(actor) {
+            const role = (actor || this.currentActor || 'CITIZEN').toUpperCase();
+            try {
+                const actorKey = 'app_language_' + role.toLowerCase();
+                const saved = localStorage.getItem(actorKey);
+                if (saved && SUPPORTED_LANGUAGES.includes(saved)) {
+                    return saved;
+                }
+            } catch (e) {
+                console.warn('i18n: localStorage error in getActorLanguage');
+            }
+            return this.getLanguage();
+        },
+
+        /**
+         * Persist language specifically for an actor, update application context immediately,
+         * and dispatch actor-specific languagechange event
+         * @param {string} actor 'RESPONDENT' | 'CITIZEN' | 'JUDGE' | 'CLERK' | 'ADMIN'
+         * @param {string} lang 'en' | 'am' | 'om'
+         */
+        setActorLanguage(actor, lang) {
+            const role = (actor || this.currentActor || 'CITIZEN').toUpperCase();
+            if (!SUPPORTED_LANGUAGES.includes(lang)) {
+                lang = DEFAULT_LANGUAGE;
+            }
+
+            try {
+                const actorKey = 'app_language_' + role.toLowerCase();
+                localStorage.setItem(actorKey, lang);
+            } catch (e) {
+                console.warn('i18n: Failed to persist actor language');
+            }
+
+            // Immediately set globally so active UI localizes
+            this.setLanguage(lang);
+
+            window.dispatchEvent(new CustomEvent('actor:languagechange', {
+                detail: { actor: role, language: lang }
+            }));
+        },
+
+        /**
+         * Set the current active actor role, loading their persisted language preference immediately
+         * @param {string} role 'RESPONDENT' | 'CITIZEN' | 'JUDGE' | 'CLERK' | 'ADMIN'
+         */
+        setActor(role) {
+            if (!role) return;
+            this.currentActor = role.toUpperCase();
+            const preferredLang = this.getActorLanguage(this.currentActor);
+            if (preferredLang && preferredLang !== this.getLanguage()) {
+                this.setLanguage(preferredLang);
+            }
+        },
+
+        // ── Reusable Language First-Step Component ──
+        /**
+         * Abstracted Language First-Step Component
+         * Renders the mandatory first step into any actor's wizard, modal, or form.
+         *
+         * @param {HTMLElement|string} container Target element or selector
+         * @param {Object} options Configuration options
+         * @param {string} options.wizardKey Unique identifier (e.g. 'resp-formal', 'citizen-complaint')
+         * @param {string} [options.actor='RESPONDENT'] Actor role
+         * @param {number} [options.stepNumber=1] Step number
+         * @param {string} [options.title] Optional title override
+         * @param {string} [options.description] Optional description override
+         * @param {string} [options.nextButtonText] Next button text
+         * @param {Function} [options.onSelect] Callback when language card is clicked: fn(lang)
+         * @param {Function} [options.onNext] Callback when Proceed button is clicked: fn(lang)
+         * @returns {HTMLElement} The mounted component element
+         */
+        renderLanguageStep(container, options = {}) {
+            const parent = typeof container === 'string' ? document.querySelector(container) : container;
+            if (!parent) return null;
+
+            const wizardKey = options.wizardKey || 'wizard';
+            const actor = (options.actor || this.currentActor || 'RESPONDENT').toUpperCase();
+            const stepNum = options.stepNumber || 1;
+            const currentLang = this.getActorLanguage(actor);
+
+            const title = options.title || this.t('lang_step_title', 'Step ' + stepNum + ': Select Language & Legal Jurisdiction');
+            const desc = options.description || this.t('lang_step_desc', 'Choose the primary language for this legal submission. Subsequent statements, arguments, and pleadings must strictly adhere to the chosen script.');
+            const nextBtnText = options.nextButtonText || this.t('lang_step_btn_next', 'Proceed with Selected Language →');
+
+            parent.innerHTML = [
+                '<div class="reusable-lang-step-container" data-reusable-wizard="' + wizardKey + '" data-actor="' + actor + '">',
+                '    <div class="wizard-step-header" style="margin-bottom: 1.25rem;">',
+                '        <div style="display:flex; align-items:center; justify-content:space-between; margin-bottom:0.4rem; flex-wrap:wrap; gap:0.5rem;">',
+                '            <h3 style="margin:0; font-size:1.25rem; font-weight:700; color:var(--text, #0f172a);">' + title + '</h3>',
+                '            <span class="badge" style="background:#e0e7ff; color:#4338ca; font-size:0.75rem; font-weight:700; padding:0.3rem 0.75rem; border-radius:50px; text-transform:uppercase;">',
+                '                ' + actor + ' ' + this.t('lang_badge_actor', 'Mandatory Step'),
+                '            </span>',
+                '        </div>',
+                '        <p class="text-muted" style="margin:0; font-size:0.875rem; line-height:1.6; color:#64748b;">' + desc + '</p>',
+                '    </div>',
+                '    <div class="wizard-lang-grid" id="lang-grid-' + wizardKey + '">',
+                '        <div class="wizard-lang-card ' + (currentLang === 'en' ? 'selected' : '') + '" data-wizard-lang="en">',
+                '            <input type="radio" name="wizard_filing_lang_' + wizardKey + '" value="en" ' + (currentLang === 'en' ? 'checked' : '') + '>',
+                '            <div class="wizard-lang-header">',
+                '                <span class="wlang-flag">🌐</span>',
+                '                <span class="wlang-badge">Commercial &amp; Federal</span>',
+                '            </div>',
+                '            <div class="wlang-name">English</div>',
+                '            <div class="wlang-script">Latin Script (A–Z)</div>',
+                '            <div class="wlang-desc">English court filings, pleadings, and official correspondence.</div>',
+                '        </div>',
+                '        <div class="wizard-lang-card ' + (currentLang === 'am' ? 'selected' : '') + '" data-wizard-lang="am">',
+                '            <input type="radio" name="wizard_filing_lang_' + wizardKey + '" value="am" ' + (currentLang === 'am' ? 'checked' : '') + '>',
+                '            <div class="wizard-lang-header">',
+                '                <span class="wlang-flag">🇪🇹</span>',
+                '                <span class="wlang-badge">ብሔራዊ የስራ ቋንቋ</span>',
+                '            </div>',
+                '            <div class="wlang-name">አማርኛ</div>',
+                '            <div class="wlang-script">የግዕዝ ፊደላት (ሀ–ፐ)</div>',
+                '            <div class="wlang-desc">የፌዴራል እና የክልል ፍርድ ቤቶች መደበኛ የክስ እና መልስ ማመልከቻ።</div>',
+                '        </div>',
+                '        <div class="wizard-lang-card ' + (currentLang === 'om' ? 'selected' : '') + '" data-wizard-lang="om">',
+                '            <input type="radio" name="wizard_filing_lang_' + wizardKey + '" value="om" ' + (currentLang === 'om' ? 'checked' : '') + '>',
+                '            <div class="wizard-lang-header">',
+                '                <span class="wlang-flag">🌳</span>',
+                '                <span class="wlang-badge">Mana Murtii Naannoo</span>',
+                '            </div>',
+                '            <div class="wlang-name">Afaan Oromoo</div>',
+                '            <div class="wlang-script">Qubee Afaan Oromoo (A–Z, &#39;)</div>',
+                '            <div class="wlang-desc">Murtiiwwan seeraa fi deebii dhaddachaa naannootti dhiyaatan.</div>',
+                '        </div>',
+                '    </div>',
+                '    <div class="script-enforcement-banner" id="banner-' + wizardKey + '" style="margin: 1.25rem 0; padding:0.85rem 1.1rem; border-radius:10px; font-size:0.85rem; font-weight:600; display:flex; align-items:center; gap:0.65rem;"></div>',
+                '    <div class="wizard-btn-row" style="display:flex; justify-content:flex-end; margin-top:1.5rem;">',
+                '        <button type="button" class="btn btn-primary reusable-step-next-btn" style="min-width: 200px; padding:0.75rem 1.5rem; font-size:0.95rem; font-weight:600; border-radius:8px; cursor:pointer;">',
+                '            ' + nextBtnText,
+                '        </button>',
+                '    </div>',
+                '</div>'
+            ].join('\n');
+
+            const updateBanner = (lang) => {
+                const banner = parent.querySelector('#banner-' + wizardKey);
+                if (!banner) return;
+                if (lang === 'am') {
+                    banner.style.background = '#fef3c7';
+                    banner.style.border = '1px solid #f59e0b';
+                    banner.style.color = '#92400e';
+                    banner.innerHTML = '<span>⚠️</span><span><strong>' + this.t('lang_rule_amharic', 'የግዕዝ ፊደላት ግዴታ ናቸው:') + '</strong> ' + this.t('resp_banner_geez', 'አማርኛ ቋንቋ መርጠዋል። በቀጣይ ደረጃዎች የሚቀርቡ ክርክሮች፣ መግለጫዎች እና ዳኝነቶች በሙሉ በግዕዝ ፊደላት (ሀ-ፐ) መፃፍ አለባቸው።') + '</span>';
+                } else if (lang === 'om') {
+                    banner.style.background = '#ecfdf5';
+                    banner.style.border = '1px solid #10b981';
+                    banner.style.color = '#065f46';
+                    banner.innerHTML = '<span>⚠️</span><span><strong>' + this.t('lang_rule_latin', 'Qubee Laatiin Dirqamaadha:') + '</strong> ' + this.t('resp_banner_latin', 'Afaan Oromoo filattaniittu. Barreeffamoonni hundi qubee Laatiiniin (A-Z) barreeffamuu qabu.') + '</span>';
+                } else {
+                    banner.style.background = '#eff6ff';
+                    banner.style.border = '1px solid #3b82f6';
+                    banner.style.color = '#1e40af';
+                    banner.innerHTML = '<span>⚠️</span><span><strong>' + this.t('lang_rule_latin', 'Latin Script Enforced:') + '</strong> ' + this.t('resp_banner_latin', 'You selected English. All statements and pleadings must be written in Latin script (A-Z).') + '</span>';
+                }
+            };
+
+            updateBanner(currentLang);
+
+            const cards = parent.querySelectorAll('#lang-grid-' + wizardKey + ' .wizard-lang-card');
+            cards.forEach(card => {
+                card.addEventListener('click', () => {
+                    const chosenLang = card.getAttribute('data-wizard-lang');
+                    cards.forEach(c => {
+                        const isMatch = c.getAttribute('data-wizard-lang') === chosenLang;
+                        c.classList.toggle('selected', isMatch);
+                        const radio = c.querySelector('input[type="radio"]');
+                        if (radio) radio.checked = isMatch;
+                    });
+
+                    updateBanner(chosenLang);
+                    this.setActorLanguage(actor, chosenLang);
+
+                    const enclosingForm = parent.closest('form') || parent.closest('[data-actor-form]') || parent;
+                    if (enclosingForm) enclosingForm.setAttribute('data-form-lang', chosenLang);
+
+                    if (typeof options.onSelect === 'function') {
+                        options.onSelect(chosenLang);
+                    }
+                });
+            });
+
+            const nextBtn = parent.querySelector('.reusable-step-next-btn');
+            if (nextBtn) {
+                nextBtn.addEventListener('click', () => {
+                    const selectedRadio = parent.querySelector('#lang-grid-' + wizardKey + ' input[type="radio"]:checked');
+                    const chosenLang = selectedRadio ? selectedRadio.value : this.getActorLanguage(actor);
+
+                    const enclosingForm = parent.closest('form') || parent.closest('[data-actor-form]') || parent;
+                    if (enclosingForm) enclosingForm.setAttribute('data-form-lang', chosenLang);
+
+                    if (typeof options.onNext === 'function') {
+                        options.onNext(chosenLang);
+                    }
+                });
+            }
+
+            return parent;
+        },
+
         validator: {
             GEEZ_REGEX,
             LATIN_REGEX,
@@ -1003,6 +1389,152 @@
             /**
              * Attach automatic real-time validation to inputs
              */
+            
+            /**
+             * Global Form Validation Wrapper
+             * Automatically attaches language script constraints and validation to all text inputs
+             * inside any actor form or wizard.
+             * 
+             * @param {HTMLElement|string} formOrSelector 
+             * @param {Object} options
+             * @returns {Object} Wrapper controller with validateAll() and setLanguage()
+             */
+            wrapForm(formOrSelector, options = {}) {
+                const form = typeof formOrSelector === 'string' ? document.querySelector(formOrSelector) : formOrSelector;
+                if (!form) return null;
+
+                const actor = options.actor || i18n.currentActor || 'CITIZEN';
+
+                const getActiveLanguage = () => {
+                    return form.getAttribute('data-form-lang') || 
+                           (options.getLanguage ? options.getLanguage() : null) || 
+                           i18n.getActorLanguage(actor) || 
+                           i18n.getLanguage();
+                };
+
+                const selector = options.selector || 'input[data-lang-validate="true"], textarea[data-lang-validate="true"], .lang-validate, input[type="text"]:not([data-lang-ignore]), textarea:not([data-lang-ignore])';
+
+                const attachToField = (field) => {
+                    if (field._langValidated) return;
+                    field._langValidated = true;
+
+                    const type = (field.getAttribute('type') || '').toLowerCase();
+                    if (['password', 'email', 'number', 'date', 'file', 'checkbox', 'radio', 'hidden'].includes(type)) {
+                        return;
+                    }
+
+                    field.setAttribute('data-lang-validate', 'true');
+
+                    const runValidation = () => {
+                        const lang = getActiveLanguage();
+                        return i18n.validator.validateInput(field, lang);
+                    };
+
+                    field.addEventListener('input', runValidation);
+                    field.addEventListener('blur', runValidation);
+                };
+
+                form.querySelectorAll(selector).forEach(attachToField);
+
+                if (typeof window !== 'undefined' && window.MutationObserver) {
+                    const observer = new MutationObserver((mutations) => {
+                        mutations.forEach(m => {
+                            m.addedNodes.forEach(node => {
+                                if (node.nodeType === 1) {
+                                    if (node.matches && node.matches(selector)) {
+                                        attachToField(node);
+                                    }
+                                    if (node.querySelectorAll) {
+                                        node.querySelectorAll(selector).forEach(attachToField);
+                                    }
+                                }
+                            });
+                        });
+                    });
+                    observer.observe(form, { childList: true, subtree: true });
+                }
+
+                const validateAll = () => {
+                    const lang = getActiveLanguage();
+                    const fields = form.querySelectorAll('input[data-lang-validate="true"], textarea[data-lang-validate="true"], .lang-validate');
+                    let isValid = true;
+                    let firstInvalid = null;
+                    let firstError = null;
+
+                    fields.forEach(field => {
+                        const type = (field.getAttribute('type') || '').toLowerCase();
+                        if (['password', 'email', 'number', 'date', 'file', 'checkbox', 'radio', 'hidden'].includes(type)) {
+                            return;
+                        }
+                        const valid = i18n.validator.validateInput(field, lang);
+                        if (!valid && isValid) {
+                            isValid = false;
+                            firstInvalid = field;
+                            const msg = field.parentElement ? field.parentElement.querySelector('.lang-validation-msg') : null;
+                            firstError = msg ? msg.textContent : i18n.t('val_step_has_errors', 'Please correct language script errors.');
+                        }
+                    });
+
+                    if (!isValid && firstInvalid) {
+                        firstInvalid.focus();
+                        if (options.showToast !== false) {
+                            if (typeof window.showToast === 'function') {
+                                window.showToast(firstError || 'Script mismatch in fields.', true);
+                            } else if (typeof window.Swal !== 'undefined') {
+                                window.Swal.fire({
+                                    icon: 'warning',
+                                    title: i18n.t('val_script_error_title', 'Language Script Error'),
+                                    text: firstError
+                                });
+                            }
+                        }
+                    }
+                    return isValid;
+                };
+
+                if (form.tagName === 'FORM') {
+                    form.addEventListener('submit', function(e) {
+                        if (!validateAll()) {
+                            e.preventDefault();
+                            e.stopPropagation();
+                        }
+                    }, true);
+                }
+
+                return {
+                    form,
+                    validateAll,
+                    getLanguage: getActiveLanguage,
+                    setLanguage: (lang) => {
+                        form.setAttribute('data-form-lang', lang);
+                        form.querySelectorAll('input[data-lang-validate="true"], textarea[data-lang-validate="true"]').forEach(field => {
+                            if (field.value && field.value.trim().length > 0) {
+                                i18n.validator.validateInput(field, lang);
+                            }
+                        });
+                    }
+                };
+            },
+
+            /**
+             * Automatically wraps all known actor forms across the document
+             */
+            autoWrapAllForms() {
+                const formsToWrap = [
+                    { selector: '#complaint-form', actor: 'CITIZEN' },
+                    { selector: '#resp-tab-formal', actor: 'RESPONDENT' },
+                    { selector: '#counter-claim-form', actor: 'RESPONDENT' },
+                    { selector: '#remark-form', actor: 'CITIZEN' }
+                ];
+
+                formsToWrap.forEach(cfg => {
+                    const el = document.querySelector(cfg.selector);
+                    if (el) {
+                        this.wrapForm(el, { actor: cfg.actor });
+                    }
+                });
+            },
+
             attachRealtimeListeners() {
                 const inputs = document.querySelectorAll('input[data-lang-validate="true"], textarea[data-lang-validate="true"], .lang-validate');
                 inputs.forEach(input => {
@@ -1028,6 +1560,7 @@
                 this.applyTranslations(this.getLanguage());
                 this.syncSelectors(this.getLanguage());
                 this.validator.attachRealtimeListeners();
+                this.validator.autoWrapAllForms();
             });
 
             // Re-validate fields when language changes
