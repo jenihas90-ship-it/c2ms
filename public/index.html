@@ -12,6 +12,7 @@
   <link
     href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600&family=Outfit:wght@400;500;700;800&display=swap"
     rel="stylesheet">
+  <script src="/js/i18n.js?v=multi-v1"></script>
   <link rel="stylesheet" href="/css/styles.css?v=pure-white-v3">
   <style>
     /* ── Landing page hero layout ── */
@@ -1402,7 +1403,7 @@
   <!-- ── Welcome Marquee Banner ── -->
   <div class="welcome-marquee-bar" aria-label="Welcome banner">
     <div class="welcome-marquee-inner">
-      <span>⚖️ WELCOME TO COURT COMPLAINT MANAGEMENT SYSTEM &nbsp;&nbsp;&nbsp;⚖️ WELCOME TO COURT COMPLAINT MANAGEMENT
+      <span data-i18n="marquee_welcome">⚖️ WELCOME TO COURT COMPLAINT MANAGEMENT SYSTEM &nbsp;&nbsp;&nbsp;⚖️ WELCOME TO COURT COMPLAINT MANAGEMENT
         SYSTEM &nbsp;&nbsp;&nbsp;⚖️ WELCOME TO COURT COMPLAINT MANAGEMENT SYSTEM</span>
     </div>
   </div>
@@ -1599,31 +1600,31 @@
       <div class="gal-item featured">
         <img src="/images/courtroom_interior.png" alt="Grand Courtroom Interior">
         <div class="gal-item-overlay">
-          <span class="gal-caption">🏛️ Grand Courtrooms</span>
+          <span class="gal-caption" data-i18n="gal_item_1">🏛️ Grand Courtrooms</span>
         </div>
       </div>
       <div class="gal-item">
         <img src="/images/judge_reviewing.png" alt="Judge Reviewing Documents">
         <div class="gal-item-overlay">
-          <span class="gal-caption">⚖️ Expert Judiciary</span>
+          <span class="gal-caption" data-i18n="gal_item_2">⚖️ Expert Judiciary</span>
         </div>
       </div>
       <div class="gal-item">
         <img src="/images/efiling_feature.png" alt="Digital Case Filing">
         <div class="gal-item-overlay">
-          <span class="gal-caption">💻 Digital Filing</span>
+          <span class="gal-caption" data-i18n="gal_item_3">💻 Digital Filing</span>
         </div>
       </div>
       <div class="gal-item">
         <img src="/images/lady_justice.png" alt="Lady Justice">
         <div class="gal-item-overlay">
-          <span class="gal-caption">🗽 Symbol of Justice</span>
+          <span class="gal-caption" data-i18n="gal_item_4">🗽 Symbol of Justice</span>
         </div>
       </div>
       <div class="gal-item">
         <img src="/images/team_collaboration.png" alt="Legal Team">
         <div class="gal-item-overlay">
-          <span class="gal-caption">👥 Legal Professionals</span>
+          <span class="gal-caption" data-i18n="gal_item_5">👥 Legal Professionals</span>
         </div>
       </div>
     </div>
@@ -1687,18 +1688,18 @@
           for every citizen.</p>
       </div>
       <div class="footer-col">
-        <h5>Navigation</h5>
+        <h5 data-i18n="footer_nav_title">Navigation</h5>
         <a href="/">Home</a>
         <a href="#why">Why Choose Us</a>
         <a href="/about.html">About Us</a>
         <button onclick="openAuthModal()">Sign In / Register</button>
       </div>
       <div class="footer-col">
-        <h5>Portals</h5>
-        <button onclick="openAuthModal()">Citizen Portal</button>
-        <button onclick="openAuthModal()">Clerk Portal</button>
-        <button onclick="openAuthModal()">Judge Portal</button>
-        <button onclick="openAuthModal()">Admin Portal</button>
+        <h5 data-i18n="footer_portals_title">Portals</h5>
+        <button onclick="openAuthModal()" data-i18n="footer_portal_citizen">Citizen Portal</button>
+        <button onclick="openAuthModal()" data-i18n="footer_portal_clerk">Clerk Portal</button>
+        <button onclick="openAuthModal()" data-i18n="footer_portal_judge">Judge Portal</button>
+        <button onclick="openAuthModal()" data-i18n="footer_portal_admin">Admin Portal</button>
       </div>
     </div>
     <div class="footer-bottom">

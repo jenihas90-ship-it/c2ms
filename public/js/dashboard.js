@@ -748,42 +748,154 @@ async function openEditComplaint() {
     }
 }
 
-// Step Wizard Logic
+// Language & Wizard Helper Functions
+function getWizardFilingLanguage() {
+    const radio = document.querySelector('input[name="wizard_filing_lang"]:checked');
+    if (radio && radio.value) {
+        return radio.value;
+    }
+    return (window.i18n ? window.i18n.getLanguage() : 'en');
+}
+
+function updateWizardScriptBanner() {
+    const lang = getWizardFilingLanguage();
+    const label = document.getElementById('active-script-label');
+    const badge = document.getElementById('active-script-badge');
+    if (!label) return;
+
+    if (lang === 'am') {
+        label.textContent = "ግዕዝ / አማርኛ (Ge'ez Script: ሀ-ፖ)";
+        if (badge) { badge.textContent = "AM"; badge.style.background = "#dcfce7"; badge.style.color = "#15803d"; }
+    } else if (lang === 'om') {
+        label.textContent = "Qubee Afaan Oromoo (Latin: A-Z, ')";
+        if (badge) { badge.textContent = "OM"; badge.style.background = "#eff6ff"; badge.style.color = "#1d4ed8"; }
+    } else {
+        label.textContent = "English (Latin Alphabet: A-Z)";
+        if (badge) { badge.textContent = "EN"; badge.style.background = "#f1f5f9"; badge.style.color = "#0f172a"; }
+    }
+}
+
+function selectWizardLanguage(lang) {
+    const radio = document.querySelector(`input[name="wizard_filing_lang"][value="${lang}"]`);
+    if (radio) {
+        radio.checked = true;
+    }
+    document.querySelectorAll('.wizard-lang-card').forEach(card => card.classList.remove('selected'));
+    if (radio && radio.closest('.wizard-lang-card')) {
+        radio.closest('.wizard-lang-card').classList.add('selected');
+    }
+
+    // Update global application language immediately
+    if (window.i18n) {
+        window.i18n.setLanguage(lang);
+    }
+
+    // Pre-populate complainant language in step 3
+    const compLang = document.getElementById('comp-complainant-language');
+    if (compLang) {
+        if (lang === 'am') compLang.value = 'Amharic';
+        else if (lang === 'om') compLang.value = 'Oromic';
+        else compLang.value = 'English';
+    }
+
+    updateWizardScriptBanner();
+}
+
+// Step Wizard Logic (6 Steps: 1. Language -> 2. Type -> 3. Parties -> 4. Narrative -> 5. Evidence -> 6. Payment)
 function nextWizardStep(step, currentStepToValidate = null) {
+    const activeLang = getWizardFilingLanguage();
+
+    // 1. Validation check on current step before moving forward
     if (currentStepToValidate !== null) {
         const currentStepEl = document.getElementById(`wizard-step-${currentStepToValidate}`);
         if (currentStepEl) {
-            const inputs = currentStepEl.querySelectorAll('input, select, textarea');
+            // Check native HTML5 input validity
+            const inputs = currentStepEl.querySelectorAll('input:not([type="radio"]), select, textarea');
             for (let input of inputs) {
                 if (!input.checkValidity()) {
                     input.reportValidity();
-                    return; // Stop advancing if validation fails
+                    return; // Stop advancing if HTML5 validation fails
+                }
+            }
+
+            // Language-Specific Script Validation!
+            if (window.i18n && window.i18n.validator) {
+                const valResult = window.i18n.validator.validateContainer(currentStepEl, activeLang);
+                if (!valResult.isValid) {
+                    if (valResult.firstInvalid) {
+                        valResult.firstInvalid.focus();
+                        valResult.firstInvalid.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                    }
+                    showToast(valResult.error || (window.i18n.t('val_step_has_errors')), true);
+                    return; // Stop advancing if script validation fails!
                 }
             }
         }
     }
-    for (let i = 1; i <= 5; i++) {
+
+    // Sync complainant language dropdown when moving past step 1
+    if (step >= 2) {
+        const compLang = document.getElementById('comp-complainant-language');
+        if (compLang && (!compLang.value || compLang.value === '')) {
+            if (activeLang === 'am') compLang.value = 'Amharic';
+            else if (activeLang === 'om') compLang.value = 'Oromic';
+            else compLang.value = 'English';
+        }
+    }
+
+    // Update dynamic script reminder banner when arriving at Step 4 (Narrative)
+    if (step === 4) {
+        updateWizardScriptBanner();
+    }
+
+    // 2. Hide all 6 steps and update progress headers
+    for (let i = 1; i <= 6; i++) {
         const stepEl = document.getElementById(`wizard-step-${i}`);
-        if (stepEl) stepEl.classList.add('hidden');
+        if (stepEl) stepEl.classList.add(`hidden`);
 
         const prog = document.getElementById(`prog-${i}`);
         if (prog) {
             if (i === step) {
                 prog.style.fontWeight = 'bold';
                 prog.style.color = 'var(--color-primary)';
+            } else if (i < step) {
+                prog.style.fontWeight = '600';
+                prog.style.color = '#10b981'; // Completed steps in green
             } else {
                 prog.style.fontWeight = 'normal';
                 prog.style.color = 'var(--text-muted)';
             }
         }
     }
+
+    // 3. Show target step
     const targetStep = document.getElementById(`wizard-step-${step}`);
     if (targetStep) targetStep.classList.remove('hidden');
 }
 
-// File Ticket submission using FormData for attachments handling
+// File Ticket submission using FormData with language and script verification
 async function handleFileComplaint(event) {
     event.preventDefault();
+
+    const activeLang = getWizardFilingLanguage();
+
+    // 1. Full form script validation across all text inputs
+    if (window.i18n && window.i18n.validator) {
+        const formValidation = window.i18n.validator.validateContainer('#complaint-form', activeLang);
+        if (!formValidation.isValid) {
+            if (formValidation.firstInvalid) {
+                const parentStep = formValidation.firstInvalid.closest('.wizard-step');
+                if (parentStep && parentStep.id) {
+                    const stepNum = parseInt(parentStep.id.replace('wizard-step-', ''), 10);
+                    if (!isNaN(stepNum)) nextWizardStep(stepNum);
+                }
+                formValidation.firstInvalid.focus();
+                formValidation.firstInvalid.scrollIntoView({ behavior: 'smooth', block: 'center' });
+            }
+            showToast(formValidation.error || window.i18n.t('val_step_has_errors'), true);
+            return;
+        }
+    }
 
     const title = document.getElementById('comp-title').value;
     const category = document.getElementById('comp-category').value;
@@ -801,7 +913,12 @@ async function handleFileComplaint(event) {
     const complainantRegion = document.getElementById('comp-complainant-region').value;
     const complainantWoreda = document.getElementById('comp-complainant-woreda').value;
     const complainantKebele = document.getElementById('comp-complainant-kebele')?.value || '';
-    const complainantLanguage = document.getElementById('comp-complainant-language')?.value || '';
+    
+    // Default complainant language to selected filing language if not manually overridden
+    let complainantLanguage = document.getElementById('comp-complainant-language')?.value || '';
+    if (!complainantLanguage) {
+        complainantLanguage = activeLang === 'am' ? 'Amharic' : (activeLang === 'om' ? 'Oromic' : 'English');
+    }
 
     const respondentPhone = document.getElementById('comp-respondent-phone').value;
     const respondentEmail = document.getElementById('comp-respondent-email').value;
@@ -820,13 +937,13 @@ async function handleFileComplaint(event) {
 
     if (!nationalIdInput || !nationalIdInput.files || nationalIdInput.files.length === 0) {
         showToast('National ID attachment is required. Please upload your National ID.', true);
-        nextWizardStep(4);
+        nextWizardStep(5);
         return;
     }
 
     if (!feeReceiptInput || !feeReceiptInput.files || feeReceiptInput.files.length === 0) {
         showToast('Court fee payment receipt (or waiver certificate) is required.', true);
-        nextWizardStep(5);
+        nextWizardStep(6);
         return;
     }
 
@@ -867,7 +984,7 @@ async function handleFileComplaint(event) {
         formData.append('court_fee_receipt', feeReceiptInput.files[0]);
     }
 
-    if (fileInput.files.length > 0) {
+    if (fileInput && fileInput.files && fileInput.files.length > 0) {
         formData.append('attachment', fileInput.files[0]);
     }
 
@@ -884,14 +1001,16 @@ async function handleFileComplaint(event) {
             body: formData
         });
 
-        showToast('Complaint filed. Team notified!');
+        showToast('Complaint filed successfully. Court registry notified!');
 
-        // reset form fields
+        // Reset form fields
         event.target.reset();
         document.getElementById('file-name-info').classList.add('hidden');
+        document.getElementById('nid-file-name-info').classList.add('hidden');
         document.getElementById('upload-instruction').textContent = 'Drop files here or click to upload';
 
         // Return to wizard step 1
+        selectWizardLanguage(activeLang);
         nextWizardStep(1);
 
         // Reload list and counters

@@ -5,6 +5,7 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Home | Justice Connect</title>
+  <script src="/js/i18n.js?v=multi-v1"></script>
   <link rel="stylesheet" href="/css/styles.css?v=pure-white-v3">
 </head>
 
@@ -19,15 +20,23 @@
       <span class="logo-icon">⚖️</span>
       <span class="logo-text">Justice Connect</span>
     </div>
-    <nav class="simple-nav" style="margin:1rem;">
-      <a href="/">Sign In</a>
-      <a href="/dashboard.html">Dashboard</a>
-      <a href="/about.html">About</a>
+    <nav class="simple-nav" style="margin:1rem; display:flex; align-items:center; gap:1rem;">
+      <div class="nav-lang-picker">
+        <span class="nav-lang-icon">🌐</span>
+        <select class="app-lang-select" onchange="i18n.setLanguage(this.value)">
+          <option value="en">English</option>
+          <option value="am">አማርኛ (Amharic)</option>
+          <option value="om">Afaan Oromoo</option>
+        </select>
+      </div>
+      <a href="/" data-i18n="nav_signin_short">Sign In</a>
+      <a href="/dashboard.html" data-i18n="nav_dashboard">Dashboard</a>
+      <a href="/about.html" data-i18n="nav_about">About</a>
     </nav>
   </header>
 
   <main style="padding:3rem; max-width:1000px; margin:0 auto; color:var(--text-main);">
-    <h1 style="font-family:var(--font-display);">Welcome to Justice Connect</h1>
+    <h1 style="font-family:var(--font-display);" data-i18n="hero_title_1">Welcome to Justice Connect</h1>
     <p style="color:var(--text-muted); font-size:1.05rem;">Justice Connect is an e-Filing platform to file court
       complaints, track cases and manage legal documents.</p>
 
